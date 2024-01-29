@@ -1,0 +1,3 @@
+[submodule "AXI"]
+	path = AXI
+	url = git@github.com:ChipArts/AXI.git
