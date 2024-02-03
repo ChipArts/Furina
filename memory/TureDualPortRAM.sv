@@ -56,10 +56,12 @@ localparam
   output [DATA_WIDTH - 1:0] data_b_o
 );
 
+`ifdef DEBUG
 // some parameter check
 initial begin
   assert (DATA_WIDTH % BYTE_WRITE_WIDTH == 0) else $fatal("WRITE_DATA_WIDTH must be an integer multiple of BYTE_WRITE_WIDTH");
 end
+`endif
 
 `ifdef VERILATOR_SIM
 // TODO: tdpram verilator sim module
