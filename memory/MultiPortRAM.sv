@@ -39,6 +39,7 @@ parameter
   string       CLOCKING_MODE = "common_clock",
   string       WRITE_MODE = "write_first",
   string       IMPL_TYPE = "auto",
+  string       MEMORY_PRIMITIVE = "auto",
 localparam
   int unsigned ADDR_WIDTH = $clog2(DATA_DEPTH),
   int unsigned BYTES_NUM  = DATA_WIDTH / BYTE_WRITE_WIDTH

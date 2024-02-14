@@ -29,6 +29,7 @@ parameter
   int unsigned DATA_WIDTH = 32,
   int unsigned BYTE_WRITE_WIDTH = 8,
   string       WRITE_MODE = "write_first",
+  string       MEMORY_PRIMITIVE = "auto",
 localparam
   int unsigned ADDR_WIDTH = $clog2(DATA_DEPTH),
   int unsigned MEMORY_SIZE = DATA_WIDTH * DATA_DEPTH
@@ -60,7 +61,7 @@ end
     .MEMORY_INIT_FILE("none"),     // String
     .MEMORY_INIT_PARAM("0"),       // String
     .MEMORY_OPTIMIZATION("true"),  // String
-    .MEMORY_PRIMITIVE("auto"),     // String
+    .MEMORY_PRIMITIVE(MEMORY_PRIMITIVE),     // String
     .MEMORY_SIZE(MEMORY_SIZE),            // DECIMAL
     .MESSAGE_CONTROL(0),           // DECIMAL
     .READ_DATA_WIDTH_A(DATA_WIDTH),        // DECIMAL

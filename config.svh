@@ -7,7 +7,7 @@
 // Revise  : 2024-01-13 21:15:57
 // Description :
 //   配置文件
-//   此中的SRAM不一定由SRAM IP构成，也可以是寄存器堆，也可以是FPGA的BRAM
+//   配置代码的运行或测试环境
 // Parameter   :
 //   ...
 //   ...
@@ -24,13 +24,15 @@
 
 /** simulation or synthesis （确保有且仅有一个环境选项被定义）**/
 // `define VERLATOR_SIM      // verilator 仿真
-`define VIVADO_VCS_SIM		 // vivado vcs 联合仿真
-// `define XILLINX_FPGA_SYN  // xillinx FPGA综合
+`define XILLINX_FPGA      // xillinx FPGA 仿真综合环境
 // `define MSIC180_SYN       // 中芯国际180nm工艺库综合
 
 /** debug **/
 `define DEBUG
 
+/** 处理器规格 **/
+`define PROC_BIT_WIDTH 32
+`define PROC_DECODE_WIDTH 6
 
 `endif // __CONFIG_SVH__
 

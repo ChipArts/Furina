@@ -33,6 +33,7 @@ parameter
 
   input [RENAME_WIDTH - 1:0] restore_i,    // 映射状态恢复
   input [RENAME_WIDTH - 1:0] allocaion_i,  // 状态保存
+  input [RENAME_WIDTH - 1:0] free_i,  // 释放映射状态（指令顺利提交）
 
   // 输入逻辑寄存器编号
   input [RENAME_WIDTH - 1:0] valid_i,  // 标志指令有效
@@ -43,10 +44,10 @@ parameter
   // 输出逻辑寄存器对应的物理寄存器编号
   output logic [RENAME_WIDTH - 1:0][$clog2(PHYS_REG_NUM) - 1:0] psrc0_o,
   output logic [RENAME_WIDTH - 1:0][$clog2(PHYS_REG_NUM) - 1:0] psrc1_o,
-  output logic [RENAME_WIDTH - 1:0][$clog2(PHYS_REG_NUM) - 1:0] ppdst_o,  // pre phy dest reg
+  output logic [RENAME_WIDTH - 1:0][$clog2(PHYS_REG_NUM) - 1:0] ppdst_o  // pre phy dest reg
 );
 
-  `RESET_LOGIC(clk, a_rst_n, s_rst_n)
+  `RESET_LOGIC(clk, a_rst_n, s_rst_n);
 
   // Main Bit Cell
   logic [ARCH_REG_NUM - 1:0][$clog2(PHYS_REG_NUM) - 1:0] register_alias_table;  // reg
@@ -59,9 +60,9 @@ parameter
     // 单独计算每一条指令rename后的RAT状态，为checkpoint做准备
     for (int i = 0; i < RENAME_WIDTH; i++) begin
       if (i > 0) begin
-        f_register_alias_table = f_register_alias_table[i - 1];
+        f_register_alias_table[i] = f_register_alias_table[i - 1];
       end else begin
-        f_register_alias_table = register_alias_table;
+        f_register_alias_table[i] = register_alias_table;
       end
       f_register_alias_table[i][dest_i[i]] = preg_i[i];
     end
@@ -98,9 +99,9 @@ parameter
       register_alias_table <= '0;
     end else begin
       for (int i = 0; i < RENAME_WIDTH; i++) begin
-        psrc0_o[i] = psrc0[i];
-        psrc1_o[i] = psrc1[i];
-        ppdst_o[i] = ppdst[i];
+        psrc0_o[i] <= psrc0[i];
+        psrc1_o[i] <= psrc1[i];
+        ppdst_o[i] <= ppdst[i];
       end
       foreach (wen[i]) begin
         if (wen[i]) begin
@@ -111,19 +112,7 @@ parameter
   end
 
   // Checkpoint Bit Cell
-  logic [$clog2(CHECKPOINT_NUM) - 1:0] checkpoints_ptr_head, checkpoints_ptr_tail;  // reg
-  logic [CHECKPOINT_NUM - 1:0][ARCH_REG_NUM - 1:0][$clog2(PHYS_REG_NUM) - 1:0] checkpoints;
-
-  always_ff @(posedge clk or negedge s_rst_n) begin
-    if(~s_rst_n) begin
-       checkpoints <= '0;
-    end else begin
-      foreach (restore_i[i]) begin
-        if (restore_i[i]) register_alias_table <= checkpoints[i];
-      end
-      // TODO: allocatio logic
-    end
-  end
+  // TODO: checkpoint
 
   
 

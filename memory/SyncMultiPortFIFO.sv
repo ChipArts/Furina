@@ -2,11 +2,11 @@
 // Copyright (c) 2014-2024 All rights reserved
 // ==============================================================================
 // Author  : SuYang 2506806016@qq.com
-// File    : MultiPortFIFO.sv
+// File    : SyncMultiPortFIFO.sv
 // Create  : 2024-01-16 12:01:16
 // Revise  : 2024-01-16 13:54:50
 // Description :
-//   Multi Port FIFO
+//   Sync Multi Port FIFO
 //   1 clk latency
 //   为了简化设计，push和pop有效位必须连续并从[0]开始
 // Parameter   :
@@ -24,12 +24,14 @@
 `include "config.svh"
 `include "common.svh"
 
-module MultiPortFIFO #(
+module SyncMultiPortFIFO #(
 parameter
   int unsigned FIFO_DEPTH = 16,
   int unsigned DATA_WIDTH = 32,
   int unsigned RPORTS_NUM = 6,
   int unsigned WPORTS_NUM = 6,
+  string       READ_MODE = "std",
+  string       FIFO_MEMORY_TYPE = "auto",
 localparam
   int unsigned ADDR_WIDTH = $clog2(FIFO_DEPTH)
 )(
@@ -192,6 +194,7 @@ localparam
     end
   end
 
+  // FIFO Memory
   generate
     for (genvar i = 0; i < BANK_NUM; i++) begin : FifoMemory
       SimpleDualPortRAM #(
@@ -199,7 +202,8 @@ localparam
         .DATA_WIDTH(DATA_WIDTH),
         .BYTE_WRITE_WIDTH(DATA_WIDTH),
         .CLOCKING_MODE   ("common_clock"),
-        .WRITE_MODE      ("write_first")
+        .WRITE_MODE      ("write_first"),
+        .MEMORY_PRIMITIVE(FIFO_MEMORY_TYPE)
       ) inst_SimpleDualPortRAM (
         .clk_a    (clk),
         .en_a_i   (1'b1),
@@ -215,4 +219,4 @@ localparam
     end
   endgenerate
 
-endmodule : MultiPortFIFO
+endmodule : SyncMultiPortFIFO

@@ -50,7 +50,6 @@ module PhysicalRegisterFile #(
         end
       end
     end
-    // TODO: try output with latch
     foreach (raddr_i[i]) begin
       data_o[i] <= waddr_i[i] == raddr_i[i] && we_i[i] ? data_i[i] : reg_file[raddr_i[i]];
     end
