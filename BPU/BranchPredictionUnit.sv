@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : BranchPredictionUnit.sv
 // Create  : 2024-02-12 15:35:06
-// Revise  : 2024-02-12 18:21:37
+// Revise  : 2024-02-14 16:26:48
 // Description :
 //   ...
 //   ...
@@ -23,7 +23,7 @@
 
 `include "config.svh"
 `include "common.svh"
-`include "bpu.svh"
+`include "BranchPredictionUnit.svh"
 
 `define NPC
 

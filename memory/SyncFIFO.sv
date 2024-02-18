@@ -9,8 +9,9 @@
 //   同步FIFO
 //   redirect时不能进行读写操作
 // Parameter   :
-//   READ_MODE
-//   PTR_REDIRECT: FIFO的指针重定位
+//   READ_MODE:
+//     - "std" : 标准FIFO
+//     - "fwft": FIFO写后立即读
 // IO Port     :
 //   ...
 //   ...
@@ -121,7 +122,7 @@ localparam
   end
 
 
-  always_ff @(posedge clk or negedge rst_n) begin
+  always_ff @(posedge clk or negedge s_rst_n) begin
     if(~s_rst_n) begin
       fifo_cnt <= '0;
       head <= '0;
