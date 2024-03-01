@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : InstructionFetchUnit.svh
 // Create  : 2024-02-14 17:31:32
-// Revise  : 2024-02-16 17:32:59
+// Revise  : 2024-03-01 16:00:24
 // Description :
 //   ...
 //   ...
@@ -27,7 +27,7 @@
 
 `include "config.svh"
 
-`define ICACHE_FECTH_WIDTH 8
+`define ICACHE_FECTH_WIDTH `PROC_FETCH_WIDTH
 
 typedef struct packed {
   logic fetch_valid;

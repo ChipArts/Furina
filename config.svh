@@ -32,6 +32,7 @@
 
 /** 处理器规格 **/
 `define PROC_BIT_WIDTH 32
+`define PROC_FETCH_WIDTH 8
 `define PROC_DECODE_WIDTH 6
 `define PROC_PAGE_SIZE 4096  // Byte
 

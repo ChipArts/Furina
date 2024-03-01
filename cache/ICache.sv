@@ -7,6 +7,7 @@
 // Revise  : 2024-02-16 22:38:29
 // Description :
 //   指令位宽: 32bit
+//   替换算法: 随机替换(时钟替换)
 // Parameter   :
 //   CACHE_SIZE: cache大小，单位(Byte)，必须是2的幂
 //   BLOCK_SIZE: 一个cache块的大小(Byte)，必须是(2/4/8/16)Byte
@@ -60,17 +61,20 @@ localparam
   logic miss;
   logic [1:0] icache_state;
   logic [BLOCK_SIZE / 4 - 1:0][31:0] axi4_rdata_buffer;
-  logic [$clog2(BLOCK_SIZE / 4) - 1:0] axi4_rdata_buffer_ptr;  // 字寻址
+  logic [$clog2(BLOCK_SIZE / 4) - 1:0] axi4_rdata_buffer_ptr;  // 字(32 bit)寻址
   logic r_axi4_r_last;
   logic [ASSOCIATIVITY - 1:0] icache_we;
   logic [INDEX_WIDTH - 1:0] icache_addr;
+  logic [ASSOCIATIVITY - 1:0] icache_valid;  // icache valid 写入
 
   logic [`PROC_BIT_WIDTH - 1:0] r_vpc;
   logic [`PROC_BIT_WIDTH - 1:0] ppc;  // 物理pc
 
+  // cache memory read out
   logic [ASSOCIATIVITY - 1:0] valid;
   logic [ASSOCIATIVITY - 1:0][TAG_WIDTH - 1:0] tag;
   logic [ASSOCIATIVITY - 1:0][BLOCK_SIZE * 8 - 1:0] data;
+  logic [$clog2(ASSOCIATIVITY) - 1:0] replace_way_idx;
 
   // Stage 0: 读出Tag和Date, 查询tlb
   always_comb begin
@@ -160,11 +164,22 @@ localparam
 
   // ICache Memory Ctrl
   always_comb begin
-    icache_we = '0;
+    for (int i = 0; i < ASSOCIATIVITY; i++) begin
+      icache_we[i] = i == replace_way_idx;
+    end
+    if (icache_state != REFIIL) begin
+      icache_we = '0;
+    end
+
     icache_addr = ifu2icache_st_i.vpc[INDEX_WIDTH + OFFSET_WIDTH - 1:OFFSET_WIDTH];
     if (icache_state == REFIIL) begin
       icache_addr = r_vpc[INDEX_WIDTH + OFFSET_WIDTH - 1:OFFSET_WIDTH];
-    end  
+    end
+
+    icache_valid = valid;
+    if (icache_state == REFIIL) begin
+      icache_valid = icache_valid | icache_we;
+    end
   end
 
   // AXI4 ctrl
@@ -248,7 +263,7 @@ localparam
       .en_i   (ifu2icache_st_i.fetch_valid),
       .addr_i (icache_addr),
       .data_i (ppc[`PROC_BIT_WIDTH - 1:INDEX_WIDTH + OFFSET_WIDTH]),
-      .we_i   (icache_we),
+      .we_i   (icache_we[i]),
       .data_o (tag[i])
     );
     SinglePortRAM #(
@@ -262,11 +277,28 @@ localparam
       .rst_n  (s_rst_n),
       .en_i   (ifu2icache_st_i.fetch_valid),
       .addr_i (icache_addr),
-      .data_i (),  // TODO
+      .data_i (icache_valid[i]),
       .we_i   (icache_we[i]),
       .data_o (valid[i])
     );
   end
+
+    // 时钟替换算法 存储
+    SinglePortRAM #(
+      .DATA_DEPTH(1 << INDEX_WIDTH),
+      .DATA_WIDTH($clog2(ASSOCIATIVITY)),
+      .BYTE_WRITE_WIDTH($clog2(ASSOCIATIVITY)),
+      .WRITE_MODE("write_first"),
+      .MEMORY_PRIMITIVE("auto")
+    ) U_ClockAlgorithmMemory (
+      .clk    (clk),
+      .rst_n  (s_rst_n),
+      .en_i   (ifu2icache_st_i.fetch_valid),
+      .addr_i (icache_addr),
+      .data_i (replace_way_idx + 1),
+      .we_i   (axi4_mst.r_last),  // 充填完成后写入
+      .data_o (replace_way_idx)
+    );
 
 
 endmodule : ICache
