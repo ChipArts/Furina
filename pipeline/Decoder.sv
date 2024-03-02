@@ -2,12 +2,11 @@
 // Copyright (c) 2014-2024 All rights reserved
 // ==============================================================================
 // Author  : SuYang 2506806016@qq.com
-// File    : BranchPredictionUnit.svh
-// Create  : 2024-02-12 18:06:30
-// Revise  : 2024-03-01 21:11:58
+// File    : Decoder.sv
+// Create  : 2024-03-01 16:02:44
+// Revise  : 2024-03-01 16:02:44
 // Description :
-//   ...
-//   ...
+//   解码器
 // Parameter   :
 //   ...
 //   ...
@@ -21,14 +20,13 @@
 // ...
 // ==============================================================================
 
-`ifndef _BRANCH_PREDICTION_UNIT_SVH_
-`define _BRANCH_PREDICTION_UNIT_SVH_
+`include "Decoder.svh"
 
-`include "config.svh"
+module Decoder (
+  input logic [31:0] instruction,
+  output CtrlSignalSt ctrl_signal
+);
 
-typedef struct packed {
-  logic [31:0] pc;
-  logic [`PROC_FETCH_WIDTH - 1:0] valid;
-} BPU2FAQSt;
+  // TODO: generate by SpinalHDL
 
-`endif  // _BRANCH_PREDICTION_UNIT_SVH_
+endmodule : Decoder

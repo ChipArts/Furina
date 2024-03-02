@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : InstructionFetchUnit.svh
 // Create  : 2024-02-14 17:31:32
-// Revise  : 2024-03-01 16:00:24
+// Revise  : 2024-03-01 21:21:31
 // Description :
 //   ...
 //   ...
@@ -35,7 +35,7 @@ typedef struct packed {
 
 typedef struct packed {
   logic fetch_valid;  // fetch请求有效
-  logic [`PROC_BIT_WIDTH - 1:0] vpc;
+  logic [31:0] vpc;
 } IFU2ICacheSt;
 
 

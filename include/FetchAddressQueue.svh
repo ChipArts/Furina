@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : FetchAddressQueue.svh
 // Create  : 2024-02-14 17:37:54
-// Revise  : 2024-02-16 17:08:44
+// Revise  : 2024-03-01 21:17:41
 // Description :
 //   ...
 //   ...
@@ -34,8 +34,8 @@ typedef struct packed {
 } FAQ2BPUSt;
 
 typedef struct packed {
-  logic [`PROC_BIT_WIDTH - 1:0] pc;
-  logic [`PROC_DECODE_WIDTH - 1:0] valid;
+  logic [31:0] pc;
+  logic [`PROC_FETCH_WIDTH - 1:0] valid;
   logic [$clog2(`FAQ_DEPTH) - 1:0] faq_head;
   logic [$clog2(`FAQ_DEPTH) - 1:0] faq_tail;
   logic [$clog2(`FAQ_DEPTH + 1) - 1:0] faq_cnt;

@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : BranchPredictionUnit.sv
 // Create  : 2024-02-12 15:35:06
-// Revise  : 2024-02-14 16:26:48
+// Revise  : 2024-03-01 21:11:15
 // Description :
 //   ...
 //   ...
@@ -30,24 +30,22 @@
 module BranchPredictionUnit #(
 parameter
   int unsigned BHT_SIZE = 1024,
-  int unsigned DECODE_WIDTH = 6,
-localparam
-  int unsigned PROC_BIT_WIDTH = `PROC_BIT_WIDTH
+  int unsigned DECODE_WIDTH = 6
 )(
   input logic clk,    // Clock
   input logic a_rst_n,  // Asynchronous reset active low
   input logic redirect_i,
-  input logic [PROC_BIT_WIDTH - 1:0] target_i,
+  input logic [31:0] target_i,
   output BPU2FAQSt bpu2faq_st_o
 );
 
   `RESET_LOGIC(clk,  a_rst_n, s_rst_n);
 
 `ifdef NPC
-  logic [PROC_BIT_WIDTH - 1:0] pc;
+  logic [31:0] pc;
   always @(posedge clk or negedge s_rst_n) begin
     if (!s_rst_n) begin
-      pc <= PROC_BIT_WIDTH'(32'h1c00_0000);
+      pc <= 32'h1c00_0000;
     end
     else begin
       if (redirect_i) begin

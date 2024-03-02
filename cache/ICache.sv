@@ -23,7 +23,7 @@
 
 `include "config.svh"
 `include "common.svh"
-`include "ICache.svh"
+`include "Cache.svh"
 `include "InstructionFetchUnit.svh"
 `include "TranslationLookasideBuffer.svh"
 
@@ -35,19 +35,16 @@ parameter
 localparam
   int unsigned OFFSET_WIDTH = $clog2(BLOCK_SIZE),
   int unsigned INDEX_WIDTH = $clog2(CACHE_SIZE / ASSOCIATIVITY / BLOCK_SIZE),
-  int unsigned TAG_WIDTH = `PROC_BIT_WIDTH - OFFSET_WIDTH - INDEX_WIDTH
+  int unsigned TAG_WIDTH = 32 - OFFSET_WIDTH - INDEX_WIDTH
 )(
   input clk,    // Clock
   input a_rst_n,  // Asynchronous reset active low
   input IFU2ICacheSt ifu2icache_st_i,
-  input TLB2ICacheSt tlb2icache_st_i,
-  output ICache2TLBSt icache2tlb_st_o,
+  input TLBSearchRspSt tlb_search_rsp_st_i,
+  output TLBSearchReqSt tlb_search_req_st_o,
   output ICache2IFUSt icache2ifu_st_o,
   AXI4.Master axi4_mst
 );
-
-  defparam axi4_mst.AXI_ADDR_WIDTH = `PROC_BIT_WIDTH;
-  defparam axi4_mst.AXI_DATA_WIDTH = 32;
 
   `RESET_LOGIC(clk, a_rst_n, s_rst_n);
 
@@ -67,8 +64,8 @@ localparam
   logic [INDEX_WIDTH - 1:0] icache_addr;
   logic [ASSOCIATIVITY - 1:0] icache_valid;  // icache valid 写入
 
-  logic [`PROC_BIT_WIDTH - 1:0] r_vpc;
-  logic [`PROC_BIT_WIDTH - 1:0] ppc;  // 物理pc
+  logic [31:0] r_vpc;
+  logic [31:0] ppc;  // 物理pc
 
   // cache memory read out
   logic [ASSOCIATIVITY - 1:0] valid;
@@ -78,8 +75,8 @@ localparam
 
   // Stage 0: 读出Tag和Date, 查询tlb
   always_comb begin
-    icache2tlb_st_i.fetch_ready = ifu2icache_st_i.fetch_valid & ~miss;
-    icache2tlb_st_i.vpn = ifu2icache_st_i.vpc[`PROC_BIT_WIDTH - 1:$clog2(`PROC_PAGE_SIZE)];
+    tlb_search_req_st_i.fetch_ready = ifu2icache_st_i.fetch_valid & ~miss;
+    tlb_search_req_st_i.vpn = ifu2icache_st_i.vpc[31:`PROC_VALEN - 12];
   end
 
   always_ff @(posedge clk or negedge s_rst_n) begin
@@ -94,10 +91,10 @@ localparam
 
   // Stage 1: 判断是否命中，命中则读出数据，否则进行充填
   always_comb begin
-    ppc = {tlb2icache_st_i.ppn, r_vpc[$clog2(`PROC_PAGE_SIZE) - 1:0]};
+    ppc = {tlb_search_rsp_st_i.ppn, r_vpc[11:0]};
     miss = '1;
     for (int i = 0; i < ASSOCIATIVITY; i++) begin
-      miss = miss & (~valid[i] | (tag[i] != ppc[`PROC_BIT_WIDTH - 1:INDEX_WIDTH + OFFSET_WIDTH]));
+      miss = miss & (~valid[i] | (tag[i] != ppc[31:INDEX_WIDTH + OFFSET_WIDTH]));
     end
   end
 
@@ -262,7 +259,7 @@ localparam
       .rst_n  (s_rst_n),
       .en_i   (ifu2icache_st_i.fetch_valid),
       .addr_i (icache_addr),
-      .data_i (ppc[`PROC_BIT_WIDTH - 1:INDEX_WIDTH + OFFSET_WIDTH]),
+      .data_i (ppc[31:INDEX_WIDTH + OFFSET_WIDTH]),
       .we_i   (icache_we[i]),
       .data_o (tag[i])
     );

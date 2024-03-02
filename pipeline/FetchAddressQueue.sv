@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : FetchAddressQueue.sv
 // Create  : 2024-02-12 16:37:58
-// Revise  : 2024-02-14 18:08:25
+// Revise  : 2024-03-01 21:22:10
 // Description :
 //   ...
 //   ...
@@ -50,8 +50,8 @@ localparam
   `RESET_LOGIC(clk, a_rst_n, s_rst_n);
 
   typedef struct packed {
-    logic [`PROC_BIT_WIDTH - 1:0] pc;
-    logic [`PROC_DECODE_WIDTH - 1:0] valid;
+    logic [31:0] pc;
+    logic [`PROC_FETCH_WIDTH - 1:0] valid;
   } FAQDataSt;
 
   FAQDataSt faq_din_st, faq_dout_st;

@@ -31,10 +31,11 @@
 `define DEBUG
 
 /** 处理器规格 **/
-`define PROC_BIT_WIDTH 32
 `define PROC_FETCH_WIDTH 8
 `define PROC_DECODE_WIDTH 6
-`define PROC_PAGE_SIZE 4096  // Byte
+`define PROC_VALEN 32
+`define PROC_PALEN 32
+`define TLB_ENTRY_NUM 16
 
 `endif // __CONFIG_SVH__
 
