@@ -88,7 +88,7 @@ parameter
 
   end
 
-  // tlb操作
+  // tlb wr/inv指令有关操作
   always_ff @(posedge clk or negedge s_rst_n) begin
     if (~s_rst_n) begin
       tlb_entries = '0;
@@ -96,7 +96,7 @@ parameter
       if (tlb_write_req_st_i.valid) begin
         tlb_entries[tlb_write_req_st_i.idx] <= tlb_write_req_st_i.tlb_entry_st;
       end else begin
-        for (int i = 0; i < TLB_ENTRY_NUM; i++) begin
+        for (int i = 0; i < `TLB_ENTRY_NUM; i++) begin
           case (tlb_inv_req_st_i.option_t)
             TLB_INV_ALL0 : tlb_entries[i] <= '0;
             TLB_INV_ALL1 : tlb_entries[i] <= '0;

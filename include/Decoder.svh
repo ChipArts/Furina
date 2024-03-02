@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Decoder.svh
 // Create  : 2024-03-01 16:04:57
-// Revise  : 2024-03-01 16:07:02
+// Revise  : 2024-03-02 22:39:48
 // Description :
 //   ...
 //   ...
@@ -23,6 +23,23 @@
 
 `ifndef _DECODER_SVH_
 `define _DECODER_SVH_
+
+`define ALU_TYPE_NIL (4'd0)
+`define ALU_TYPE_ADD (4'd1)
+`define ALU_TYPE_SUB (4'd2)
+`define ALU_TYPE_SLT (4'd3)
+`define ALU_TYPE_AND (4'd4)
+`define ALU_TYPE_OR (4'd5)
+`define ALU_TYPE_XOR (4'd6)
+`define ALU_TYPE_NOR (4'd7)
+`define ALU_TYPE_SL (4'd8)
+`define ALU_TYPE_SR (4'd9)
+`define ALU_TYPE_MUL (4'd10)
+`define ALU_TYPE_MULH (4'd11)
+`define ALU_TYPE_DIV (4'd12)
+`define ALU_TYPE_MOD (4'd13)
+`define ALU_TYPE_LUI (4'd14)
+
 
 typedef struct packed {
   logic ctrl_signal;
