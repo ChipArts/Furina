@@ -2,12 +2,11 @@
 // Copyright (c) 2014-2024 All rights reserved
 // ==============================================================================
 // Author  : SuYang 2506806016@qq.com
-// File    : test_intf.sv
-// Create  : 2024-02-14 22:31:46
-// Revise  : 2024-02-14 22:34:20
+// File    : CarrySaveAdder.sv
+// Create  : 2024-03-03 20:57:49
+// Revise  : 2024-03-03 21:02:11
 // Description :
-//   ...
-//   ...
+//   进位保存加法器
 // Parameter   :
 //   ...
 //   ...
@@ -21,30 +20,14 @@
 // ...
 // ==============================================================================
 
-module test_intf (
-  input clk,    // Clock
-  input clk_en, // Clock Enable
-  input rst_n,  // Asynchronous reset active low
-  AXI4.Master axi_mst
+
+module CarrySaveAdder (
+    input a, b, c,
+    output carry, s
 );
+    // rtl实现
+    assign carry = a & b | a & c | b & c;
+    assign s = a ^ b ^ c;
+    // 不知用原语如何，用与非门还是正常的与/或；不知自定义原语如何
 
-
-
-endmodule : test_intf
-
-
-module test_intf1 (
-  input clk,    // Clock
-  input rst_n,  // Asynchronous reset active low
-  AXI4.Master axi_mst
-);
-
-
-  test_intf u_test_intf (
-    .clk    (clk),
-    .rst_n  (rst_n),
-    .axi_mst(axi_mst),
-    .clk_en ('1)
-  );
-
-endmodule : test_intf1
+endmodule

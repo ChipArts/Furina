@@ -25,23 +25,23 @@
 /**
   * 生成标准复位逻辑（异步复位，同步释放）
   * A_RST_N: 异步复位信号名称
-  * S_RST_N: 同步复位信号名称
-  * tip: 注意这个宏会额外占用S_RST_N_r1, S_RST_N_r2两个名称
+  * RST_N: 同步释放复位信号名称
+  * tip: 注意这个宏会额外占用RST_N_r1, RST_N_r2两个名称
   */
-`define RESET_LOGIC(CLK, A_RST_N, S_RST_N) \
-  logic S_RST_N``_r1, S_RST_N``_r2; \
-  logic S_RST_N; \
+`define RESET_LOGIC(CLK, A_RST_N, RST_N) \
+  logic RST_N``_r1, RST_N``_r2; \
+  logic RST_N; \
   always @(posedge CLK or negedge A_RST_N) begin \
     if (!A_RST_N) begin \
-      S_RST_N``_r1 <= 1'b0; \
-      S_RST_N``_r2 <= 1'b0; \
+      RST_N``_r1 <= 1'b0; \
+      RST_N``_r2 <= 1'b0; \
     end \
     else begin \
-      S_RST_N``_r1 <= 1'b1; \
-      S_RST_N``_r2 <= S_RST_N``_r1; \
+      RST_N``_r1 <= 1'b1; \
+      RST_N``_r2 <= RST_N``_r1; \
     end \
   end \
-  assign S_RST_N = S_RST_N``_r2;
+  assign RST_N = RST_N``_r2;
 
 `endif
 
