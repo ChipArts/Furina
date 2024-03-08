@@ -41,12 +41,12 @@
 // TLB
 `define TLB_ENTRY_NUM 16
 // Cache
-`define ICACHE_SIZE 4096  // ICache大小(Byte)
+`define ICACHE_SIZE 1024 * 8  // ICache大小(Byte)
 `define ICACHE_BLOCK_SIZE 4 * 16  // ICache块大小(Byte)
 `define ICACHE_ASSOCIATIVITY 4  // ICache相联度
 
-`define DCACHE_SIZE 4096  // DCache大小(Byte)
-`define DCACHE_BLOCK_SIZE 4 * 8  // DCache块大小(Byte)
+`define DCACHE_SIZE 1024 * 8  // DCache大小(Byte)
+`define DCACHE_BLOCK_SIZE 4 * 16  // DCache块大小(Byte)
 `define DCACHE_ASSOCIATIVITY 4  // DCache相联度
 
 `define L2CACHE_SIZE 128 * 1024  // L2Cache大小(Byte)
