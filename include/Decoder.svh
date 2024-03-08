@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Decoder.svh
 // Create  : 2024-03-01 16:04:57
-// Revise  : 2024-03-07 22:14:25
+// Revise  : 2024-03-08 22:04:43
 // Description :
 //   ...
 //   ...
@@ -41,11 +41,13 @@
 `define ALU_TYPE_LUI (4'd14)
 
 
-`define LOAD_TYPE_BYTE (3'd0)
-`define LOAD_TYPE_HALF (3'd1)
-`define LOAD_TYPE_WORD (3'd2)
-`define LOAD_TYPE_UBYTE (3'd3)
-`define LOAD_TYPE_UHALF (3'd4)
+
+`define ALIGN_TYPE_B  (3'd0)
+`define ALIGN_TYPE_H  (3'd1)
+`define ALIGN_TYPE_W  (3'd2)
+`define ALIGN_TYPE_BU (3'd3)
+`define ALIGN_TYPE_HU (3'd4) 
+
 
 
 typedef struct packed {

@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Cache.svh
 // Create  : 2024-03-01 21:28:47
-// Revise  : 2024-03-08 18:27:40
+// Revise  : 2024-03-08 22:48:48
 // Description :
 //   ...
 //   ...
@@ -73,6 +73,7 @@ typedef struct packed {
 typedef struct packed {
   logic valid;
   logic dirty;
+  logic [1:0] plv;
 } DCacheMetaInfoSt;
 
 typedef struct packed {
@@ -109,16 +110,19 @@ typedef struct packed {
 typedef struct packed {
   logic valid;  // 请求有效
   logic [`PROC_VALEN - 1:0] vaddr;  // 请求地址
-  logic [2:0] load_type;
+  logic [2:0] align_type;  // 对齐类型(b/h/w/ub/uh)
 } LoadPipeStage0InputSt;
 
 typedef struct packed {
   logic bank_conflict;  // bank冲突
+  // TLB Info
   logic [`PROC_PALEN - 1:12] ppn;  // 物理页号
   logic [5:0] page_size; // 页大小
+  logic [1:0] plv;
+  // DCache Info
+  DCacheMetaInfoSt [`DCACHE_ASSOCIATIVITY - 1:0] meta;
   logic [`DCACHE_ASSOCIATIVITY - 1:0][`DCACHE_TAG_WIDTH - 1:0] tag;  // cache tag
-  logic [`DCACHE_ASSOCIATIVITY - 1:0] valid;  // Cache行有效
-  logic [$clog2(`DCACHE_ASSOCIATIVITY) - 1:0] replace_way;  // 替换way的标号
+  logic [$clog2(`DCACHE_ASSOCIATIVITY) - 1:0] clk_algo;  // 替换way的标号
 } LoadPipeStage1InputSt;
 
 typedef struct packed {
@@ -127,13 +131,12 @@ typedef struct packed {
 
 typedef struct packed {
   logic ready;  // 接收请求
-  logic [`DCACHE_INDEX_WIDTH - 1:0] vidx;  // 虚地址索引
+  logic [`PROC_VALEN - 1:0] vaddr;  // 虚地址索引
 } LoadPipeStage0OutputSt;
 
 typedef struct packed {
   logic miss;
-  logic update_replace_way;  // 更新替换way
-  logic [`DCACHE_INDEX_WIDTH - 1:0] pidx;  // 物理址索引
+  logic [`PROC_PALEN - 1:0] paddr;  // 物理地址
   logic [$clog2(`DCACHE_ASSOCIATIVITY) - 1:0] replace_way;  // 时钟算法新的替换way
 } LoadPipeStage1OutputSt;
 
@@ -143,28 +146,57 @@ typedef struct packed {
 
 // MainPipe对外接口
 typedef struct packed {
-  logic replace_valid;  // 替换请求
+  // logic probe_valid;
+  // logic replace_valid;  // 替换请求
   logic store_valid;  // 存储请求
   // logic atomic_req;  // 原子操作请求
-  logic [`PROC_VALEN - 1:0] vaddr;  // 请求地址
-  logic [1:0] store_type;  // 存储类型
+  // logic [`PROC_VALEN - 1:0] replace_paddr;  // 替换请求地址
+  logic [`PROC_VALEN - 1:0] store_vaddr;  // 存储请求地址
+  logic [31:0] data;  // 存储请求数据
+  logic [2:0] align_type;  // 对齐类型(b/h/w/ub/uh)
 } MainPipeStage0InputSt;
 
 typedef struct packed {
-  logic bank_conflict;  // bank冲突
+  // TLB Info
   logic [`PROC_PALEN - 1:12] ppn;  // 物理页号
-  logic [5:0] page_size; // 页大小
+  logic [5:0] page_size;  // 页大小
+  logic [1:0] plv;  // 权限等级
+  // DCache Info
+  DCacheMetaInfoSt [`DCACHE_ASSOCIATIVITY - 1:0] meta;
   logic [`DCACHE_ASSOCIATIVITY - 1:0][`DCACHE_TAG_WIDTH - 1:0] tag;  // cache tag
-  logic [`DCACHE_ASSOCIATIVITY - 1:0] valid;  // Cache行有效
-  logic [$clog2(`DCACHE_ASSOCIATIVITY) - 1:0] replace_way;  // 替换way的标号 
 } MainPipeStage1InputSt;
 
+typedef struct packed {
+  logic valid;  // 数据有效
+  logic [`DCACHE_ASSOCIATIVITY - 1:0][`DCACHE_BLOCK_SIZE - 1:0][7:0] data;  // DCache读取的数据
+} MainPipeStage2InputSt;
 
 typedef struct packed {
-  logic replace_ready;  // 接收替换请求
+  logic ready;
+} MainPipeStage3InputSt;
+
+typedef struct packed {
+  // logic replace_ready;  // 接收替换请求
+  logic load_ready;  // 接受加载请求
   logic store_ready;  // 接受存储请求
-  logic [`PROC_VALEN - 1:0] vaddr;  // 虚地址
+  // logic atomic_req;  // 原子操作请求
+  logic [`PROC_VALEN - 1:0] vaddr;  // 虚地址(查询tlb/tag/meta)
 } MainPipeStage0OutputSt;
+
+typedef struct packed {
+  logic miss;
+  DCacheMetaInfoSt meta;
+  logic [`PROC_PALEN - 1:0] paddr;  // 物理地址
+} MainPipeStage1OutputSt;
+
+typedef struct packed {
+  logic valid;
+  logic [`DCACHE_BLOCK_SIZE - 1:0][8:0] data;
+} MainPipeStage2OutputSt;
+
+typedef struct packed {
+  logic store_resp;
+} MainPipeStage3OutputSt;
 
 
 `endif  // _CACHE_SVH_

@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : LoadPipe.sv
 // Create  : 2024-03-07 15:20:49
-// Revise  : 2024-03-07 23:13:57
+// Revise  : 2024-03-08 22:49:55
 // Description :
 //   ...
 //   ...
@@ -38,25 +38,27 @@ module LoadPipe (
 );
 
   `RESET_LOGIC(clk, a_rst_n, rst_n)
+  logic s1_stall, s2_stall;
   /* stage 0 */
   // 接收 load 流水线计算出的虚拟地址
   // 使用虚拟地址查询 tag
   // 使用虚拟地址查询 meta
 
   always_comb begin : proc_stage0
-    stage0_output_st_o.ready = '1;
-    stage0_output_st_o.vidx = `DCACHE_INDEX_OF(stage0_input_st_i.vaddr);
+    stage0_output_st_o.ready = ~s1_stall;
+    stage0_output_st_o.vidx = stage0_input_st_i.vaddr;
+    s1_stall = s2_stall;
   end
 
   logic [`PROC_VALEN - 1:0] s1_vaddr;
-  logic [2:0] s1_load_type;
+  logic [2:0] s1_align_type;
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
       s1_vaddr <= 0;
-      s1_load_type <= 0;
+      s1_align_type <= 0;
     end else begin
       s1_vaddr <= stage0_input_st_i.vaddr;
-      s1_load_type <= stage0_input_st_i.load_type;
+      s1_align_type <= stage0_input_st_i.align_type;
     end
   end
 
@@ -70,11 +72,11 @@ module LoadPipe (
   // 检查 bank 冲突
 
   logic miss;
-  logic [`DCACHE_ASSOCIATIVITY - 1:0] tag_matched;
+  logic [`PROC_PALEN] paddr;
+  logic [`DCACHE_ASSOCIATIVITY - 1:0] matched_way;
   logic [$clog2(`DCACHE_ASSOCIATIVITY) - 1:0] matched_way_idx;
 
   always_comb begin
-    matched_way_idx = '0;
     // 进行 tag 匹配；
     for (int i = 0; i < `DCACHE_ASSOCIATIVITY; i++) begin
       if (`DCACHE_TAG_OFFSET < 12) begin
@@ -89,23 +91,22 @@ module LoadPipe (
                           {stage1_input_st_i.ppn[`PROC_PALEN - 1:21], s1_vaddr[20:`DCACHE_TAG_OFFSET]} == 
                           stage1_input_st_i.tag[i];
       end
-      if (tag_matched[i]) begin
-        matched_way_idx = i;
-      end
     end
 
     // 判断 dcache 访问是否命中
     miss = '1;
     for (int i = 0; i < `DCACHE_ASSOCIATIVITY; i++) begin
-      miss &= ~(tag_matched[i] & stage1_input_st_i.valid[i]);
+      miss &= ~(tag_matched[i] & stage1_input_st_i.meta[i].valid);
     end
     stage1_output_st_o.miss = miss;
 
     // 使用物理地址查询 data
-    stage1_output_st_o.pidx = `DCACHE_INDEX_OF(s1_load_req_st.vaddr);
-    // 获取 replace_way 信息, 选出替换 way，判断是否更新替换 way
-    stage1_output_st_o.update_replace_way = (stage1_input_st_i.replace_way == matched_way_idx) & ~miss;
-    stage1_output_st_o.replace_way = stage1_input_st_i.replace_way;
+    if (stage1_input_st_i.page_size == 12) begin
+      paddr = {stage1_input_st_i.ppn, s1_vaddr[11:0]};
+    end else begin  //  page_size == 21
+      paddr = {stage1_input_st_i.ppn[`PROC_PALEN - 1:21], s1_vaddr[20:0]};
+    end
+    stage1_output_st_o.paddr = paddr;
 
     // 检查 bank 冲突: DCache 内检查
     // 生成快速重发信号
