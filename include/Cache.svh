@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Cache.svh
 // Create  : 2024-03-01 21:28:47
-// Revise  : 2024-03-08 22:48:48
+// Revise  : 2024-03-10 18:41:17
 // Description :
 //   ...
 //   ...
@@ -51,7 +51,7 @@ typedef struct packed {
 //       |       DCacheIndexOffset
 //       DCacheTagOffset
 // DCache 的索引长度小于页内偏移长度
-`define DCACHE_BANK_NUM 8
+`define DCACHE_BANK_NUM 8  // 不要修改
 // 地址偏移
 `define DCACHE_BANK_OFFSET $clog2(`DCACHE_SIZE / `DCACHE_ASSOCIATIVITY / `DCACHE_BLOCK_SIZE / `DCACHE_BANK_NUM)
 `define DCACHE_INDEX_OFFSET $clog2(`DCACHE_SIZE / `DCACHE_ASSOCIATIVITY / `DCACHE_BLOCK_SIZE)
@@ -78,42 +78,55 @@ typedef struct packed {
 
 typedef struct packed {
   logic valid;  // 请求有效
-  logic [`PROC_PALEN - 1:12] ppn;  // 物理页号
+  
   logic [`PROC_VALEN - 1:0] vaddr;  // 请求地址
-  logic uncached;  // 非缓存请求
-  logic [5:0] page_size;
+  logic [2:0] align_type;  // 对齐类型(b/h/w/ub/uh)
+  logic [9:0] asid;
 } DCacheLoadReqSt;
 
 typedef struct packed {
   logic valid;  // 请求有效
-  logic [`PROC_PALEN - 1:12] ppn;  // 物理页号
+  logic ready;  // 可以接收读数据请求
+  
+  // DCache Info
   logic [`PROC_VALEN - 1:0] vaddr;  // 请求地址
-  logic uncached;  // 非缓存请求
-  logic [`DCACHE_BLOCK_SIZE:0] data;  // 写数据
+  logic [31:0] data;  // 写数据
+  logic [2:0] align_type;  // 对齐类型(b/h/w/ub/uh)
 } DCacheStoreReqSt;
 
 typedef struct packed {
-  logic ready; // DCache接收读请求
+  logic valid;  // 读数据有效
+  logic ready;  // DCache接收读请求
 
-  logic miss;  // DCache未命中
-  logic valid; // 读数据有效
   logic [31:0] data;  // 读取的数据
-} DcacheLoadRspSt;
+} DCacheLoadRspSt;
 
 typedef struct packed {
-  logic ready; // DCache接收写请求
-  logic miss;  // DCache未命中
-  logic resp;  // 写响应(写入成功)
-} DcacheStoreRspSt;
+  logic valid;
+  logic ready;  // DCache接收读请求
+  logic okay;  // DCache完成写入
+} DCacheStoreRspSt;
+
+
 
 // LoadPipe对外接口
 typedef struct packed {
   logic valid;  // 请求有效
   logic [`PROC_VALEN - 1:0] vaddr;  // 请求地址
   logic [2:0] align_type;  // 对齐类型(b/h/w/ub/uh)
+  logic [9:0] asid;
 } LoadPipeStage0InputSt;
 
 typedef struct packed {
+  logic ready;  // 接收请求
+  logic valid;  // 读tag/meta/tlb请求有效
+  logic [`PROC_VALEN - 1:0] vaddr;  // 虚拟地址
+  logic [9:0] asid;
+} LoadPipeStage0OutputSt;
+
+
+typedef struct packed {
+  logic valid;  // 数据有效
   logic bank_conflict;  // bank冲突
   // TLB Info
   logic [`PROC_PALEN - 1:12] ppn;  // 物理页号
@@ -122,27 +135,33 @@ typedef struct packed {
   // DCache Info
   DCacheMetaInfoSt [`DCACHE_ASSOCIATIVITY - 1:0] meta;
   logic [`DCACHE_ASSOCIATIVITY - 1:0][`DCACHE_TAG_WIDTH - 1:0] tag;  // cache tag
-  logic [$clog2(`DCACHE_ASSOCIATIVITY) - 1:0] clk_algo;  // 替换way的标号
+  logic [`DCACHE_ASSOCIATIVITY - 2:0] plru;  // 伪LRU
 } LoadPipeStage1InputSt;
 
 typedef struct packed {
-  logic [`DCACHE_ASSOCIATIVITY - 1:0][`BANK_BYTE_NUM - 1:0][7:0] data;  // DCache读取的数据
+  logic valid;  // 读数据请求有效
+  logic miss;
+  logic [`PROC_PALEN - 1:0] paddr;  // 物理地址
+  // miss时的替换信息
+  DCacheMetaInfoSt  replaced_meta;
+  logic [`PROC_PALEN - 1:0] replaced_paddr;
+  logic [$clog2(`DCACHE_ASSOCIATIVITY) - 1:0] replaced_way;  // 被替换的way的索引
+  // plru
+  logic [`DCACHE_ASSOCIATIVITY - 2:0] plru;  // 新的伪LRU内容
+} LoadPipeStage1OutputSt;
+
+
+typedef struct packed {
+  logic valid;  // 数据有效
+  logic [`DCACHE_ASSOCIATIVITY - 1:0][`DCACHE_BANK_NUM - 1:0][`BANK_BYTE_NUM - 1:0][7:0] data;  // DCache读取的数据
 } LoadPipeStage2InputSt;
 
 typedef struct packed {
-  logic ready;  // 接收请求
-  logic [`PROC_VALEN - 1:0] vaddr;  // 虚地址索引
-} LoadPipeStage0OutputSt;
-
-typedef struct packed {
-  logic miss;
-  logic [`PROC_PALEN - 1:0] paddr;  // 物理地址
-  logic [$clog2(`DCACHE_ASSOCIATIVITY) - 1:0] replace_way;  // 时钟算法新的替换way
-} LoadPipeStage1OutputSt;
-
-typedef struct packed {
+  logic valid;
   logic [31:0] data;  // 读出对齐的数据
 } LoadPipeStage2OutputSt;
+
+
 
 // MainPipe对外接口
 typedef struct packed {
@@ -151,12 +170,24 @@ typedef struct packed {
   logic store_valid;  // 存储请求
   // logic atomic_req;  // 原子操作请求
   // logic [`PROC_VALEN - 1:0] replace_paddr;  // 替换请求地址
-  logic [`PROC_VALEN - 1:0] store_vaddr;  // 存储请求地址
+  logic [`PROC_VALEN - 1:0] vaddr;  // 存储请求地址
   logic [31:0] data;  // 存储请求数据
   logic [2:0] align_type;  // 对齐类型(b/h/w/ub/uh)
 } MainPipeStage0InputSt;
 
 typedef struct packed {
+  logic valid;  //读tag/meta/tlb请求有效
+  // logic probe_ready;
+  // logic replace_ready;  // 接收替换请求
+  logic store_ready;  // 接受存储请求
+  // logic atomic_req;  // 原子操作请求
+  logic [`PROC_VALEN - 1:0] vaddr;  // 虚地址(查询tlb/tag/meta)
+  logic [9:0] asid;
+} MainPipeStage0OutputSt;
+
+
+typedef struct packed {
+  logic valid;
   // TLB Info
   logic [`PROC_PALEN - 1:12] ppn;  // 物理页号
   logic [5:0] page_size;  // 页大小
@@ -167,35 +198,37 @@ typedef struct packed {
 } MainPipeStage1InputSt;
 
 typedef struct packed {
+  logic valid;
+  logic miss;
+  logic [`PROC_PALEN - 1:0] paddr;  // 物理地址
+  // miss时的替换信息
+  DCacheMetaInfoSt  replaced_meta;
+  logic [`PROC_PALEN - 1:0] replaced_paddr;
+  logic [$clog2(`DCACHE_ASSOCIATIVITY) - 1:0] replaced_way;  // 被替换的way的索引
+  // plru
+  logic [`DCACHE_ASSOCIATIVITY - 2:0] plru;  // 新的伪LRU内容
+} MainPipeStage1OutputSt;
+
+
+typedef struct packed {
   logic valid;  // 数据有效
   logic [`DCACHE_ASSOCIATIVITY - 1:0][`DCACHE_BLOCK_SIZE - 1:0][7:0] data;  // DCache读取的数据
 } MainPipeStage2InputSt;
 
 typedef struct packed {
-  logic ready;
-} MainPipeStage3InputSt;
+  logic valid;
+  DCacheMetaInfoSt meta;  // 要写入的meta信息
+  logic [`DCACHE_ASSOCIATIVITY - 1:0] we;
+  logic [`DCACHE_BANK_NUM - 1:0][`BANK_BYTE_NUM - 1:0][7:0] data;
+} MainPipeStage2OutputSt;
 
-typedef struct packed {
-  // logic replace_ready;  // 接收替换请求
-  logic load_ready;  // 接受加载请求
-  logic store_ready;  // 接受存储请求
-  // logic atomic_req;  // 原子操作请求
-  logic [`PROC_VALEN - 1:0] vaddr;  // 虚地址(查询tlb/tag/meta)
-} MainPipeStage0OutputSt;
-
-typedef struct packed {
-  logic miss;
-  DCacheMetaInfoSt meta;
-  logic [`PROC_PALEN - 1:0] paddr;  // 物理地址
-} MainPipeStage1OutputSt;
 
 typedef struct packed {
   logic valid;
-  logic [`DCACHE_BLOCK_SIZE - 1:0][8:0] data;
-} MainPipeStage2OutputSt;
+} MainPipeStage3InputSt;
 
 typedef struct packed {
-  logic store_resp;
+  logic valid;
 } MainPipeStage3OutputSt;
 
 

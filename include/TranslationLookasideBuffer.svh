@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : TranslationLookasideBuffer.svh
 // Create  : 2024-02-17 21:38:07
-// Revise  : 2024-03-02 22:03:33
+// Revise  : 2024-03-09 15:28:40
 // Description :
 //   ...
 //   ...
@@ -50,12 +50,12 @@ typedef struct packed {
 } TLBSearchReqSt;
 
 typedef struct packed {
+  logic valid;  // 查询结果有效
   logic ready;  // TLB 可以进行查询操作
 
   logic miss;   // TLB 查询结果未命中
   logic [$clog2(`TLB_ENTRY_NUM) - 1:0] idx;  // TLB命中项的索引值
   logic [5:0] page_size;  // 页大小
-  logic valid;  // 查询结果有效
   logic dirty;  // 查询结果脏位
   logic [`PROC_PALEN - 1:12] ppn;  // 物理页号
   logic mat;  // 存储访问类型(MAT)

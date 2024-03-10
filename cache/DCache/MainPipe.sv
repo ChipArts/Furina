@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MainPipe.sv
 // Create  : 2024-03-08 17:19:38
-// Revise  : 2024-03-08 22:40:30
+// Revise  : 2024-03-10 18:34:36
 // Description :
 //   ...
 //   ...
@@ -29,6 +29,7 @@
 module MainPipe (
   input clk,    // Clock
   input a_rst_n,  // Asynchronous reset active low
+  input stall,
   input MainPipeStage0InputSt stage0_input_st_i,
   input MainPipeStage1InputSt stage1_input_st_i,
   input MainPipeStage2InputSt stage2_input_st_i,
@@ -39,7 +40,6 @@ module MainPipe (
   output MainPipeStage3OutputSt stage3_output_st_o
 );
   `RESET_LOGIC(clk, a_rst_n, rst_n);
-  logic s1_stall, s2_stall, s3_stall;
   /* Stage 0 */
   // 仲裁传入的 Main Pipeline 请求选出优先级最高者
   // 发出 tag, meta 读请求
@@ -50,30 +50,24 @@ module MainPipe (
   //   4. atomic_req (暂时不实现)
 
   always_comb begin
-    stage0_output_st_o.store_ready = stage0_input_st_i.store_valid & ~s1_stall;
+    stage0_output_st_o.store_ready = stage0_input_st_i.store_valid & ~stall;
     stage0_output_st_o.vaddr = stage0_input_st_i.store_vaddr;
-    s1_stall = s2_stall;
   end
 
-  typedef enum logic[1:0] {
-    IDLE,
-    STORE
-  } MemoryAccessType;
-
-  MemoryAccessType s1_mem_ace_type;
+  logic s1_store_valid;
   logic [2:0] s1_align_type;
   logic [`PROC_VALEN - 1:0] s1_vaddr;
   logic [31:0] s1_data;
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
-      s1_mem_ace_type <= IDLE;
+      s1_store_valid <= '0;
       s1_align_type <= 0;
       s1_vaddr <= 0;
       s1_data <= 0;
     end else begin
-      if (!s1_stall) begin
-        s1_mem_ace_type <= STORE;
+      if (!stall) begin
+        s1_store_valid <= stage0_input_st_i.store_valid;
         s1_align_type <= stage0_input_st_i.align_type;
         s1_vaddr <= stage0_output_st_o.vaddr;
         s1_data <= stage0_input_st_i.data;
@@ -88,10 +82,13 @@ module MainPipe (
 
   logic miss;
   logic [`PROC_PALEN - 1:0] paddr;
+  logic [$clog2(`DCACHE_ASSOCIATIVITY) - 1:0] replaced_way;
   logic [`DCACHE_ASSOCIATIVITY - 1:0] matched_way;
+  logic [$clog2(`DCACHE_ASSOCIATIVITY) - 1:0] matched_way_idx;
 
   always_comb begin
     // 进行 tag 匹配
+    matched_way_idx = '0;
     for (int i = 0; i < `DCACHE_ASSOCIATIVITY; i++) begin
       if (`DCACHE_TAG_OFFSET < 12) begin
         matched_way[i] = stage1_input_st_i.page_size == 6'd12 ?
@@ -104,6 +101,9 @@ module MainPipe (
                           stage1_input_st_i.ppn == stage1_input_st_i.tag[i] :
                           {stage1_input_st_i.ppn[`PROC_PALEN - 1:21], s1_vaddr[20:`DCACHE_TAG_OFFSET]} == 
                           stage1_input_st_i.tag[i];
+      end
+      if (matched_way[i]) begin
+        matched_way_idx = i;
       end
     end
 
@@ -119,17 +119,22 @@ module MainPipe (
       miss &= ~(matched_way[i] & stage1_input_st_i.meta[i].valid);
     end
 
-    // 时钟算法新的值
-    stage1_output_st_o.clk_algo = stage1_input_st_i.clk_algo + 1;
+    // 生成miss的替换信息
+    // 获取 replace_way 信息, 选出替换 way
+    replaced_way = stage1_input_st_i.plru;  // TODO: 真正实现PLRU
+    stage1_output_st_o.replaced_way = replaced_way; 
+    stage1_output_st_o.replaced_meta = stage1_input_st_i.meta[replaced_way];
+    stage1_output_st_o.replaced_paddr = {stage1_input_st_i.tag[replaced_way], s1_vaddr[`DCACHE_TAG_OFFSET - 1:0]};
 
-    // s2暂停判断
-    s2_stall = ~stage2_input_st_i.valid;
+    // 生成新的plru信息
+    stage1_output_st_o.plru = stage1_output_st_o.replaced_way == matched_way_idx ? 
+                              ~stage1_input_st_i.plru : stage1_input_st_i.plru;
   end
 
-  logic s2_miss;
+
   logic [`PROC_PALEN - 1:0] s2_paddr;
   logic [`DCACHE_ASSOCIATIVITY - 1:0] s2_matched_way;
-  MemoryAccessType s2_mem_ace_type;
+  logic s2_store_valid;
   logic [2:0] s2_align_type;
   logic [31:0] s2_data;
 
@@ -138,14 +143,14 @@ module MainPipe (
       s2_data <= '0;
       s2_paddr <= '0;
       s2_matched_way <= '0;
-      s2_mem_ace_type <= IDLE;
+      s2_store_valid <= '0;
       s2_align_type <= 0;
     end else begin
-      if (!s2_stall) begin
+      if (!stall) begin
         s2_data <= s1_data;
         s2_paddr <= paddr;
         s2_matched_way <= matched_way;
-        s2_mem_ace_type <= s1_mem_ace_type;
+        s2_store_valid <= s1_store_valid;
         s2_align_type <= s1_align_type;
       end
     end
@@ -169,21 +174,23 @@ module MainPipe (
         stage2_output_st_o.data[`DCACHE_BYTE_OF(s2_paddr)] = s2_data[7:0];
       end
       `ALIGN_TYPE_H: begin
-        stage2_output_st_o.data[`DCACHE_BYTE_OF(s2_paddr)] = s2_data[7:0];
+        stage2_output_st_o.data[`DCACHE_BYTE_OF(s2_paddr) + 0] = s2_data[7:0];
         stage2_output_st_o.data[`DCACHE_BYTE_OF(s2_paddr) + 1] = s2_data[15:8];
       end
-      `ALIGN_TYPE_W: stage2_output_st_o.data = matched_data;
+      `ALIGN_TYPE_W: begin
+        stage2_output_st_o.data[`DCACHE_BYTE_OF(s2_paddr) + 0] = s2_data[7:0];
+        stage2_output_st_o.data[`DCACHE_BYTE_OF(s2_paddr) + 1] = s2_data[15:8];
+        stage2_output_st_o.data[`DCACHE_BYTE_OF(s2_paddr) + 2] = s2_data[23:16];
+        stage2_output_st_o.data[`DCACHE_BYTE_OF(s2_paddr) + 3] = s2_data[31:24];
+      end
       default : /* default */;
     endcase
 
-    stage2_output_st_o.valid = s2_mem_ace_type == STORE;
+    stage2_output_st_o.valid = s2_store_valid;
   end
 
 
   /* stage 3 */
   // TODO: 暂不需要实现
-
-
-
 
 endmodule : MainPipe
