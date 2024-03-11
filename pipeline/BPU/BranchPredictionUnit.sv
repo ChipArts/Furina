@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : BranchPredictionUnit.sv
 // Create  : 2024-02-12 15:35:06
-// Revise  : 2024-03-01 21:11:15
+// Revise  : 2024-03-11 15:25:19
 // Description :
 //   ...
 //   ...
@@ -27,16 +27,11 @@
 
 `define NPC
 
-module BranchPredictionUnit #(
-parameter
-  int unsigned BHT_SIZE = 1024,
-  int unsigned DECODE_WIDTH = 6
-)(
+module BranchPredictionUnit (
   input logic clk,    // Clock
   input logic a_rst_n,  // Asynchronous reset active low
-  input logic redirect_i,
-  input logic [31:0] target_i,
-  output BPU2FAQSt bpu2faq_st_o
+  input BPU_ReqSt bpu_req,
+  output BPU_RspSt bpu_rsp
 );
 
   `RESET_LOGIC(clk,  a_rst_n, s_rst_n);
@@ -48,19 +43,17 @@ parameter
       pc <= 32'h1c00_0000;
     end
     else begin
-      if (redirect_i) begin
-        pc <= target_i;
+      if (bpu_req_st_i.redirect) begin
+        pc <= bpu_req_i.target;
       end else begin
-        pc <= pc + DECODE_WIDTH;
+        if (bpu_req_st_i.next) begin
+          pc <= pc + (`PROC_FETCH_WIDTH << 2);
+        end
       end
     end
   end
 
-  always_comb begin
-    for (int i = 0; i < DECODE_WIDTH; i++) begin
-      bpu2faq_st_o.valid[i] = i > pc[2:0];
-    end
-  end
+  assign bpu_rsp_st_o.valid = '1;
 `else
 // TODO BPU
 `endif

@@ -3,6 +3,7 @@ OoOE CPU core
 
 
 ## 1 About
+- 约定通过端口名称如果可以判断是in/out，可以不加io后缀
 
 ## 2 架构及设计介绍
 

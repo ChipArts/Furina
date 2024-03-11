@@ -2,9 +2,9 @@
 // Copyright (c) 2014-2024 All rights reserved
 // ==============================================================================
 // Author  : SuYang 2506806016@qq.com
-// File    : BranchPredictionUnit.svh
-// Create  : 2024-02-12 18:06:30
-// Revise  : 2024-03-11 15:24:38
+// File    : Pipeline.sv
+// Create  : 2024-03-11 14:53:30
+// Revise  : 2024-03-11 15:30:05
 // Description :
 //   ...
 //   ...
@@ -21,21 +21,39 @@
 // ...
 // ==============================================================================
 
-`ifndef _BRANCH_PREDICTION_UNIT_SVH_
-`define _BRANCH_PREDICTION_UNIT_SVH_
-
 `include "config.svh"
-
-typedef struct packed {
-  logic next;  // 下一个pc
-  logic redirect;  // 重定向请求
-  logic [`PROC_VALEN:0] target;
-} BPU_ReqSt;
+`include "common.svh"
+`include "Decoder.svh"
+`include "BranchPredictionUnit.svh"
 
 
-typedef struct packed {
-  logic [31:0] pc;
-  logic [`PROC_FETCH_WIDTH - 1:0] valid;  // 表明pc~pc+7中哪几个是有效的
-} BPU_RspSt;
+module Pipeline (
+  input clk,    // Clock
+  input a_rst_n,  // Asynchronous reset active low
+  AXI4.Master icache_axi4_mst,
+  AXI4.Master dcache_axi4_mst
+);
 
-`endif  // _BRANCH_PREDICTION_UNIT_SVH_
+  `RESET_LOGIC(clk, a_rst_n, rst_n);
+  /* Signal Define */
+  BPU_ReqSt bpu_req;
+  BPU_RspSt bpu_rsp;
+
+
+  /* BPU */
+
+  BranchPredictionUnit U_BranchPredictionUnit (
+    .clk(clk), 
+    .a_rst_n(a_rst_n), 
+    .bpu_req(bpu_req), 
+    .bpu_rsp(bpu_rsp)
+  );
+
+  /* Fetch Address Queue */
+
+  /* Instruction Fetch Unit */
+
+endmodule : Pipeline
+
+
+

@@ -37,20 +37,17 @@ localparam
 )(
   input logic clk,      // Clock
   input logic a_rst_n,  // Asynchronous reset active low
-  input logic redirect_i,
-  input logic [FIFO_ADDR_WIDTH - 1:0] head_target_i,
-  input logic [FIFO_ADDR_WIDTH - 1:0] tail_target_i,
-  input logic [FIFO_CNT_WIDTH - 1:0] cnt_target_i,
+  input logic flush_i,
   input logic pop_i,
   input logic push_i,
   input logic [FIFO_DATA_WIDTH - 1:0] data_i,
   output logic [FIFO_DATA_WIDTH - 1:0] data_o,
   output logic empty_o,
   output logic full_o,
-  output logic [$clog2(FIFO_DEPTH + 1) -1:0] cnt_o,  // cnt how much mem are used
-  output logic [FIFO_ADDR_WIDTH - 1:0] head_o,
-  output logic [FIFO_ADDR_WIDTH - 1:0] tail_o
+  output logic [FIFO_CNT_WIDTH-1:0] usage_o
 );
+
+  `RESET_LOGIC(clk, a_rst_n, rst_n);
 
 `ifdef DEBUG
   // some parameter check
@@ -58,101 +55,107 @@ localparam
     assert(FIFO_DATA_WIDTH > 1) else $error("SyncFIFO: FIFO_DEPTH <= 1");
   end
 `endif
-  
-  `RESET_LOGIC(clk, a_rst_n, s_rst_n);
 
-  logic [FIFO_CNT_WIDTH - 1:0] fifo_cnt, f_fifo_cnt;
-  logic [FIFO_ADDR_WIDTH - 1:0] head, tail, f_tail, f_head;
-  logic [FIFO_DATA_WIDTH - 1:0] sdpram_data_o;
-
-  always_comb begin
-    // default
-    f_head = head;
-    f_tail = tail;
-    f_fifo_cnt = fifo_cnt;
-
-    full_o = (fifo_cnt == FIFO_DEPTH);
-    empty_o = (fifo_cnt == 0) & ~(READ_MODE == "fwft" & push_i);
-    data_o = sdpram_data_o;
-    cnt_o = fifo_cnt;
-    head_o = head;
-    tail_o = tail;
-
-    // push a new element to the queue
-    if (push_i && !full_o) begin
-      f_fifo_cnt = fifo_cnt + 1;
-      if (tail == FIFO_DEPTH - 1) begin
-        f_tail = '0;
-      end else begin
-        f_tail = tail + 1;
-      end
-    end
-
-    // pop an element from the queue
-    if (pop_i && !empty_o) begin
-      f_fifo_cnt = fifo_cnt - 1;
-      if (head == FIFO_DEPTH - 1) begin
-        f_head = '0;
-      end else begin
-        f_head = head + 1;
-      end
-    end
-
-    // keep the count pointer stable if we push and pop at the same time
-    if (push_i && pop_i && !full_o && !empty_o) begin
-      f_fifo_cnt = fifo_cnt;
-    end
-
-    // FIFO is in pass through mode
-    if (READ_MODE == "fwft" && (fifo_cnt == 0) && push_i) begin
-      data_o = data_i;
-      if (pop_i) begin
-        f_fifo_cnt = fifo_cnt;
-        f_head = head;
-        f_tail = tail;
-      end
-    end
-
-    // redirect the FIFO
-    if (redirect_i) begin
-      f_head = head_target_i;
-      f_tail = tail_target_i;
-      f_fifo_cnt = cnt_target_i;
-    end
-  end
-
-
-  always_ff @(posedge clk or negedge s_rst_n) begin
-    if(~s_rst_n) begin
-      fifo_cnt <= '0;
-      head <= '0;
-      tail <= '0;
-    end else begin
-      fifo_cnt <= f_fifo_cnt;
-      head <= f_head;
-      tail <= f_tail;
-    end
-  end
-
+  // pointer to the read and write section of the queue
+  logic [FIFO_ADDR_WIDTH - 1:0] read_pointer_n, read_pointer_q, write_pointer_n, write_pointer_q;
+  // keep a counter to keep track of the current queue status
+  // this integer will be truncated by the synthesis tool
+  logic [FIFO_CNT_WIDTH - 1:0] status_cnt_n, status_cnt_q;
+  // actual memory
+  logic ram_we;
+  logic [FIFO_DATA_WIDTH - 1:0] ram_rdata, ram_wdata;
   SimpleDualPortRAM #(
     .DATA_DEPTH(FIFO_DEPTH),
     .DATA_WIDTH(FIFO_DATA_WIDTH),
     .BYTE_WRITE_WIDTH(FIFO_DATA_WIDTH),
     .CLOCKING_MODE("common_clock"),
     .WRITE_MODE("write_first"),
-    .MEMORY_PRIMITIVE(FIFO_MEMORY_TYPE)
+    .MEMORY_PRIMITIVE("auto")
   ) inst_SimpleDualPortRAM (
     .clk_a    (clk),
-    .en_a_i   ('1),
-    .we_a_i   (push_i && ~full_o),
-    .addr_a_i (tail),
+    .en_a_i   (en_a_i),
+    .we_a_i   (ram_we),
+    .addr_a_i (write_pointer_q),
     .data_a_i (data_i),
     .clk_b    (clk),
-    .rstb_n   (s_rst_n),
-    .en_b_i   ('1),
-    .addr_b_i (head),
-    .data_b_o (sdpram_data_o)
+    .rstb_n   (rst_n),
+    .en_b_i   (en_b_i),
+    .addr_b_i (read_pointer_q),
+    .data_b_o (ram_rdata)
   );
+
+
+  assign usage_o = status_cnt_q;
+  assign full_o       = (status_cnt_q == FIFO_DEPTH);
+  assign empty_o      = (status_cnt_q == 0) & ~(READ_MODE == "fwft" & push_i);
+  // read and write queue logic
+  always_comb begin : read_write_comb
+      // default assignment
+      read_pointer_n  = read_pointer_q;
+      write_pointer_n = write_pointer_q;
+      status_cnt_n    = status_cnt_q;
+      data_o          = ram_rdata;
+      ram_we          = '0;
+
+      // push a new element to the queue
+      if (push_i && ~full_o) begin
+          // push the data onto the queue
+          ram_we = '1;
+          // increment the write counter
+          // this is dead code when DEPTH is a power of two
+          if (write_pointer_q == FIFO_DEPTH[FIFO_ADDR_WIDTH - 1:0] - 1)
+              write_pointer_n = '0;
+          else
+              write_pointer_n = write_pointer_q + 1;
+          // increment the overall counter
+          status_cnt_n    = status_cnt_q + 1;
+      end
+
+      if (pop_i && ~empty_o) begin
+          // read from the queue is a default assignment
+          // but increment the read pointer...
+          // this is dead code when DEPTH is a power of two
+          if (read_pointer_n == FIFO_DEPTH[FIFO_ADDR_WIDTH-1:0] - 1)
+              read_pointer_n = '0;
+          else
+              read_pointer_n = read_pointer_q + 1;
+          // ... and decrement the overall count
+          status_cnt_n   = status_cnt_q - 1;
+      end
+
+      // keep the count pointer stable if we push and pop at the same time
+      if (push_i && pop_i &&  ~full_o && ~empty_o)
+          status_cnt_n   = status_cnt_q;
+
+      // FIFO is in pass through mode -> do not change the pointers
+      if (READ_MODE == "fwft" && (status_cnt_q == 0) && push_i) begin
+          data_o = data_i;
+          if (pop_i) begin
+              status_cnt_n = status_cnt_q;
+              read_pointer_n = read_pointer_q;
+              write_pointer_n = write_pointer_q;
+          end
+      end
+  end
+
+  // sequential process
+  always_ff @(posedge clk or negedge rst_n) begin
+      if(~rst_n) begin
+          read_pointer_q  <= '0;
+          write_pointer_q <= '0;
+          status_cnt_q    <= '0;
+      end else begin
+          if (flush_i) begin
+              read_pointer_q  <= '0;
+              write_pointer_q <= '0;
+              status_cnt_q    <= '0;
+           end else begin
+              read_pointer_q  <= read_pointer_n;
+              write_pointer_q <= write_pointer_n;
+              status_cnt_q    <= status_cnt_n;
+          end
+      end
+  end
 
 endmodule : SyncFIFO
 
