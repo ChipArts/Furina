@@ -34,8 +34,8 @@
 // RESET
 `define DIST_DRIVE_RESET  // 分布式驱动复位，在每一个模块中添加异步复位同步释放逻辑
 // Processor
-`define PROC_FETCH_WIDTH 8
-`define PROC_DECODE_WIDTH 4
+`define PROC_FETCH_WIDTH 8  // 取指令的宽度
+`define PROC_DECODE_WIDTH 4  // 解码宽度
 `define PROC_VALEN 32
 `define PROC_PALEN 32
 // TLB

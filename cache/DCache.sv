@@ -115,7 +115,7 @@ module DCache (
     MISS,  // Cache缺失，等待axi的wr_ready信号
     REPLACE,  // 替换的Cache行读出，等待axi的w_ready信号
     LOOKUP,  // Cache的访存请求发出，等待axi的rd_ready信号
-    REFIIL  // 等待axi的r_valid信号，重启流水线
+    REFIIL  // 等待axi的r_last信号，重启流水线
   } DCacheState;
   DCacheState dcache_state;
   logic [2:0] dcache_miss;  // {main, load[1], load[0]}
@@ -177,7 +177,7 @@ module DCache (
                    !replaced_meta.valid) dcache_state <= REFIIL;
         REPLACE : if (axi4_mst.w_ready) dcache_state <= LOOKUP;
         LOOKUP : if (axi4_mst.ar_ready) dcache_state <= REFIIL;
-        REFIIL : if (axi4_mst.r_valid) dcache_state <= IDEL;
+        REFIIL : if (axi4_mst.r_last) dcache_state <= IDEL;
         default : /* default */;
       endcase
     end
@@ -189,7 +189,7 @@ module DCache (
     for (int i = 0; i < `DCACHE_ASSOCIATIVITY; i++) begin
       // DCache refill or store
       data_ram_we[i] = dcache_state == REFIIL ? 
-                        replaced_way == i & axi4_mst.r_valid: 
+                        replaced_way == i & axi4_mst.r_last: 
                         main_pipe_stage2_output_st.we[i] & 
                         main_pipe_stage2_output_st.valid;
     
@@ -478,33 +478,29 @@ module DCache (
         .addr_b_i (meta_ram_raddr[i]),
         .data_b_o (meta_ram_data_o[i][j])
       );
+
     end
+
+    SimpleDualPortRAM #(
+      .DATA_DEPTH(2 ** `ICACHE_INDEX_WIDTH),
+      .DATA_WIDTH(`ICACHE_ASSOCIATIVITY - 1),
+      .BYTE_WRITE_WIDTH(`ICACHE_ASSOCIATIVITY - 1),
+      .CLOCKING_MODE("common_clock"),
+      .WRITE_MODE("write_first"),
+      .MEMORY_PRIMITIVE("auto")
+    ) U_DCachePlruRAM (
+      .clk_a    (clk),
+      .en_a_i   ('1),
+      .we_a_i   (plru_ram_we[i]),
+      .addr_a_i (plru_ram_waddr[i]),
+      .data_a_i (plru_ram_data_i[i]),
+      .clk_b    (clk),
+      .rstb_n   (rst_n),
+      .en_b_i   ('1),
+      .addr_b_i (plru_ram_raddr[i]),
+      .data_b_o (plru_ram_data_o[i])
+    );
   end
-
-  TureDualPortRAM #(
-    .DATA_DEPTH(2 ** `DCACHE_INDEX_WIDTH),
-    .DATA_WIDTH($clog2(`DCACHE_ASSOCIATIVITY)),
-    .BYTE_WRITE_WIDTH($clog2(`DCACHE_ASSOCIATIVITY)),
-    .CLOCKING_MODE("common_clock"),
-    .WRITE_MODE_A("write_first"),
-    .WRITE_MODE_B("write_first")
-  ) U_DCachePlruRAM (
-    .clk_a    (clk),
-    .rsta_n   (rst_n),
-    .en_a_i   ('1),
-    .we_a_i   (plru_ram_we[0]),
-    .addr_a_i (plru_ram_raddr[0]),
-    .data_a_i (plru_ram_data_i[0]),
-    .data_a_o (plru_ram_data_i[0]),
-    .clk_b    (clk),
-    .rstb_n   (rst_n),
-    .en_b_i   ('1),
-    .we_b_i   (plru_ram_we[1]),
-    .addr_b_i (plru_ram_raddr[1]),
-    .data_b_i (plru_ram_data_i[1]),
-    .data_b_o (plru_ram_data_i[1])
-  );
-
 
 
 

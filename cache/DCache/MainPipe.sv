@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MainPipe.sv
 // Create  : 2024-03-08 17:19:38
-// Revise  : 2024-03-10 18:34:36
+// Revise  : 2024-03-12 17:03:33
 // Description :
 //   ...
 //   ...
@@ -127,7 +127,7 @@ module MainPipe (
     stage1_output_st_o.replaced_paddr = {stage1_input_st_i.tag[replaced_way], s1_vaddr[`DCACHE_TAG_OFFSET - 1:0]};
 
     // 生成新的plru信息
-    stage1_output_st_o.plru = stage1_output_st_o.replaced_way == matched_way_idx ? 
+    stage1_output_st_o.plru = stage1_output_st_o.replaced_way == matched_way_idx | miss ? 
                               ~stage1_input_st_i.plru : stage1_input_st_i.plru;
   end
 

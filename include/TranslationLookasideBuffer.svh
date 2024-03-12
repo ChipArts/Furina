@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : TranslationLookasideBuffer.svh
 // Create  : 2024-02-17 21:38:07
-// Revise  : 2024-03-09 15:28:40
+// Revise  : 2024-03-11 19:21:33
 // Description :
 //   ...
 //   ...
@@ -25,7 +25,6 @@
 `define _TRANSLATION_LOOKASIDE_BUFFER_SVH_
 
 `include "config.svh"
-`include "InstructionFetchUnit.svh"
 
 typedef struct packed {
   // TLB比较信息
@@ -94,7 +93,6 @@ typedef enum logic [2:0] {
   TLB_INV_GLO0_ASID_VA,
   TLB_INV_GLO1_ASID_VA
 } TLBInvOptionType;
-
 
 typedef struct packed {
   logic valid;  // 请求有效

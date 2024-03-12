@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Cache.svh
 // Create  : 2024-03-01 21:28:47
-// Revise  : 2024-03-10 18:41:17
+// Revise  : 2024-03-12 17:13:51
 // Description :
 //   ...
 //   ...
@@ -26,19 +26,41 @@
 
 `include "config.svh"
 
-// ICache
+/* ICache */
+//       Virtual Address
+// ----------------------------
+// | Tag | Index |    BYTE    |
+// ----------------------------
+//       |       |            |
+//       |       |            0  
+//       |       DCacheIndexOffset
+//       DCacheTagOffset
+// 地址偏移
+`define ICACHE_INDEX_OFFSET $clog2(`ICACHE_SIZE / `ICACHE_ASSOCIATIVITY / `ICACHE_BLOCK_SIZE)
+`define ICACHE_TAG_OFFSET $clog2(`ICACHE_SIZE / `ICACHE_ASSOCIATIVITY)
+// 地址位宽
+`define ICACHE_BYTE_WIDTH `ICACHE_INDEX_OFFSET
+`define ICACHE_INDEX_WIDTH (`ICACHE_TAG_OFFSET - `ICACHE_TAG_OFFSET)
+// 存储器数据位宽
+`define ICACHE_TAG_WIDTH (`PROC_VALEN - `ICACHE_TAG_OFFSET)
+
+`define ICACHE_WORD_OF(ADDR) ADDR[`ICACHE_INDEX_OFFSET - 1:2]
+`define ICACHE_INDEX_OF(ADDR) ADDR[`ICACHE_TAG_OFFSET - 1:`ICACHE_INDEX_OFFSET]
+`define ICACHE_TAG_OF(ADDR) ADDR[`PROC_PALEN - 1:`ICACHE_TAG_OFFSET]
+
+// 要保证每次请求的指令在同一Cache行即idx相同
 typedef struct packed {
-  logic valid;  // 请求有效
+  logic [`PROC_FETCH_WIDTH - 1:0] valid;  // 请求有效
+  logic ready;  // 请求方可接收数据
   logic [`PROC_VALEN - 1:0] vaddr;  // 请求地址
-  logic uncached;  // 非缓存请求
-} ICacheReadReqSt;
+} ICacheReqSt;
 
 typedef struct packed {
-  logic ready;  // 接收fetch请求
-  logic miss;
-  logic [`PROC_FETCH_WIDTH - 1:0][31:0] instructions;  // 指令
   logic [`PROC_FETCH_WIDTH - 1:0] valid;
-} ICacheReadRspSt;
+  logic ready;  // 接收fetch请求
+  logic [`PROC_FETCH_WIDTH - 1:0][`PROC_VALEN - 1:0] vaddr;
+  logic [`PROC_FETCH_WIDTH - 1:0][31:0] instructions;  // 指令
+} ICacheRspSt;
 
 /* DCache */
 //       Virtual Address
@@ -73,7 +95,6 @@ typedef struct packed {
 typedef struct packed {
   logic valid;
   logic dirty;
-  logic [1:0] plv;
 } DCacheMetaInfoSt;
 
 typedef struct packed {
@@ -81,7 +102,6 @@ typedef struct packed {
   
   logic [`PROC_VALEN - 1:0] vaddr;  // 请求地址
   logic [2:0] align_type;  // 对齐类型(b/h/w/ub/uh)
-  logic [9:0] asid;
 } DCacheLoadReqSt;
 
 typedef struct packed {
@@ -114,14 +134,12 @@ typedef struct packed {
   logic valid;  // 请求有效
   logic [`PROC_VALEN - 1:0] vaddr;  // 请求地址
   logic [2:0] align_type;  // 对齐类型(b/h/w/ub/uh)
-  logic [9:0] asid;
 } LoadPipeStage0InputSt;
 
 typedef struct packed {
   logic ready;  // 接收请求
   logic valid;  // 读tag/meta/tlb请求有效
   logic [`PROC_VALEN - 1:0] vaddr;  // 虚拟地址
-  logic [9:0] asid;
 } LoadPipeStage0OutputSt;
 
 
@@ -129,9 +147,7 @@ typedef struct packed {
   logic valid;  // 数据有效
   logic bank_conflict;  // bank冲突
   // TLB Info
-  logic [`PROC_PALEN - 1:12] ppn;  // 物理页号
-  logic [5:0] page_size; // 页大小
-  logic [1:0] plv;
+  logic [`PROC_PALEN - 1:0] paddr;  // 物理页号
   // DCache Info
   DCacheMetaInfoSt [`DCACHE_ASSOCIATIVITY - 1:0] meta;
   logic [`DCACHE_ASSOCIATIVITY - 1:0][`DCACHE_TAG_WIDTH - 1:0] tag;  // cache tag
@@ -182,16 +198,13 @@ typedef struct packed {
   logic store_ready;  // 接受存储请求
   // logic atomic_req;  // 原子操作请求
   logic [`PROC_VALEN - 1:0] vaddr;  // 虚地址(查询tlb/tag/meta)
-  logic [9:0] asid;
 } MainPipeStage0OutputSt;
 
 
 typedef struct packed {
   logic valid;
   // TLB Info
-  logic [`PROC_PALEN - 1:12] ppn;  // 物理页号
-  logic [5:0] page_size;  // 页大小
-  logic [1:0] plv;  // 权限等级
+  logic [`PROC_PALEN - 1:12] paddr;  // 物理地址
   // DCache Info
   DCacheMetaInfoSt [`DCACHE_ASSOCIATIVITY - 1:0] meta;
   logic [`DCACHE_ASSOCIATIVITY - 1:0][`DCACHE_TAG_WIDTH - 1:0] tag;  // cache tag

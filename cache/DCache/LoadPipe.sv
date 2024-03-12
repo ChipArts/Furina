@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : LoadPipe.sv
 // Create  : 2024-03-07 15:20:49
-// Revise  : 2024-03-10 18:32:49
+// Revise  : 2024-03-12 17:03:14
 // Description :
 //   ...
 //   ...
@@ -44,6 +44,7 @@ module LoadPipe (
   // 接收 load 流水线计算出的虚拟地址
   // 使用虚拟地址查询 tag
   // 使用虚拟地址查询 meta
+  // 使用虚拟地址查询 plru
 
   always_comb begin : proc_stage0
     stage0_output_st_o.ready = ~stall | stage1_input_st_i.bank_conflict;
@@ -61,7 +62,7 @@ module LoadPipe (
       s1_vaddr <= 0;
       s1_align_type <= 0;
     end else begin
-      if (stage0_output_st_o.valid) begin
+      if (stage0_output_st_o.ready) begin
         s1_vaddr <= stage0_input_st_i.vaddr;
         s1_align_type <= stage0_input_st_i.align_type;
       end
@@ -81,21 +82,16 @@ module LoadPipe (
   logic [$clog2(`DCACHE_ASSOCIATIVITY) - 1:0] matched_way_idx;
 
   always_comb begin
+    if (stage1_input_st_i.page_size == 12) begin
+      paddr = {stage1_input_st_i.ppn, s1_vaddr[11:0]};
+    end else begin  //  page_size == 21
+      paddr = {stage1_input_st_i.ppn[`PROC_PALEN - 1:21], s1_vaddr[20:0]};
+    end
+
     // 进行 tag 匹配
     matched_way_idx = '0;
     for (int i = 0; i < `DCACHE_ASSOCIATIVITY; i++) begin
-      if (`DCACHE_TAG_OFFSET < 12) begin
-        matched_way[i] = stage1_input_st_i.page_size == 6'd12 ?
-                          {stage1_input_st_i.ppn, s1_vaddr[11:`DCACHE_TAG_OFFSET]} == 
-                          stage1_input_st_i.tag[i] :
-                          {stage1_input_st_i.ppn[`PROC_PALEN - 1:21], s1_vaddr[20:`DCACHE_TAG_OFFSET]} == 
-                          stage1_input_st_i.tag[i];
-      end else begin  // `DCACHE_TAG_OFFSET == 12
-        matched_way[i] = stage1_input_st_i.page_size == 6'd12 ?
-                          stage1_input_st_i.ppn == stage1_input_st_i.tag[i] :
-                          {stage1_input_st_i.ppn[`PROC_PALEN - 1:21], s1_vaddr[20:`DCACHE_TAG_OFFSET]} == 
-                          stage1_input_st_i.tag[i];
-      end
+      matched_way[i] = `DCACHE_TAG_OF(paddr) == stage1_input_st_i.tag[i];
       if (matched_way[i]) begin
         matched_way_idx = i;
       end
@@ -109,11 +105,7 @@ module LoadPipe (
     stage1_output_st_o.miss = miss;
 
     // 使用物理地址查询 data
-    if (stage1_input_st_i.page_size == 12) begin
-      paddr = {stage1_input_st_i.ppn, s1_vaddr[11:0]};
-    end else begin  //  page_size == 21
-      paddr = {stage1_input_st_i.ppn[`PROC_PALEN - 1:21], s1_vaddr[20:0]};
-    end
+
     stage1_output_st_o.paddr = paddr;
 
     // 检查 bank 冲突: DCache 内检查
@@ -126,7 +118,7 @@ module LoadPipe (
     stage1_output_st_o.replaced_paddr = {stage1_input_st_i.tag[replaced_way], s1_vaddr[`DCACHE_TAG_OFFSET - 1:0]};
 
     // 生成新的plru信息
-    stage1_output_st_o.plru = stage1_output_st_o.replaced_way == matched_way_idx ? 
+    stage1_output_st_o.plru = stage1_output_st_o.replaced_way == matched_way_idx | miss ? 
                               ~stage1_input_st_i.plru : stage1_input_st_i.plru;
   end
 

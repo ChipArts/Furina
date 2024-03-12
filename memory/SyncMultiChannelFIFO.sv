@@ -2,7 +2,7 @@
 // Copyright (c) 2014-2024 All rights reserved
 // ==============================================================================
 // Author  : SuYang 2506806016@qq.com
-// File    : SyncMultiPortFIFO.sv
+// File    : SyncMultiChannelFIFO.sv
 // Create  : 2024-01-16 12:01:16
 // Revise  : 2024-01-16 13:54:50
 // Description :
@@ -24,7 +24,7 @@
 `include "config.svh"
 `include "common.svh"
 
-module SyncMultiPortFIFO #(
+module SyncMultiChannelFIFO #(
 parameter
   int unsigned FIFO_DEPTH = 16,
   int unsigned DATA_WIDTH = 32,
@@ -40,13 +40,13 @@ localparam
 
   input logic write_valid_i,
   output logic write_ready_o,
-  input logic [$clog2(WPORTS_NUM + 1) - 1: 0] write_num_i,
-  input logic [WPORTS_NUM - 1 : 0][DATA_WIDTH - 1:0] write_data_i,
+  input logic [$clog2(WPORTS_NUM + 1) - 1:0] write_num_i,
+  input logic [WPORTS_NUM - 1:0][DATA_WIDTH - 1:0] write_data_i,
 
-  output logic [RPORTS_NUM - 1 : 0] read_valid_o,
+  output logic [RPORTS_NUM - 1:0] read_valid_o,
   input logic read_ready_i,
-  input logic [$clog2(RPORTS_NUM + 1) - 1 : 0] read_num_i,
-  output logic [RPORTS_NUM - 1 : 0][DATA_WIDTH - 1:0] read_data_o
+  input logic [$clog2(RPORTS_NUM + 1) - 1:0] read_num_i,
+  output logic [RPORTS_NUM - 1:0][DATA_WIDTH - 1:0] read_data_o
 );
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);
@@ -106,7 +106,7 @@ localparam
         .FIFO_DEPTH(FIFO_DEPTH / BANK),
         .FIFO_DATA_WIDTH(DATA_WIDTH),
         .READ_MODE("std"),
-        .FIFO_MEMORY_TYPE("auto")
+        .FIFO_MEMORY_TYPE(FIFO_MEMORY_TYPE)
       ) U_SyncFIFO (
         .clk           (clk),
         .a_rst_n       (a_rst_n),
@@ -142,4 +142,4 @@ localparam
   endgenerate
 
 
-endmodule : SyncMultiPortFIFO
+endmodule : SyncMultiChannelFIFO

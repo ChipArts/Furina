@@ -2,9 +2,9 @@
 // Copyright (c) 2014-2024 All rights reserved
 // ==============================================================================
 // Author  : SuYang 2506806016@qq.com
-// File    : BranchPredictionUnit.svh
-// Create  : 2024-02-12 18:06:30
-// Revise  : 2024-03-11 18:50:59
+// File    : MemoryManagementUnit.sv
+// Create  : 2024-03-11 19:19:09
+// Revise  : 2024-03-11 19:20:03
 // Description :
 //   ...
 //   ...
@@ -21,21 +21,15 @@
 // ...
 // ==============================================================================
 
-`ifndef _BRANCH_PREDICTION_UNIT_SVH_
-`define _BRANCH_PREDICTION_UNIT_SVH_
-
 `include "config.svh"
+`include "common.svh"
+`include "TranslationLookasideBuffer.svh"
 
-typedef struct packed {
-  logic next;  // 下一个pc
-  logic redirect;  // 重定向请求
-  logic [`PROC_VALEN:0] target;
-} BPU_ReqSt;
+module MemoryManagementUnit (
+  input clk,    // Clock
+  input rst_n,  // Asynchronous reset active low
+  
+);
 
+endmodule : MemoryManagementUnit
 
-typedef struct packed {
-  logic [31:0] pc;
-  logic [`PROC_FETCH_WIDTH - 1:0] valid;  // 表明pc~pc+7中哪几个是有效的
-} BPU_RspSt;
-
-`endif  // _BRANCH_PREDICTION_UNIT_SVH_

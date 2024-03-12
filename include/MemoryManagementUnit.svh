@@ -2,9 +2,9 @@
 // Copyright (c) 2014-2024 All rights reserved
 // ==============================================================================
 // Author  : SuYang 2506806016@qq.com
-// File    : BranchPredictionUnit.svh
-// Create  : 2024-02-12 18:06:30
-// Revise  : 2024-03-11 18:50:59
+// File    : MemoryManagementUnit.svh
+// Create  : 2024-03-11 19:21:56
+// Revise  : 2024-03-11 22:28:02
 // Description :
 //   ...
 //   ...
@@ -21,21 +21,26 @@
 // ...
 // ==============================================================================
 
-`ifndef _BRANCH_PREDICTION_UNIT_SVH_
-`define _BRANCH_PREDICTION_UNIT_SVH_
+`ifndef _MEMORY_MANAGEMENT_UNIT_SVH_
+`define _MEMORY_MANAGEMENT_UNIT_SVH_
 
 `include "config.svh"
 
 typedef struct packed {
-  logic next;  // 下一个pc
-  logic redirect;  // 重定向请求
-  logic [`PROC_VALEN:0] target;
-} BPU_ReqSt;
-
+  logic valid;  // 请求有效
+  logic ready;  // 请求方可接收返回数据
+  logic [`PROC_VALEN - 1:0] vaddr;
+} MMU_SearchReqSt;
 
 typedef struct packed {
-  logic [31:0] pc;
-  logic [`PROC_FETCH_WIDTH - 1:0] valid;  // 表明pc~pc+7中哪几个是有效的
-} BPU_RspSt;
+  logic valid;  // 数据有效
+  logic ready;  // mmu可接收请求
+  
+  logic [`PROC_PALEN - 1:0] paddr;
+  logic uncached;  // uncached地址
+} MMU_SearchRspSt;
 
-`endif  // _BRANCH_PREDICTION_UNIT_SVH_
+
+
+
+`endif  // _MEMORY_MANAGEMENT_UNIT_SVH_
