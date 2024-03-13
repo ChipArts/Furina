@@ -2,9 +2,9 @@
 // Copyright (c) 2014-2024 All rights reserved
 // ==============================================================================
 // Author  : SuYang 2506806016@qq.com
-// File    : InstructionFetchUnit.svh
-// Create  : 2024-02-14 17:31:32
-// Revise  : 2024-03-01 21:21:31
+// File    : ReorderBuffer.sv
+// Create  : 2024-03-13 20:18:54
+// Revise  : 2024-03-13 20:19:01
 // Description :
 //   ...
 //   ...
@@ -21,22 +21,10 @@
 // ...
 // ==============================================================================
 
+module ReorderBuffer (
+  input clk,    // Clock
+  input rst_n,  // Asynchronous reset active low
+  
+);
 
-`ifndef _INSTRUCTION_FETCH_UNIT_SVH_
-`define _INSTRUCTION_FETCH_UNIT_SVH_
-
-`include "config.svh"
-
-`define ICACHE_FECTH_WIDTH `PROC_FETCH_WIDTH
-
-typedef struct packed {
-  logic fetch_valid;
-} IFU2FAQSt;
-
-typedef struct packed {
-  logic fetch_valid;  // fetch请求有效
-  logic [31:0] vpc;
-} IFU2ICacheSt;
-
-
-`endif  // _INSTRUCTION_FETCH_UNIT_SVH_
+endmodule : ReorderBuffer

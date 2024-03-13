@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MemoryManagementUnit.sv
 // Create  : 2024-03-11 19:19:09
-// Revise  : 2024-03-11 19:20:03
+// Revise  : 2024-03-12 20:16:28
 // Description :
 //   ...
 //   ...
@@ -27,7 +27,7 @@
 
 module MemoryManagementUnit (
   input clk,    // Clock
-  input rst_n,  // Asynchronous reset active low
+  input rst_n  // Asynchronous reset active low
   
 );
 

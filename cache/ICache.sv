@@ -29,9 +29,9 @@
 module ICache (
   input clk,    // Clock
   input a_rst_n,  // Asynchronous reset active low
-  input ICacheReqSt req_st,
+  input ICacheFetchReqSt fetch_req_st,
   input MMU_SearchRspSt mmu_search_rsp_st,
-  output ICacheRspSt rsp_st,
+  output ICacheFetchRspSt fetch_rsp_st,
   output MMU_SearchReqSt mmu_search_req_st,
   AXI4.Master axi4_mst
 );
@@ -73,11 +73,11 @@ module ICache (
   // 使用虚拟地址查询 tlb
   // 使用虚拟地址查询 data
   always_comb begin
-    rsp_st.ready = ~stall;
+    fetch_rsp_st.ready = ~stall;
   end
 
   // stage 1
-  logic [`PROC_FETCH_WIDTH - 1:0] s1_valid;
+  logic [`FETCH_WIDTH - 1:0] s1_valid;
   logic [`PROC_VALEN - 1:0] s1_vaddr;
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
@@ -85,8 +85,8 @@ module ICache (
       s1_vaddr <= 0;
     end else begin
       if (~stall) begin
-        s1_valid <= req_st.valid;
-        s1_vaddr <= req_st.vaddr;
+        s1_valid <= fetch_req_st.valid;
+        s1_vaddr <= fetch_req_st.vaddr;
       end
     end
   end
@@ -99,7 +99,6 @@ module ICache (
   // 生成 inst 输出
   logic miss;
   logic [`PROC_PALEN - 1:0] paddr;
-  logic [`PROC_PALEN - 1:0] replaced_paddr;
   logic [$clog2(`DCACHE_ASSOCIATIVITY) - 1:0] replaced_way;
   logic [$clog2(`DCACHE_ASSOCIATIVITY) - 1:0] matched_way;
   logic [`DCACHE_ASSOCIATIVITY - 1:0] matched_way_oh;  // one hot
@@ -125,15 +124,14 @@ module ICache (
 
     // 获得 plru 信息, 选出替换 way
     replaced_way = plru_ram_data_o;  // TODO: 真正实现PLRU
-    replaced_paddr = {tag_ram_data_o[replaced_way], s1_vaddr[`ICACHE_TAG_OFFSET - 1:0]};
     // 生成新的plru信息
     new_plru = replaced_way == matched_way | miss ? ~plru_ram_data_o : plru_ram_data_o;
 
     // 生成 inst 输出
-    rsp_st.valid = s1_valid & ~{`PROC_FETCH_WIDTH{miss}};
-    for (int i = 0; i < `PROC_FETCH_WIDTH; i++) begin
-      rsp_st.vaddr[i] = s1_vaddr + 4;
-      rsp_st.instructions[i] = data_ram_data_o[matched_way][`ICACHE_WORD_OF(s1_vaddr) + i];
+    fetch_rsp_st.valid = s1_valid & ~{`FETCH_WIDTH{miss}};
+    for (int i = 0; i < `FETCH_WIDTH; i++) begin
+      fetch_rsp_st.vaddr[i] = s1_vaddr + 4;
+      fetch_rsp_st.instructions[i] = data_ram_data_o[matched_way][`ICACHE_WORD_OF(s1_vaddr) + i];
     end
   end
 
@@ -171,26 +169,78 @@ module ICache (
     end
     data_ram_waddr = `ICACHE_INDEX_OF(s1_vaddr);
     data_ram_data_i = axi4_mst.r_data;
-    data_ram_raddr = `ICACHE_INDEX_OF(req_st.vaddr);
+    data_ram_raddr = `ICACHE_INDEX_OF(fetch_req_st.vaddr);
     // tag ram
     for (int i = 0; i < `ICACHE_ASSOCIATIVITY; i++) begin
       tag_ram_we[i] = icache_state == REFIIL & replaced_way == i & axi4_mst.r_last;
     end
     tag_ram_waddr = `ICACHE_INDEX_OF(s1_vaddr);
     tag_ram_data_i = `ICACHE_TAG_OF(paddr);
-    tag_ram_raddr = `ICACHE_INDEX_OF(req_st.vaddr);
+    tag_ram_raddr = `ICACHE_INDEX_OF(fetch_req_st.vaddr);
     // valid ram
     for (int i = 0; i < `ICACHE_ASSOCIATIVITY; i++) begin
       valid_ram_we = icache_state == REFIIL & replaced_way == i & axi4_mst.r_last;
     end
     valid_ram_waddr = `ICACHE_INDEX_OF(s1_vaddr);
     valid_ram_data_i = '1;
-    valid_ram_raddr = `ICACHE_INDEX_OF(req_st.vaddr);
+    valid_ram_raddr = `ICACHE_INDEX_OF(fetch_req_st.vaddr);
     // plru ram
     plru_ram_we = '1;
     plru_ram_waddr = `ICACHE_INDEX_OF(s1_vaddr);
     plru_ram_data_i = new_plru;
-    plru_ram_raddr = `ICACHE_INDEX_OF(req_st.vaddr);
+    plru_ram_raddr = `ICACHE_INDEX_OF(fetch_req_st.vaddr);
+  end
+
+  // AXI Ctrl
+  always_comb begin
+    axi4_mst.aw_id = '0;
+    axi4_mst.aw_addr = '0;
+    axi4_mst.aw_len = '0;
+    axi4_mst.aw_size = '0;
+    axi4_mst.aw_burst = '0;
+    axi4_mst.aw_lock = '0;
+    axi4_mst.aw_cache = '0;
+    axi4_mst.aw_prot = '0;
+    axi4_mst.aw_qos = '0;
+    axi4_mst.aw_region = '0;
+    axi4_mst.aw_user = '0;
+    axi4_mst.aw_valid = '0;
+    // input: axi4_mst.aw_ready
+
+    axi4_mst.w_data = '0;
+    axi4_mst.w_strb = '0;
+    axi4_mst.w_last = '0;
+    axi4_mst.w_user = '0;
+    axi4_mst.w_valid = '0;
+    // input: axi4_mst.w_ready
+
+    // input: axi4_mst.b_id
+    // input: axi4_mst.b_resp
+    // input: axi4_mst.b_user
+    // input: axi4_mst.b_valid
+    axi4_mst.b_ready = '0;
+
+    axi4_mst.ar_id = '0;
+    axi4_mst.ar_addr = paddr;
+    axi4_mst.ar_len = 4'b0000;
+    axi4_mst.ar_size = $clog2(`ICACHE_BLOCK_SIZE);
+    axi4_mst.ar_burst = '0;
+    axi4_mst.ar_lock = '0;
+    axi4_mst.ar_cache = '0;
+    axi4_mst.ar_prot = '0;
+    axi4_mst.ar_qos = '0;
+    axi4_mst.ar_region = '0;
+    axi4_mst.ar_user = '0;
+    axi4_mst.ar_valid = icache_state == MISS;
+    // input: axi4_mst.ar_ready
+
+    // input: axi4_mst.r_id
+    // input: axi4_mst.r_data
+    // input: axi4_mst.r_resp
+    // input: axi4_mst.r_last
+    // input: axi4_mst.r_user
+    // input: axi4_mst.r_valid
+    axi4_mst.r_ready = icache_state == REFIIL;
   end
 
 

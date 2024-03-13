@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MemoryManagementUnit.svh
 // Create  : 2024-03-11 19:21:56
-// Revise  : 2024-03-11 22:28:02
+// Revise  : 2024-03-12 20:18:44
 // Description :
 //   ...
 //   ...
@@ -39,8 +39,5 @@ typedef struct packed {
   logic [`PROC_PALEN - 1:0] paddr;
   logic uncached;  // uncached地址
 } MMU_SearchRspSt;
-
-
-
 
 `endif  // _MEMORY_MANAGEMENT_UNIT_SVH_

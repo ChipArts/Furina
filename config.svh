@@ -34,10 +34,12 @@
 // RESET
 `define DIST_DRIVE_RESET  // 分布式驱动复位，在每一个模块中添加异步复位同步释放逻辑
 // Processor
-`define PROC_FETCH_WIDTH 8  // 取指令的宽度
-`define PROC_DECODE_WIDTH 4  // 解码宽度
+`define FETCH_WIDTH 8  // 取指令的宽度
+`define DECODE_WIDTH 4  // 解码宽度
 `define PROC_VALEN 32
 `define PROC_PALEN 32
+`define PHY_REG_NUM 64
+`define ROB_DEPTH 64  // ROB深度
 // TLB
 `define TLB_ENTRY_NUM 16
 // Cache
@@ -49,9 +51,13 @@
 `define DCACHE_BLOCK_SIZE 4 * 16  // DCache块大小(Byte)
 `define DCACHE_ASSOCIATIVITY 2  // DCache相联度(简化实现 不要更改)
 
-`define L2CACHE_SIZE 128 * 1024  // L2Cache大小(Byte)
-`define L2CACHE_BLOCK_SIZE 4 * 16  // L2Cache块大小(Byte)
-`define L2CACHE_ASSOCIATIVITY 8  // L2Cache相联度
+// Fetch Address Queue
+`define FAQ_DEPTH 16
+
+// Instruction Buffer
+`define IBUF_DEPTH 16
+
+`define COMMIT_WIDTH 4  // 提交宽度
 
 `endif // __CONFIG_SVH__
 

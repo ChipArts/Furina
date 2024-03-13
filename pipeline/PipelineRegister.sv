@@ -28,15 +28,16 @@ parameter
   input clk,    // Clock
   input a_rst_n,  // Asynchronous reset active low
   input we_i,
+  input flush_i,
   input DATA_TYPE data_i,
-  output DATA_TYPE data_0
+  output DATA_TYPE data_o
 );
 
- `RESET_LOGIC(clk, a_rst_n, s_rst_n)
+ `RESET_LOGIC(clk, a_rst_n, rst_n)
 
   DATA_TYPE pipeline_reg;
-  always_ff @(posedge clk or negedge s_rst_n) begin
-    if (~s_rst_n) begin
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (~rst_n || flush_i) begin
       pipeline_reg <= '0;
     end
     else begin
@@ -46,6 +47,6 @@ parameter
     end
   end
 
-  assign data_0 = pipeline_reg;
+  assign data_o = pipeline_reg;
 
 endmodule : PipelineRegister

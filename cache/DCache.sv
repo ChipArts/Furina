@@ -356,7 +356,7 @@ module DCache (
     tlb_search_req_st_o[1].asid = load_pipe_stage0_output_st[1].asid;
   end
 
-  // AXI trl
+  // AXI Ctrl
   always_comb begin
     // xx_burst: 只传输一个数据，这个选项不重要了
     // xx_cache: 非缓存的请求自有一套处理方式，无需关心这个值

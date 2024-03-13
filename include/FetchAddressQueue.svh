@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : FetchAddressQueue.svh
 // Create  : 2024-02-14 17:37:54
-// Revise  : 2024-03-01 21:17:41
+// Revise  : 2024-03-13 17:57:38
 // Description :
 //   ...
 //   ...
@@ -27,18 +27,27 @@
 
 `include "config.svh"
 
-`define FAQ_DEPTH 16
+typedef struct packed {
+  logic [`FETCH_WIDTH - 1:0] valid;  // push请求有效
+  logic ready;  // 请求方可接收应答信息(目前无用保留)
+  logic [`PROC_VALEN - 1:0] vaddr;
+} FAQ_PushReqSt;
 
 typedef struct packed {
-  logic fetch_valid;
-} FAQ2BPUSt;
+  logic valid;  // rsp信息有效
+  logic ready;  // faq可接收push请求
+} FAQ_PushRspSt;
 
 typedef struct packed {
-  logic [31:0] pc;
-  logic [`PROC_FETCH_WIDTH - 1:0] valid;
-  logic [$clog2(`FAQ_DEPTH) - 1:0] faq_head;
-  logic [$clog2(`FAQ_DEPTH) - 1:0] faq_tail;
-  logic [$clog2(`FAQ_DEPTH + 1) - 1:0] faq_cnt;
-} FAQ2IFUSt;
+  logic valid;  // pop请求有效
+  logic ready;  // 请求方可接收pop应答
+} FAQ_PopReqSt;
+
+typedef struct packed {
+  logic [`FETCH_WIDTH - 1:0] valid;
+  logic ready;  // faq接收pop请求
+  logic [`PROC_VALEN - 1:0] vaddr;
+} FAQ_PopRspSt;
+
 
 `endif  // _FETCH_ADDRESS_QUEUE_SVH_

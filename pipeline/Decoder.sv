@@ -17,16 +17,15 @@
 //   Date   |   Author   |   Version   |   Change Description
 // -----------------------------------------------------------------------------
 // xx-xx-xx |            |     0.1     |    Original Version
-// ...
 // ==============================================================================
 
 `include "Decoder.svh"
 
 module Decoder (
   input logic [31:0] instruction,
-  output CtrlSignalSt ctrl_signal
+  output GeneralCtrlSignalSt general_ctrl_signal
 );
 
-  // TODO: generate by SpinalHDL
+  // TODO: generate decoder by SpinalHDL
 
 endmodule : Decoder

@@ -2,9 +2,9 @@
 // Copyright (c) 2014-2024 All rights reserved
 // ==============================================================================
 // Author  : SuYang 2506806016@qq.com
-// File    : BranchPredictionUnit.svh
-// Create  : 2024-02-12 18:06:30
-// Revise  : 2024-03-13 17:57:36
+// File    : ReorderBuffer.svh
+// Create  : 2024-03-13 21:02:26
+// Revise  : 2024-03-13 23:18:13
 // Description :
 //   ...
 //   ...
@@ -21,21 +21,31 @@
 // ...
 // ==============================================================================
 
-`ifndef _BRANCH_PREDICTION_UNIT_SVH_
-`define _BRANCH_PREDICTION_UNIT_SVH_
+`ifndef _REORDER_BUFFER_SVH_
+`define _REORDER_BUFFER_SVH_
 
 `include "config.svh"
 
 typedef struct packed {
-  logic next;  // 下一个pc
-  logic redirect;  // 重定向请求
-  logic [`PROC_VALEN:0] target;
-} BPU_ReqSt;
-
+  logic complete;
+  logic [4:0] arch_reg;
+  logic [$clog2(`PHY_REG_NUM) - 1:0] phy_reg;
+  logic [$clog2(`PHY_REG_NUM) - 1:0] old_phy_reg;
+  logic [`PROC_VALEN - 1:0] pc;
+  logic exception;  // TODO
+  logic [1:0] inst_type;  // TODO
+} ROB_EntrySt;
 
 typedef struct packed {
-  logic [31:0] pc;
-  logic [`FETCH_WIDTH - 1:0] valid;  // 表明pc~pc+7中哪几个是有效的
-} BPU_RspSt;
+  logic valid;
+  logic ready;
+  ROB_EntrySt [`DECODE_WIDTH - 1:0] rob_entry;
+} ROB_DispatchReqSt;
 
-`endif  // _BRANCH_PREDICTION_UNIT_SVH_
+typedef struct packed {
+  logic valid;
+  logic ready;
+} ROB_DispatchRspSt;
+
+
+`endif  // _REORDER_BUFFER_SVH_

@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Decoder.svh
 // Create  : 2024-03-01 16:04:57
-// Revise  : 2024-03-08 22:04:43
+// Revise  : 2024-03-13 22:54:55
 // Description :
 //   ...
 //   ...
@@ -23,6 +23,8 @@
 
 `ifndef _DECODER_SVH_
 `define _DECODER_SVH_
+
+`include "config.svh"
 
 `define ALU_TYPE_NIL (4'd0)
 `define ALU_TYPE_ADD (4'd1)
@@ -52,6 +54,6 @@
 
 typedef struct packed {
   logic ctrl_signal;
-} CtrlSignalSt;
+} GeneralCtrlSignalSt;
 
 `endif  // _DECODER_SVH_

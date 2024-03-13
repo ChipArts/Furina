@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : BranchPredictionUnit.sv
 // Create  : 2024-02-12 15:35:06
-// Revise  : 2024-03-11 15:25:19
+// Revise  : 2024-03-13 17:57:33
 // Description :
 //   ...
 //   ...
@@ -47,7 +47,7 @@ module BranchPredictionUnit (
         pc <= bpu_req_i.target;
       end else begin
         if (bpu_req_st_i.next) begin
-          pc <= pc + (`PROC_FETCH_WIDTH << 2);
+          pc <= pc + (`FETCH_WIDTH << 2);
         end
       end
     end

@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Cache.svh
 // Create  : 2024-03-01 21:28:47
-// Revise  : 2024-03-12 17:13:51
+// Revise  : 2024-03-13 17:57:37
 // Description :
 //   ...
 //   ...
@@ -33,8 +33,8 @@
 // ----------------------------
 //       |       |            |
 //       |       |            0  
-//       |       DCacheIndexOffset
-//       DCacheTagOffset
+//       |       ICacheIndexOffset
+//       ICacheTagOffset
 // 地址偏移
 `define ICACHE_INDEX_OFFSET $clog2(`ICACHE_SIZE / `ICACHE_ASSOCIATIVITY / `ICACHE_BLOCK_SIZE)
 `define ICACHE_TAG_OFFSET $clog2(`ICACHE_SIZE / `ICACHE_ASSOCIATIVITY)
@@ -50,17 +50,18 @@
 
 // 要保证每次请求的指令在同一Cache行即idx相同
 typedef struct packed {
-  logic [`PROC_FETCH_WIDTH - 1:0] valid;  // 请求有效
-  logic ready;  // 请求方可接收数据
+  logic [`FETCH_WIDTH - 1:0] valid;  // 请求有效
+  logic ready;  // 请求方可接收相应(暂时无用)
   logic [`PROC_VALEN - 1:0] vaddr;  // 请求地址
-} ICacheReqSt;
+} ICacheFetchReqSt;
 
 typedef struct packed {
-  logic [`PROC_FETCH_WIDTH - 1:0] valid;
+  logic [`FETCH_WIDTH - 1:0] valid;
   logic ready;  // 接收fetch请求
-  logic [`PROC_FETCH_WIDTH - 1:0][`PROC_VALEN - 1:0] vaddr;
-  logic [`PROC_FETCH_WIDTH - 1:0][31:0] instructions;  // 指令
-} ICacheRspSt;
+
+  logic [`FETCH_WIDTH - 1:0][`PROC_VALEN - 1:0] vaddr;
+  logic [`FETCH_WIDTH - 1:0][31:0] instructions;  // 指令
+} ICacheFetchRspSt;
 
 /* DCache */
 //       Virtual Address
