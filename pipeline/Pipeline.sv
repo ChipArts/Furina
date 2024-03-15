@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Pipeline.sv
 // Create  : 2024-03-11 14:53:30
-// Revise  : 2024-03-13 23:03:32
+// Revise  : 2024-03-14 18:39:33
 // Description :
 //   ...
 //   ...
@@ -176,7 +176,7 @@ module Pipeline (
     .read_data_o   (ibuf_read_data)
   );
 
-  /* Decoder */
+  /* Decoder & Rename */
   for (genvar i = 0; i < `DECODE_WIDTH; i++) begin
     Decoder inst_Decoder (.instruction(ibuf_read_data[i].instruction), .general_ctrl_signal(general_ctrl_signal));
   end
@@ -191,7 +191,27 @@ module Pipeline (
     end
   end
 
-  /* Decode Info Buffer */
+  RegisterAliasTable #(
+    .PHYS_REG_NUM(`PHY_REG_NUM)
+  ) U_IntegerRegisterAliasTable (
+    .clk         (clk),
+    .a_rst_n     (rst_n),
+    .restore_i   (),
+    .allocaion_i ('0),
+    .free_i      (),
+    .arch_rat    (),
+    .valid_i     (valid_i),
+    .src0_i      (src0_i),
+    .src1_i      (src1_i),
+    .dest_i      (dest_i),
+    .preg_i      (preg_i),
+    .psrc0_o     (psrc0_o),
+    .psrc1_o     (psrc1_o),
+    .ppdst_o     (ppdst_o)
+  );
+
+  /* Instruction Info Buffer */
+  // 从此指令执行所需的全部信息都已经产生
   PipelineRegister #(
     .DATA_TYPE(InstInfoSt[`DECODE_WIDTH - 1:0])
   ) U_DecodeInfoBuffer (
@@ -204,7 +224,7 @@ module Pipeline (
   );
 
 
-  /* Rename & Dispatch */
+  /* Dispatch */
   always_comb begin
     schedule_req_st.valid = '0;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin

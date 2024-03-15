@@ -38,14 +38,12 @@ localparam
   input logic a_rst_n,  // Asynchronous reset active low
   input logic flush_i,
 
-  input logic write_valid_i,
+  input logic [WPORTS_NUM - 1:0] write_valid_i,
   output logic write_ready_o,
-  input logic [$clog2(WPORTS_NUM + 1) - 1:0] write_num_i,
   input logic [WPORTS_NUM - 1:0][DATA_WIDTH - 1:0] write_data_i,
 
   output logic [RPORTS_NUM - 1:0] read_valid_o,
-  input logic read_ready_i,
-  input logic [$clog2(RPORTS_NUM + 1) - 1:0] read_num_i,
+  input logic [RPORTS_NUM - 1:0] read_ready_i,
   output logic [RPORTS_NUM - 1:0][DATA_WIDTH - 1:0] read_data_o
 );
 
@@ -58,6 +56,8 @@ localparam
   end
 `endif
 
+  logic [$clog2(WPORTS_NUM + 1) - 1:0] write_num;
+  logic [$clog2(RPORTS_NUM + 1) - 1:0] read_num;
   typedef logic [$clog2(BANK) - 1 : 0] ptr_t;
   ptr_t [RPORTS_NUM - 1 : 0] read_index;
   ptr_t [BANK - 1 : 0] port_read_index,port_write_index;
@@ -74,6 +74,16 @@ localparam
     end
     // write_ready = count_full + WPORTS_NUM <= BANK;
     write_ready_o = count_full <= (BANK[$clog2(BANK + 1) - 1 : 0] - WPORTS_NUM[$clog2(BANK + 1) - 1 : 0]);
+    
+    write_num = '0;
+    for (int i = 0; i < WPORTS_NUM; i++) begin
+      write_num += write_valid_i[i];
+    end
+
+    read_num = '0;
+    for (int i = 0; i < RPORTS_NUM; i++) begin
+      read_num += read_ready_i[i];
+    end
   end
 
   generate
@@ -84,7 +94,7 @@ localparam
           port_read_index[i] <= i[$clog2(BANK) - 1 : 0];
         end else begin
           if(read_ready_i)
-            port_read_index[i] <= port_read_index[i] - read_num_i[$clog2(BANK) - 1 : 0];
+            port_read_index[i] <= port_read_index[i] - read_num[$clog2(BANK) - 1 : 0];
         end
       end
       always_ff @(posedge clk) begin : proc_port_write_index
@@ -92,13 +102,13 @@ localparam
           port_write_index[i] <= i[$clog2(BANK) - 1 : 0];
         end else begin
           if(write_valid_i & write_ready_o)
-            port_write_index[i] <= port_write_index[i] - write_num_i[$clog2(BANK) - 1 : 0];
+            port_write_index[i] <= port_write_index[i] - write_num[$clog2(BANK) - 1 : 0];
         end
       end
 
       // FIFO 控制信号
-      assign fifo_pop[i] = read_ready_i & (port_read_index[i] < read_num_i);
-      assign fifo_push[i] = write_valid_i & write_ready_o & (port_write_index[i] < write_num_i);
+      assign fifo_pop[i] = read_ready_i & (port_read_index[i] < read_num);
+      assign fifo_push[i] = write_valid_i & write_ready_o & (port_write_index[i] < write_num);
       assign data_in[i] = write_data_i[port_write_index[i][$clog2(WPORTS_NUM) - 1: 0]];
 
       // FIFO 生成
@@ -132,7 +142,7 @@ localparam
           read_index[i] <= i[$clog2(BANK) - 1 : 0];
         end else begin
           if(read_ready_i) begin
-            read_index[i] <= read_index[i] + read_num_i[$clog2(BANK) - 1 : 0];
+            read_index[i] <= read_index[i] + read_num[$clog2(BANK) - 1 : 0];
           end
         end
       end

@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : ReorderBuffer.svh
 // Create  : 2024-03-13 21:02:26
-// Revise  : 2024-03-13 23:18:13
+// Revise  : 2024-03-14 13:29:26
 // Description :
 //   ...
 //   ...
@@ -45,6 +45,7 @@ typedef struct packed {
 typedef struct packed {
   logic valid;
   logic ready;
+  logic [`DECODE_WIDTH - 1:0][$clog2(`ROB_DEPTH) - 1:0] rob_idx;
 } ROB_DispatchRspSt;
 
 

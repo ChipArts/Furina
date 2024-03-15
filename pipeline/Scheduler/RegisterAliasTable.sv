@@ -9,7 +9,6 @@
 //   重命名映射表(RAT)
 // Parameter   :
 //   ...
-//   ...
 // IO Port     :
 //   ...
 //   ...
@@ -24,36 +23,36 @@
 
 module RegisterAliasTable #(
 parameter
-  int unsigned PHYS_REG_NUM = 64
+  int unsigned PHY_REG_NUM = 64
 )(
   input clk,      // Clock
   input a_rst_n,  // Asynchronous reset active low
 
   input [`DECODE_WIDTH - 1:0] restore_i,    // 映射状态恢复
-  input [`DECODE_WIDTH - 1:0] allocaion_i,  // 状态保存
+  input [`DECODE_WIDTH - 1:0] allocaion_i,  // 状态保存(暂不实现)
   input [`DECODE_WIDTH - 1:0] free_i,  // 释放映射状态（指令顺利提交）
-  input logic [31:0][$clog2(PHYS_REG_NUM) - 1:0] arch_rat,
+  input logic [31:0][$clog2(PHY_REG_NUM) - 1:0] arch_rat,
 
   // 输入逻辑寄存器编号
-  input [`DECODE_WIDTH - 1:0] valid_i,  // 标志指令有效
+  input [`DECODE_WIDTH - 1:0] valid_i,  // 标志指令使用DEST寄存器
   input [`DECODE_WIDTH - 1:0][4:0] src0_i,  // inst: Dest = Src0 op Src1
   input [`DECODE_WIDTH - 1:0][4:0] src1_i,
   input [`DECODE_WIDTH - 1:0][4:0] dest_i,
   input [`DECODE_WIDTH - 1:0][4:0] preg_i,  // 从FreeList分配的空闲物理寄存器
   // 输出逻辑寄存器对应的物理寄存器编号
-  output logic [`DECODE_WIDTH - 1:0][$clog2(PHYS_REG_NUM) - 1:0] psrc0_o,
-  output logic [`DECODE_WIDTH - 1:0][$clog2(PHYS_REG_NUM) - 1:0] psrc1_o,
-  output logic [`DECODE_WIDTH - 1:0][$clog2(PHYS_REG_NUM) - 1:0] ppdst_o  // pre phy dest reg
+  output logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc0_o,
+  output logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc1_o,
+  output logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] ppdst_o  // pre phy dest reg
 );
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);
 
   // Main Bit Cell
-  logic [31:0][$clog2(PHYS_REG_NUM) - 1:0] register_alias_table;  // reg
-  // logic [`DECODE_WIDTH - 1:0][31:0][$clog2(PHYS_REG_NUM) - 1:0] f_register_alias_table;
-  logic [`DECODE_WIDTH - 1:0][$clog2(PHYS_REG_NUM) - 1:0] psrc0;
-  logic [`DECODE_WIDTH - 1:0][$clog2(PHYS_REG_NUM) - 1:0] psrc1;
-  logic [`DECODE_WIDTH - 1:0][$clog2(PHYS_REG_NUM) - 1:0] ppdst;
+  logic [31:0][$clog2(PHY_REG_NUM) - 1:0] register_alias_table;  // reg
+  // logic [`DECODE_WIDTH - 1:0][31:0][$clog2(PHY_REG_NUM) - 1:0] f_register_alias_table;
+  logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc0;
+  logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc1;
+  logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] ppdst;
   logic [`DECODE_WIDTH - 1:0] wen;
   always_comb begin
     // 单独计算每一条指令rename后的RAT状态，为checkpoint做准备(暂时无用)

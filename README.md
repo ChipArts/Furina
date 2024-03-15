@@ -23,3 +23,14 @@ OoOE CPU core
 -   以Cache行为单位进行写操作
 -   随机替换策略
 
+
+
+ready的判断条件为：(后继流水线ready & 当前流水线可以处理本级req(buffer未满或不为空，FU空闲)) | 本级pipe reg中无有效任务
+s0：一般为FU的请求接收级，不可见所在级pipe_reg 仅判断FU内部状态即可，所在级的ready信号将于外部合并
+如果存在buffer解耦，则判断buffer的ready状态
+各个功能单元总要表明当前状态，不表明状态则默认可用
+
+
+rd --> dist
+rj --> src0
+rk --> src1

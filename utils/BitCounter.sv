@@ -29,20 +29,27 @@ parameter
   output logic [$clog2(DATA_WIDTH + 1) - 1:0] cnt_o
 );
   
-  logic [DATA_WIDTH - 1:0][$clog2(DATA_WIDTH + 1) - 1:0] bits;
+  // logic [DATA_WIDTH - 1:0][$clog2(DATA_WIDTH + 1) - 1:0] bits;
+  // always_comb begin
+  //   bits = '0;
+  //   for (int i = 0; i < DATA_WIDTH; i++) begin
+  //     bits[i] |= bits_i[i];
+  //   end
+  //   for (int i = 0; i < $clog2(DATA_WIDTH); i++) begin
+  //     for (int j = 0; j < $ceil(DATA_WIDTH / (1 << i)); j++) begin
+  //       if (((j + 1) << i) < DATA_WIDTH) begin
+  //         bits[j << i] += bits[(j + 1) << i];
+  //       end
+  //     end
+  //   end
+  //   cnt_o = bits[0];
+  // end
+
   always_comb begin
-    bits = '0;
+    cnt_o = '0;
     for (int i = 0; i < DATA_WIDTH; i++) begin
-      bits[i] |= bits_i[i];
+      cnt_o += bits_i[i];
     end
-    for (int i = 0; i < $clog2(DATA_WIDTH); i++) begin
-      for (int j = 0; j < $ceil(DATA_WIDTH / (1 << i)); j++) begin
-        if (((j + 1) << i) < DATA_WIDTH) begin
-          bits[j << i] += bits[(j + 1) << i];
-        end
-      end
-    end
-    cnt_o = bits[0];
   end
 
 

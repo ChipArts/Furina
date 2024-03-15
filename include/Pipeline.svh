@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Pipeline.svh
 // Create  : 2024-03-13 22:53:51
-// Revise  : 2024-03-13 22:55:19
+// Revise  : 2024-03-14 18:46:51
 // Description :
 //   ...
 //   ...
@@ -26,11 +26,5 @@
 
 `include "config.svh"
 
-typedef struct packed {
-  logic valid;
-  logic [`PROC_VALEN - 1:0] vaddr;
-  logic [25:0] operand;
-  GeneralCtrlSignalSt general_ctrl_signal_st;
-} InstInfoSt;
 
 `endif
