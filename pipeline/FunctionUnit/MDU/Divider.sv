@@ -26,6 +26,7 @@ module Divider (
   input logic clk,
   input logic a_rst_n,
 
+  input logic flush_i,
   input  logic div_valid_i,
   output logic div_ready_o,
   output logic res_valid_o,
@@ -81,7 +82,7 @@ module Divider (
   logic div_status;
 
   always_ff @(posedge clk or negedge rst_n) begin : div_fsm
-    if (~rst_n) begin
+    if (~rst_n || flush_i) begin
       div_status <= S_DIV_IDLE;
     end
     else begin
@@ -118,7 +119,7 @@ module Divider (
 
   /*======= divide process =======*/
   always_ff @(posedge clk or negedge rst_n) begin : div_process
-    if (~rst_n) begin
+    if (~rst_n || flush_i) begin
       timer <= 0;
     end
     else begin

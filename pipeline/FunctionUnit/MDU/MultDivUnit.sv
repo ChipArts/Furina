@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MultDivUnit.sv
 // Create  : 2024-03-03 18:20:21
-// Revise  : 2024-03-03 21:46:24
+// Revise  : 2024-03-18 17:42:06
 // Description :
 //   ...
 //   ...
@@ -29,10 +29,10 @@
 module MultDivUnit (
   input logic clk,    // Clock
   input logic a_rst_n,  // Asynchronous reset active low
-  input MDUMultReqSt mult_req_st_i,
-  input MDUDivReqSt div_req_st_i,
-  output MDUMultRspSt mult_rsp_st_o,
-  output MDUDivRspSt div_rsp_st_o
+  input MDU_MultReqSt mult_req_st_i,
+  input MDU_DivReqSt div_req_st_i,
+  output MDU_MultRspSt mult_rsp_st_o,
+  output MDU_DivRspSt div_rsp_st_o
 );
 
 `ifdef DIST_DRIVE_RESET
@@ -45,6 +45,7 @@ module MultDivUnit (
   (
     .clk          (clk),
     .a_rst_n      (a_rst_n),
+    .flush_i      (div_req_st_i.flush),
     .div_valid_i  (div_req_st_i.valid),
     .div_ready_o  (div_rsp_st_o.ready),
     .res_valid_o  (div_rsp_st_o.valid),
@@ -60,6 +61,7 @@ module MultDivUnit (
   (
     .clk          (clk),
     .a_rst_n      (a_rst_n),
+    .flush_i      (mult_req_st_i.flush),
     .mul_valid_i  (mult_req_st_i.valid),
     .mul_ready_o  (mult_rsp_st_o.ready),
     .res_valid_o  (mult_rsp_st_o.valid),

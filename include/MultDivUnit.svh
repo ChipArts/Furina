@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MultDivUnit.svh
 // Create  : 2024-03-03 20:35:16
-// Revise  : 2024-03-03 21:45:06
+// Revise  : 2024-03-18 17:01:55
 // Description :
 //   ...
 //   ...
@@ -32,14 +32,14 @@ typedef struct packed {
   logic mul_signed;
   logic [31:0] multiplicand;
   logic [31:0] multiplier;
-} MDUMultReqSt;
+} MDU_MultReqSt;
 
 typedef struct packed {
   logic ready;
   logic valid;
   logic [31:0] res_hi;
   logic [31:0] res_lo;
-} MDUMultRspSt;
+} MDU_MultRspSt;
 
 typedef struct packed {
   logic valid;
@@ -48,14 +48,14 @@ typedef struct packed {
   logic div_signed;
   logic [31:0] dividend;
   logic [31:0] divisor;
-} MDUDivReqSt;
+} MDU_DivReqSt;
 
 typedef struct packed {
   logic ready;
   logic valid;
   logic [31:0] quotient;
   logic [31:0] remainder;
-} MDUDivRspSt;
+} MDU_DivRspSt;
 
 
 `endif  // _MULT_DIV_UNIT_

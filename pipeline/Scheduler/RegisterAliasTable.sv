@@ -30,15 +30,15 @@ parameter
 
   input [`DECODE_WIDTH - 1:0] restore_i,    // 映射状态恢复
   input [`DECODE_WIDTH - 1:0] allocaion_i,  // 状态保存(暂不实现)
-  input [`DECODE_WIDTH - 1:0] free_i,  // 释放映射状态（指令顺利提交）
+  input [`DECODE_WIDTH - 1:0] free_i,       // 释放映射状态（指令顺利提交）
   input logic [31:0][$clog2(PHY_REG_NUM) - 1:0] arch_rat,
 
   // 输入逻辑寄存器编号
-  input [`DECODE_WIDTH - 1:0] valid_i,  // 标志指令使用DEST寄存器
+  input [`DECODE_WIDTH - 1:0] valid_i,      // 标志指令使用DEST寄存器
   input [`DECODE_WIDTH - 1:0][4:0] src0_i,  // inst: Dest = Src0 op Src1
   input [`DECODE_WIDTH - 1:0][4:0] src1_i,
   input [`DECODE_WIDTH - 1:0][4:0] dest_i,
-  input [`DECODE_WIDTH - 1:0][4:0] preg_i,  // 从FreeList分配的空闲物理寄存器
+  input [`DECODE_WIDTH - 1:0][4:0] preg_i,  // 从FreeList分配的空闲物理寄存器(已按照有效项分配)
   // 输出逻辑寄存器对应的物理寄存器编号
   output logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc0_o,
   output logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc1_o,
@@ -49,22 +49,11 @@ parameter
 
   // Main Bit Cell
   logic [31:0][$clog2(PHY_REG_NUM) - 1:0] register_alias_table;  // reg
-  // logic [`DECODE_WIDTH - 1:0][31:0][$clog2(PHY_REG_NUM) - 1:0] f_register_alias_table;
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc0;
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc1;
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] ppdst;
   logic [`DECODE_WIDTH - 1:0] wen;
   always_comb begin
-    // 单独计算每一条指令rename后的RAT状态，为checkpoint做准备(暂时无用)
-    // for (int i = 0; i < `DECODE_WIDTH; i++) begin
-    //   if (i > 0) begin
-    //     f_register_alias_table[i] = f_register_alias_table[i - 1];
-    //   end else begin
-    //     f_register_alias_table[i] = register_alias_table;
-    //   end
-    //   f_register_alias_table[i][dest_i[i]] = preg_i[i];
-    // end
-
     // 处理RAW相关性
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       psrc0[i] = register_alias_table[src0_i[i]];
@@ -80,7 +69,7 @@ parameter
     wen = valid_i;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       for (int j = i + 1; j < `DECODE_WIDTH; j++) begin
-        wen[i] = wen[i] & (dest_i[i] == dest_i[j]);
+        wen[i] = wen[i] & (dest_i[i] != dest_i[j]);
       end
     end
     // ROB写入
@@ -114,9 +103,6 @@ parameter
       end
     end
   end
-
-  // TODO: try checkpoint
-
   
 
 endmodule : RegisterAliasTable

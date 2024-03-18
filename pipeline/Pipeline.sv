@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Pipeline.sv
 // Create  : 2024-03-11 14:53:30
-// Revise  : 2024-03-14 18:39:33
+// Revise  : 2024-03-18 16:57:46
 // Description :
 //   ...
 //   ...
@@ -37,6 +37,7 @@ module Pipeline (
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);
   /* Signal Define */
+  logic flush;  // 由退休的异常指令产生
   // Branch Prediction Unit
   BPU_ReqSt bpu_req_st;
   BPU_RspSt bpu_rsp_st;
@@ -78,11 +79,29 @@ module Pipeline (
   GeneralCtrlSignalSt [`DECODE_WIDTH - 1:0] general_ctrl_signal;
   logic decoder_flush;
 
-  InstInfoSt [`DECODE_WIDTH - 1:0] inst_info_st;
-
   // Scheduler
   ScheduleReqSt schedule_req_st;
   ScheduleRspSt schedule_rsp_st;
+
+  // misc(BRU/Priv) * 1
+  logic misc_valid;
+  logic misc_ready;
+  logic [$clog2(`PHY_REG_NUM) - 1:0] misc_psrc0_o, misc_psrc1_o;
+  MiscOptionCodeSt misc_option_code;
+  // ALU * 2
+  logic [1:0] alu_valid_o;
+  logic [1:0] alu_ready_i;
+  logic [1:0][$clog2(`PHY_REG_NUM) - 1:0] alu_psrc0_o, alu_psrc1_o;
+  AluOptionCodeSt [1:0] alu_option_code;
+  // memory * 1
+  logic mem_valid;
+  logic mem_ready;
+  logic [$clog2(`PHY_REG_NUM) - 1:0] mem_psrc0_o, mem_psrc1_o;
+  MemoryOptionCodeSt mem_option_code;
+
+
+  // RegFile
+  logic [`ISSUE_WIDTH * 2 - 1:0][31:0] rf_data_o;
 
 
   /* BPU */
@@ -99,11 +118,10 @@ module Pipeline (
 
   /* Fetch Address Queue */
   always_comb begin
-    faq_flush = 1'b0;  // TODO: add flush logic
+    faq_flush = flush;
 
     faq_push_req_st.valid = bpu_rsp_st.valid;
     faq_push_req_st.vaddr = bpu_rsp_st.pc;
-    faq_push_req_st.ready = 1'b1;
 
     faq_pop_req_st.valid = icache_fetch_rsp_st.ready;
     faq_pop_req_st.ready = icache_fetch_rsp_st.ready;
@@ -118,7 +136,6 @@ module Pipeline (
     .push_rsp_st (faq_push_rsp_st),
     .pop_rsp_st  (faq_pop_rsp_st)
   );
-
 
   /* Instruction Fetch Unit */
   always_comb begin
@@ -152,7 +169,7 @@ module Pipeline (
       ibuf_write_data[i].instruction = icache_fetch_rsp_st.instruction[i];
     end
 
-    ibuf_read_ready = dispatch_rsp_st.ready;
+    ibuf_read_ready = schedule_rsp_st.ready;
     ibuf_read_num = `DECODE_WIDTH;
   end
 
@@ -176,55 +193,12 @@ module Pipeline (
     .read_data_o   (ibuf_read_data)
   );
 
-  /* Decoder & Rename */
+  /* Decoder */
   for (genvar i = 0; i < `DECODE_WIDTH; i++) begin
-    Decoder inst_Decoder (.instruction(ibuf_read_data[i].instruction), .general_ctrl_signal(general_ctrl_signal));
+    Decoder U_Decoder (.instruction(ibuf_read_data[i].instruction), .general_ctrl_signal(general_ctrl_signal));
   end
 
-  always_comb begin
-    decoder_flush = 1'b0;  // TODO: add flush logic
-    for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      inst_info_st[i].valid = ibuf_read_data[i].valid;
-      inst_info_st[i].vaddr = ibuf_read_data[i].vaddr;
-      inst_info_st[i].operand = ibuf_read_data[i].instruction[25:0];
-      inst_info_st[i].general_ctrl_signal = general_ctrl_signal[i];
-    end
-  end
-
-  RegisterAliasTable #(
-    .PHYS_REG_NUM(`PHY_REG_NUM)
-  ) U_IntegerRegisterAliasTable (
-    .clk         (clk),
-    .a_rst_n     (rst_n),
-    .restore_i   (),
-    .allocaion_i ('0),
-    .free_i      (),
-    .arch_rat    (),
-    .valid_i     (valid_i),
-    .src0_i      (src0_i),
-    .src1_i      (src1_i),
-    .dest_i      (dest_i),
-    .preg_i      (preg_i),
-    .psrc0_o     (psrc0_o),
-    .psrc1_o     (psrc1_o),
-    .ppdst_o     (ppdst_o)
-  );
-
-  /* Instruction Info Buffer */
-  // 从此指令执行所需的全部信息都已经产生
-  PipelineRegister #(
-    .DATA_TYPE(InstInfoSt[`DECODE_WIDTH - 1:0])
-  ) U_DecodeInfoBuffer (
-    .clk     (clk),
-    .a_rst_n (rst_n),
-    .we_i    (|ibuf_read_valid & schedule_rsp_st.ready),
-    .flush_i (decoder_flush),
-    .data_i  (inst_info_st),
-    .data_o  (schedule_req_st.inst_info)
-  );
-
-
-  /* Dispatch */
+  /* Dispatch/Wake up/Select */
   always_comb begin
     schedule_req_st.valid = '0;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
@@ -232,6 +206,96 @@ module Pipeline (
     end
     schedule_req_st.ready = '1;
   end
+
+  Scheduler inst_Scheduler
+  (
+    .clk                   (clk),
+    .a_rst_n               (a_rst_n),
+    .flush_i               (flush_i),
+    .schedule_req          (schedule_req),
+    .rob_allocate_rsp      (rob_allocate_rsp),
+    .freelist_free_valid_i (freelist_free_valid_i),
+    .released_preg_i       (released_preg_i),
+    .arch_rat_i            (arch_rat_i),
+    .commited_pdest_i      (commited_pdest_i),
+    .schedule_rsp          (schedule_rsp),
+    .rob_allocate_req      (rob_allocate_req),
+    // issue ff ouput
+    .misc_valid_o          (misc_valid_o),
+    .misc_ready_i          (misc_ready_i),
+    .misc_psrc0            (misc_psrc0_o),
+    .misc_psrc1            (misc_psrc1_o),
+    .misc_imm_o            (misc_imm_o),
+    .misc_option_code_o    (misc_option_code_o),
+    .alu_valid_o           (alu_valid_o),
+    .alu_ready_i           (alu_ready_i),
+    .alu_psrc0             (alu_psrc0_o),
+    .alu_psrc1             (alu_psrc1_o),
+    .alu_imm_o             (alu_imm_o),
+    .alu_option_code_o     (alu_option_code_o),
+    .mem_valid_o           (mem_valid_o),
+    .mem_ready_i           (mem_ready_i),
+    .mem_psrc0             (mem_psrc0_o),
+    .mem_psrc1             (mem_psrc1_o),
+    .mem_imm_o             (mem_imm_o),
+    .mem_option_code_o     (mem_option_code_o)
+  );
+
+  /* Read RegFile */
+  // comb输出用寄存器存一拍
+  PhysicalRegisterFile #(
+    .READ_PORT_NUM(4),
+    .WRITE_PORT_NUM(4),
+    .DATA_WIDTH(32),
+    .PHY_REG_NUM(64)
+  ) U0_PhysicalRegisterFile (
+    .clk     (clk),
+    .a_rst_n (rst_n),
+    .we_i    (),
+    .raddr_i ({alu_psrc0, alu_psrc1}),
+    .waddr_i (),
+    .data_i  (),
+    .data_o  (rf_data_o[3:0])
+  );
+
+  PhysicalRegisterFile #(
+    .READ_PORT_NUM(4),
+    .WRITE_PORT_NUM(4),
+    .DATA_WIDTH(32),
+    .PHY_REG_NUM(64)
+  ) U1_PhysicalRegisterFile (
+    .clk     (clk),
+    .a_rst_n (rst_n),
+    .we_i    (),
+    .raddr_i ({mem_psrc0, mem_psrc1, mem_psrc2, mem_psrc3}),
+    .waddr_i (),
+    .data_i  (),
+    .data_o  (rf_data_o[7:4])
+  );
+
+
+  /* Integer Block */
+  IntegerBlock inst_IntegerBlock
+  (
+    .clk                (clk),
+    .rst_n              (rst_n),
+    .misc_valid_o       (misc_valid_o),
+    .misc_ready_i       (misc_ready_i),
+    .misc_imm_i         (misc_imm_i),
+    .misc_src0_i        (misc_src0_i),
+    .misc_src1_i        (misc_src1_i),
+    .misc_option_code_o (misc_option_code_o),
+    .alu_valid_o        (alu_valid_o),
+    .alu_ready_i        (alu_ready_i),
+    .alu_imm_i          (alu_imm_i),
+    .alu_src0_i         (alu_src0_i),
+    .alu_src1_i         (alu_src1_i),
+    .alu_option_code_o  (alu_option_code_o)
+  );
+
+
+  /* Memory Block */
+
 
   
 

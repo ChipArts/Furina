@@ -30,12 +30,15 @@
 /** debug **/
 `define DEBUG
 
-/** 处理器规格/设计方案 **/
+/** 处理器规格/设计方案(暂时不支持参数修改) **/
 // RESET
 `define DIST_DRIVE_RESET  // 分布式驱动复位，在每一个模块中添加异步复位同步释放逻辑
 // Processor
 `define FETCH_WIDTH 8  // 取指令的宽度
 `define DECODE_WIDTH 4  // 解码宽度
+`define ISSUE_WIDTH 4  // 发射宽度
+`define RS_SIZE 16  // 保留站大小
+`define COMMIT_WIDTH 4  // 提交宽度
 `define PROC_VALEN 32
 `define PROC_PALEN 32
 `define PHY_REG_NUM 64
@@ -56,8 +59,6 @@
 
 // Instruction Buffer
 `define IBUF_DEPTH 16
-
-`define COMMIT_WIDTH 4  // 提交宽度
 
 `endif // __CONFIG_SVH__
 

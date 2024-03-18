@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : FetchAddressQueue.sv
 // Create  : 2024-02-12 16:37:58
-// Revise  : 2024-03-13 17:57:35
+// Revise  : 2024-03-17 22:32:13
 // Description :
 //   ...
 //   ...
@@ -88,7 +88,6 @@ module FetchAddressQueue (
     pop = ~empty & pop_req_st.ready & pop_req_st.valid;
 
     push_rsp_st.ready = ~full & ~split & faq_state == IDEL;
-    push_rsp_st.valid = '1;
 
     pop_rsp_st.ready = ~empty;
     pop_rsp_st.valid = faq_data_st_o.valid;

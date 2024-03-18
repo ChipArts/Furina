@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : FetchAddressQueue.svh
 // Create  : 2024-02-14 17:37:54
-// Revise  : 2024-03-13 17:57:38
+// Revise  : 2024-03-17 22:24:58
 // Description :
 //   ...
 //   ...
@@ -29,12 +29,10 @@
 
 typedef struct packed {
   logic [`FETCH_WIDTH - 1:0] valid;  // push请求有效
-  logic ready;  // 请求方可接收应答信息(目前无用保留)
   logic [`PROC_VALEN - 1:0] vaddr;
 } FAQ_PushReqSt;
 
 typedef struct packed {
-  logic valid;  // rsp信息有效
   logic ready;  // faq可接收push请求
 } FAQ_PushRspSt;
 

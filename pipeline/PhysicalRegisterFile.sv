@@ -23,21 +23,21 @@
 module PhysicalRegisterFile #(
   parameter READ_PORT_NUM = 2,
   parameter WRITE_PORT_NUM = 1,
-  parameter DATA_WIDTH = 64,
-  parameter ADDR_WIDTH = 5
+  parameter DATA_WIDTH = 32,
+  parameter PHY_REG_NUM = 64
 )(
 	input clk,      // Clock
 	input a_rst_n,   // Asynchronous reset active low
   input [WRITE_PORT_NUM - 1:0] we_i,
-  input [READ_PORT_NUM - 1:0][ADDR_WIDTH - 1:0] raddr_i,
-  input [WRITE_PORT_NUM - 1:0][ADDR_WIDTH - 1:0] waddr_i,
+  input [READ_PORT_NUM - 1:0][$clog2(PHY_REG_NUM) - 1:0] raddr_i,
+  input [WRITE_PORT_NUM - 1:0][$clog2(PHY_REG_NUM) - 1:0] waddr_i,
   input [WRITE_PORT_NUM - 1:0][DATA_WIDTH - 1:0] data_i,
   output logic [READ_PORT_NUM - 1:0][DATA_WIDTH - 1:0] data_o
 );
 
   `RESET_LOGIC(clk, a_rst_n, s_rst_n)
 
-  logic [(1 << ADDR_WIDTH) - 1:0][DATA_WIDTH - 1:0] reg_file;
+  logic [PHY_REG_NUM - 1:0][DATA_WIDTH - 1:0] reg_file;
   always @(posedge clk or negedge s_rst_n) begin
     if (!s_rst_n) begin
       // reg_file <= '0;  // 逻辑上可以不复位寄存器堆
@@ -50,6 +50,9 @@ module PhysicalRegisterFile #(
         end
       end
     end
+  end
+
+  always_comb begin
     foreach (raddr_i[i]) begin
       data_o[i] <= waddr_i[i] == raddr_i[i] && we_i[i] ? data_i[i] : reg_file[raddr_i[i]];
     end

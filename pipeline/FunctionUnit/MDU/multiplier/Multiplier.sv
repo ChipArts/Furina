@@ -28,6 +28,7 @@ module Multiplier (
   input logic clk,
   input logic a_rst_n,
 
+  input logic flush_i,
   input  logic mul_valid_i,
   output logic mul_ready_o,
   output logic res_valid_o,
@@ -63,7 +64,7 @@ module Multiplier (
   MulStatusEnum mul_status;
 
   always_ff @(posedge clk or negedge rst_n) begin : proc_fsm
-    if(~rst_n) begin
+    if(~rst_n || flush_i) begin
       mul_status <= BOOTH;
     end else begin
       case (mul_status)
@@ -122,7 +123,7 @@ module Multiplier (
   logic [67:0][16:0] wallace_datain; // 17 numbers add together, each has 68 bits 
   // also, enter stage 2
   always_ff @(posedge clk or negedge rst_n) begin
-      if (~rst_n) begin
+      if (~rst_n || flush_i) begin
           wallace_datain <= 0;
           mul_stage_2 <= 0;
       end else begin
@@ -162,7 +163,7 @@ module Multiplier (
 
   ////////////////// Stage 3 //////////////////
   always_ff @(posedge clk or negedge rst_n) begin
-    if (~rst_n) begin
+    if (~rst_n || flush_i) begin
         mul_stage_3 <= 0;
     end else begin
         mul_stage_3.booth_carry <= mul_stage_2.booth_carry;
