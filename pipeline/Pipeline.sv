@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Pipeline.sv
 // Create  : 2024-03-11 14:53:30
-// Revise  : 2024-03-18 16:57:46
+// Revise  : 2024-03-19 17:10:20
 // Description :
 //   ...
 //   ...
@@ -102,6 +102,84 @@ module Pipeline (
 
   // RegFile
   logic [`ISSUE_WIDTH * 2 - 1:0][31:0] rf_data_o;
+
+  // CSR
+  logic [13:0]  csr_rd_addr      ;
+  logic [31:0]  csr_rd_data      ;
+  logic [63:0]  csr_timer_64_out ;
+  logic [31:0]  csr_tid_out      ;
+  logic         csr_wr_en    ;
+  logic [13:0]  csr_wr_addr      ;
+  logic [31:0]  csr_wr_data      ;
+  logic [ 7:0]  csr_interrupt    ;
+  logic         csr_has_int      ;
+  logic         csr_excp_flush   ;
+  logic         csr_ertn_flush   ;
+  logic [31:0]  csr_era_in       ;
+  logic [ 8:0]  csr_esubcode_in  ;
+  logic [ 5:0]  csr_ecode_in     ;
+  logic         csr_va_error_in  ;
+  logic [31:0]  csr_bad_va_in    ;
+  logic         csr_tlbsrch_en    ;
+  logic         csr_tlbsrch_found ;
+  logic [ 4:0]  csr_tlbsrch_index ;
+  logic         csr_excp_tlbrefill;
+  logic         csr_excp_tlb     ;
+  logic [18:0]  csr_excp_tlb_vppn;
+  logic         csr_llbit_in     ;
+  logic         csr_llbit_set_in ;
+  logic         csr_llbit_out    ;
+  logic [18:0]  csr_vppn_out     ;
+  logic [31:0]  csr_eentry_out   ;
+  logic [31:0]  csr_era_out      ;
+  logic [31:0]  csr_tlbrentry_out;
+  logic         csr_disable_cache_out;
+  logic [ 9:0]  csr_asid_out     ;
+  logic [ 4:0]  csr_rand_index   ;
+  logic [31:0]  csr_tlbehi_out   ;
+  logic [31:0]  csr_tlbelo0_out  ;
+  logic [31:0]  csr_tlbelo1_out  ;
+  logic [31:0]  csr_tlbidx_out   ;
+  logic         csr_pg_out       ;
+  logic         csr_da_out       ;
+  logic [31:0]  csr_dmw0_out     ;
+  logic [31:0]  csr_dmw1_out     ;
+  logic [ 1:0]  csr_datf_out     ;
+  logic [ 1:0]  csr_datm_out     ;
+  logic [ 5:0]  csr_ecode_out    ;
+  logic         csr_tlbrd_en     ;
+  logic [31:0]  csr_tlbehi_in    ;
+  logic [31:0]  csr_tlbelo0_in   ;
+  logic [31:0]  csr_tlbelo1_in   ;
+  logic [31:0]  csr_tlbidx_in    ;
+  logic [ 9:0]  csr_asid_in      ;
+  logic [ 1:0]  csr_plv_out      ;
+  logic [31:0]  csr_crmd_diff;
+  logic [31:0]  csr_prmd_diff;
+  logic [31:0]  csr_ectl_diff;
+  logic [31:0]  csr_estat_diff;
+  logic [31:0]  csr_era_diff;
+  logic [31:0]  csr_badv_diff;
+  logic [31:0]  csr_eentry_diff;
+  logic [31:0]  csr_tlbidx_diff;
+  logic [31:0]  csr_tlbehi_diff;
+  logic [31:0]  csr_tlbelo0_diff;
+  logic [31:0]  csr_tlbelo1_diff;
+  logic [31:0]  csr_asid_diff;
+  logic [31:0]  csr_save0_diff;
+  logic [31:0]  csr_save1_diff;
+  logic [31:0]  csr_save2_diff;
+  logic [31:0]  csr_save3_diff;
+  logic [31:0]  csr_tid_diff;
+  logic [31:0]  csr_tcfg_diff;
+  logic [31:0]  csr_tval_diff;
+  logic [31:0]  csr_ticlr_diff;
+  logic [31:0]  csr_llbctl_diff;
+  logic [31:0]  csr_tlbrentry_diff;
+  logic [31:0]  csr_dmw0_diff;
+  logic [31:0]  csr_dmw1_diff;
+  logic [31:0]  csr_pgdl_diff;
+  logic [31:0]  csr_pgdh_diff;
 
 
   /* BPU */
@@ -295,6 +373,93 @@ module Pipeline (
 
 
   /* Memory Block */
+
+
+
+  /* CSR(Control/Status Register) */
+  ControlStatusRegister #(
+    .TLBNUM(`TLB_ENTRY_NUM)
+  ) inst_ControlStatusRegister (
+    .clk                (clk),
+    .reset              (~rst_n),
+    .rd_addr            (csr_rd_addr),
+    .rd_data            (csr_rd_data),
+    .timer_64_out       (csr_timer_64_out),
+    .tid_out            (csr_tid_out),
+    .csr_wr_en          (csr_wr_en),
+    .wr_addr            (csr_wr_addr),
+    .wr_data            (csr_wr_data),
+    .interrupt          (csr_interrupt),
+    .has_int            (csr_has_int),
+    .excp_flush         (csr_excp_flush),
+    .ertn_flush         (csr_ertn_flush),
+    .era_in             (csr_era_in),
+    .esubcode_in        (csr_esubcode_in),
+    .ecode_in           (csr_ecode_in),
+    .va_error_in        (csr_va_error_in),
+    .bad_va_in          (csr_bad_va_in),
+    .tlbsrch_en         (csr_tlbsrch_en),
+    .tlbsrch_found      (csr_tlbsrch_found),
+    .tlbsrch_index      (csr_tlbsrch_index),
+    .excp_tlbrefill     (csr_excp_tlbrefill),
+    .excp_tlb           (csr_excp_tlb),
+    .excp_tlb_vppn      (csr_excp_tlb_vppn),
+    .llbit_in           (csr_llbit_in),
+    .llbit_set_in       (csr_llbit_set_in),
+    .llbit_out          (csr_llbit_out),
+    .vppn_out           (csr_vppn_out),
+    .eentry_out         (csr_eentry_out),
+    .era_out            (csr_era_out),
+    .tlbrentry_out      (csr_tlbrentry_out),
+    .disable_cache_out  (csr_disable_cache_out),
+    .asid_out           (csr_asid_out),
+    .rand_index         (csr_rand_index),
+    .tlbehi_out         (csr_tlbehi_out),
+    .tlbelo0_out        (csr_tlbelo0_out),
+    .tlbelo1_out        (csr_tlbelo1_out),
+    .tlbidx_out         (csr_tlbidx_out),
+    .pg_out             (csr_pg_out),
+    .da_out             (csr_da_out),
+    .dmw0_out           (csr_dmw0_out),
+    .dmw1_out           (csr_dmw1_out),
+    .datf_out           (csr_datf_out),
+    .datm_out           (csr_datm_out),
+    .ecode_out          (csr_ecode_out),
+    .tlbrd_en           (csr_tlbrd_en),
+    .tlbehi_in          (csr_tlbehi_in),
+    .tlbelo0_in         (csr_tlbelo0_in),
+    .tlbelo1_in         (csr_tlbelo1_in),
+    .tlbidx_in          (csr_tlbidx_in),
+    .asid_in            (csr_asid_in),
+    .plv_out            (csr_plv_out),
+    .csr_crmd_diff      (csr_crmd_diff),
+    .csr_prmd_diff      (csr_prmd_diff),
+    .csr_ectl_diff      (csr_ectl_diff),
+    .csr_estat_diff     (csr_estat_diff),
+    .csr_era_diff       (csr_era_diff),
+    .csr_badv_diff      (csr_badv_diff),
+    .csr_eentry_diff    (csr_eentry_diff),
+    .csr_tlbidx_diff    (csr_tlbidx_diff),
+    .csr_tlbehi_diff    (csr_tlbehi_diff),
+    .csr_tlbelo0_diff   (csr_tlbelo0_diff),
+    .csr_tlbelo1_diff   (csr_tlbelo1_diff),
+    .csr_asid_diff      (csr_asid_diff),
+    .csr_save0_diff     (csr_save0_diff),
+    .csr_save1_diff     (csr_save1_diff),
+    .csr_save2_diff     (csr_save2_diff),
+    .csr_save3_diff     (csr_save3_diff),
+    .csr_tid_diff       (csr_tid_diff),
+    .csr_tcfg_diff      (csr_tcfg_diff),
+    .csr_tval_diff      (csr_tval_diff),
+    .csr_ticlr_diff     (csr_ticlr_diff),
+    .csr_llbctl_diff    (csr_llbctl_diff),
+    .csr_tlbrentry_diff (csr_tlbrentry_diff),
+    .csr_dmw0_diff      (csr_dmw0_diff),
+    .csr_dmw1_diff      (csr_dmw1_diff),
+    .csr_pgdl_diff      (csr_pgdl_diff),
+    .csr_pgdh_diff      (csr_pgdh_diff)
+  );
+
 
 
   

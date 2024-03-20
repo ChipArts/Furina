@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Pipeline.svh
 // Create  : 2024-03-13 22:53:51
-// Revise  : 2024-03-14 18:46:51
+// Revise  : 2024-03-20 17:31:57
 // Description :
 //   ...
 //   ...
@@ -25,6 +25,67 @@
 `define __PIPELINE_SVH__
 
 `include "config.svh"
+`include "Decoder.svh"
+
+/*==================================== EXE ====================================*/
+typedef struct packed {
+  logic valid;
+  logic [31:0] imm;
+  logic [31:0] src0, src1;
+  logic [$clog2(`PHY_REG_NUM) - 1:0] pdest;
+} ExeBaseSt;
+
+typedef struct packed {
+  ExeBaseSt base_info;
+  AluOpCodeSt alu_oc;
+} AluExeSt;
+
+typedef struct packed {
+  ExeBaseSt base_info;
+  MduOpCodeSt mdu_oc;
+} MduExeSt;
+
+typedef struct packed {
+  ExeBaseSt base_info;
+  MiscOpCodeSt misc_oc;
+  logic [`PROC_VALEN - 1:0] pc;
+  logic [`PROC_VALEN - 1:0] npc;
+} MiscExeSt;
+
+/*==================================== CMT ====================================*/
+// commit --> cmt
+typedef struct packed {
+  logic valid;
+  logic we;
+  logic [31:0] wdata;
+  logic [$clog2(`PHY_REG_NUM) - 1:0] pdest;
+} CmtBaseSt;
+
+typedef struct packed {
+  CmtBaseSt base_info;
+} AluCmtSt;
+
+typedef struct packed {
+  CmtBaseSt base_info;
+} MduCmtSt;
+
+typedef struct packed {
+  CmtBaseSt base_info;
+  PrivOpType priv_op;
+  CacheOpType cache_op;
+  // csr
+  logic csr_we;
+  logic [13:0] csr_waddr;
+  logic [31:0] csr_wdata;
+  // branch
+  logic br_taken;
+  logic br_redirect;
+  logic [`PROC_VALEN - 1:0] br_target;
+  // tlb
+  logic [9:0] invtlb_asid;
+  // tlb or cacop
+  logic [`PROC_VALEN - 1:0] vaddr;
+} MiscCmtSt;
 
 
 `endif

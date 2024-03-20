@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MemoryBlock.sv
 // Create  : 2024-03-17 22:34:12
-// Revise  : 2024-03-18 16:49:39
+// Revise  : 2024-03-20 23:17:26
 // Description :
 //   ...
 //   ...
@@ -27,11 +27,7 @@
 module MemoryBlock (
   input clk,    // Clock
   input rst_n,  // Asynchronous reset active low
-  input logic mem_valid_o,
-  output logic mem_ready_i,
-  input logic [31:0] mem_imm_o,
-  input logic [$clog2(`PHY_REG_NUM) - 1:0] mem_psrc0, mem_psrc1,
-  input MemoryOptionCodeSt mem_option_code_o
+  
 );
 
 endmodule : MemoryBlock

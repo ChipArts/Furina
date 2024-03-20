@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MultDivUnit.sv
 // Create  : 2024-03-03 18:20:21
-// Revise  : 2024-03-18 17:42:06
+// Revise  : 2024-03-20 23:00:37
 // Description :
 //   ...
 //   ...
@@ -29,10 +29,10 @@
 module MultDivUnit (
   input logic clk,    // Clock
   input logic a_rst_n,  // Asynchronous reset active low
-  input MDU_MultReqSt mult_req_st_i,
-  input MDU_DivReqSt div_req_st_i,
-  output MDU_MultRspSt mult_rsp_st_o,
-  output MDU_DivRspSt div_rsp_st_o
+  input MduMultReqSt mult_req,
+  input MduDivReqSt div_req,
+  output MduMultRspSt mult_rsp,
+  output MduDivRspSt div_rsp
 );
 
 `ifdef DIST_DRIVE_RESET
@@ -45,31 +45,31 @@ module MultDivUnit (
   (
     .clk          (clk),
     .a_rst_n      (a_rst_n),
-    .flush_i      (div_req_st_i.flush),
-    .div_valid_i  (div_req_st_i.valid),
-    .div_ready_o  (div_rsp_st_o.ready),
-    .res_valid_o  (div_rsp_st_o.valid),
-    .res_ready_i  (div_req_st_i.ready),
-    .div_signed_i (dev_req_st_i.div_signed),
-    .dividend_i   (div_req_st_i.dividend),
-    .divisor_i    (div_req_st_i.divisor),
-    .quotient_o   (div_rsp_st_o.quotient),
-    .remainder_o  (div_rsp_st_o.remainder)
+    .flush_i      (div_req.flush),
+    .div_valid_i  (div_req.valid),
+    .div_ready_o  (div_rsp.ready),
+    .res_valid_o  (div_rsp.valid),
+    .res_ready_i  (div_req.ready),
+    .div_signed_i (dev_req.div_signed),
+    .dividend_i   (div_req.dividend),
+    .divisor_i    (div_req.divisor),
+    .quotient_o   (div_rsp.quotient),
+    .remainder_o  (div_rsp.remainder)
   );
 
   Multiplier U_Multiplier
   (
     .clk          (clk),
     .a_rst_n      (a_rst_n),
-    .flush_i      (mult_req_st_i.flush),
-    .mul_valid_i  (mult_req_st_i.valid),
-    .mul_ready_o  (mult_rsp_st_o.ready),
-    .res_valid_o  (mult_rsp_st_o.valid),
-    .res_ready_i  (mult_req_st_i.ready),
-    .mul_signed_i (mult_req_st_i.mul_signed),
-    .multiplicand_i(mult_req_st_i.multiplicand),
-    .multiplier_i (mult_req_st_i.multiplier),
-    .res_o        ({mult_rsp_st_o.res_hi, mult_rsp_st_o.res_lo})
+    .flush_i      (mult_req.flush),
+    .mul_valid_i  (mult_req.valid),
+    .mul_ready_o  (mult_rsp.ready),
+    .res_valid_o  (mult_rsp.valid),
+    .res_ready_i  (mult_req.ready),
+    .mul_signed_i (mult_req.mul_signed),
+    .multiplicand_i(mult_req.multiplicand),
+    .multiplier_i (mult_req.multiplier),
+    .res_o        ({mult_rsp.res_hi, mult_rsp.res_lo})
   );
 
 endmodule : MultDivUnit

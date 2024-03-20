@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Scheduler.sv
 // Create  : 2024-03-12 23:16:08
-// Revise  : 2024-03-18 23:24:01
+// Revise  : 2024-03-20 23:44:50
 // Description :
 //   ...
 //   ...
@@ -41,13 +41,16 @@ module Scheduler (
 
   /* issue */
   // misc(BRU/Priv) * 1
-  output MiscIssueInfoSt misc_issue_info_o,
+  output MiscIssueSt misc_issue_o,
   input logic misc_ready_i,
   // ALU * 2
-  output AluIssueInfoSt alu_issue_info_o,
+  output AluIssueSt [1:0] alu_issue_o,
   input logic [1:0] alu_ready_i,
+  // MDU * 1
+  output MduIssueSt mdu_issue_o,
+  input logic mdu_ready_i,
   // memory * 1
-  output MemoryIssueInfoSt mem_issue_info_o,
+  output MemIssueSt mem_issue_o,
   input logic mem_ready_i
 );
 
@@ -56,8 +59,9 @@ module Scheduler (
   /* ready signal define */
   logic s0_ready, s1_ready;
 
-  /* stage 0 */
+/*================================== stage0 ===================================*/
   // 接收inst信息
+  // 读取freelist
 
   logic freelist_alloc_ready;
   logic [`DECODE_WIDTH - 1:0] freelist_alloc_valid;
@@ -65,15 +69,16 @@ module Scheduler (
 
   always_comb begin
     s0_ready = s1_ready & freelist_alloc_ready;
-
     schedule_rsp.ready = s0_ready;
 
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      freelist_alloc_valid[i] = schedule_req.valid[i] & schedule_req.dest_valid[i] & s1_ready;
+      freelist_alloc_valid[i] = schedule_req.valid[i] &
+                                schedule_req.dest_valid[i] &
+                                s1_ready;
     end
   end
 
-  // FreeList输出是一个ff
+  // FreeList comb 输出
   FreeList #(
     .PHY_REG_NUM(`PHY_REG_NUM)
   ) inst_FreeList (
@@ -88,14 +93,14 @@ module Scheduler (
     .preg_o        (allocated_preg)
   );
 
-  /* stage 1 */
+/*================================== stage1 ===================================*/
   // 缓存指令和解码信息
   logic [`DECODE_WIDTH - 1:0] s1_valid;
-  OptionCodeSt [`DECODE_WIDTH - 1:0] s1_option_code;
   logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] s1_vaddr;
   logic [`DECODE_WIDTH - 1:0][31:0] s1_imm;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] s1_src0, s1_src1, s1_dest;
   logic [`DECODE_WIDTH - 1:0] s1_src0_valid, s1_src1_valid, s1_dest_valid;
+  OptionCodeSt [`DECODE_WIDTH - 1:0] s1_option_code;
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n || flush_i) begin

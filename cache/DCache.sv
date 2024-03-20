@@ -502,9 +502,4 @@ module DCache (
     );
   end
 
-
-
-
-
-
 endmodule : DCache

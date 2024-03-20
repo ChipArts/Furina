@@ -44,7 +44,7 @@
 `define PHY_REG_NUM 64
 `define ROB_DEPTH 64  // ROB深度
 // TLB
-`define TLB_ENTRY_NUM 16
+`define TLB_ENTRY_NUM 32
 // Cache
 `define ICACHE_SIZE 1024 * 4  // ICache大小(Byte)
 `define ICACHE_BLOCK_SIZE 4 * 16  // ICache块大小(Byte)
@@ -61,4 +61,6 @@
 `define IBUF_DEPTH 16
 
 `endif // __CONFIG_SVH__
+
+/*====================================== ======================================*/
 

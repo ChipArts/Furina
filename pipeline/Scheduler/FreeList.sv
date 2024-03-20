@@ -51,7 +51,6 @@ parameter
   logic [$clog2(PHY_REG_NUM) - 1:0] tail_n, head_n;
   logic [$clog2(PHY_REG_NUM + 1):0] free_list_cnt_n;
   logic [$clog2(`DECODE_WIDTH) - 1:0] preg_idx;
-  logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] preg_out_n;
 
   always_comb begin
     alloc_req_cnt = $countones(alloc_valid_i);
@@ -69,10 +68,10 @@ parameter
     preg_idx = head;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       if (alloc_valid_i[i]) begin
-        preg_out_n[i] = free_list[preg_idx];
+        preg_o[i] = free_list[preg_idx];
         preg_idx = preg_idx + 1;
       end else begin
-        preg_out_n[i] = '0;
+        preg_o[i] = '0;
       end
     end
   end

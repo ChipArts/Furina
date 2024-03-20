@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : IntegerBlock.sv
 // Create  : 2024-03-17 22:34:32
-// Revise  : 2024-03-18 23:43:05
+// Revise  : 2024-03-20 23:16:58
 // Description :
 //   ...
 //   ...
@@ -21,73 +21,68 @@
 // ...
 // ==============================================================================
 
+
 `include "config.svh"
 `include "Decoder.svh"
 `include "common.svh"
+`include "Pipeline.svh"
+`include "ReorderBuffer.svh"
 
 module IntegerBlock (
   input clk,    // Clock
   input a_rst_n,  // Asynchronous reset active low
   input flush_i,
-  /* issue */
-  // misc(BRU/Priv) * 1
-  output MiscIssueInfoSt misc_issue_info_o,
-  input logic misc_ready_i,
+  /* exe */
+  // MISC(BRU/Priv) * 1
+  input MiscExeSt misc_exe_i,
+  output logic misc_ready_o,
   // ALU * 2
-  output AluIssueInfoSt alu_issue_info_o,
-  input logic [1:0] alu_ready_i,
-
+  input AluExeSt [1:0] alu_exe_i,
+  output logic [1:0] alu_ready_o,
+  // MDU * 1
+  input MduExeSt mdu_exe_i,
+  output logic mdu_ready_o,
+  /* other exe io */
+  output logic [13:0] csr_raddr_o,
+  input logic [31:0] csr_rdata_i,
   /* commit */
   // MISC
-  input ROB_EntrySt rob_oldest_entry_i,
+  output MiscCmtSt misc_cmt_o,
+  input misc_cmt_ready_i,
   // ALU * 2
-  logic [1:0] alu_commit_o,
+  output AluCmtSt [1:0] alu_cmt_o,
+  input [1:0] alu_cmt_ready_i,
+  // MDU
+  output MduCmtSt mdu_cmt_o,
+  input mdu_cmt_ready_i
 );
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);
 
-
-  // misc
-  logic branch_taken;
-  BranchUnit inst_BranchUnit
+/*=================================== MSIC ====================================*/
+  MiscPipe inst_MiscPipe
   (
     .clk         (clk),
-    .a_rst_n     (rst_n),
+    .rst_n       (rst_n),
     .flush_i     (flush_i),
-    .valid_i     (valid_i),
-    .unsigned_i  (unsigned_i),
-    .pc_i        (pc_i),
-    .npc_i       (npc_i),
-    .imm_i       (imm_i),
-    .src0_i      (src0_i),
-    .src1_i      (src1_i),
-    .indirect_i  (indirect_i),
-    .branch_op_i (branch_op_i),
-    .valid_o     (valid_o),
-    .redirect_o  (redirect_o),
-    .target_o    (target_o),
-    .taken_o     (taken_o)
+    .exe_i       (misc_exe_i),
+    .ready_o     (misc_ready_o),
+    .csr_raddr_o (csr_raddr_o),
+    .csr_rdata_i (csr_rdata_i),
+    .cmt_o       (misc_cmt_o),
+    .cmt_ready_i (misc_cmt_ready_i)
   );
-
-
-  // alu * 2
-  logic [1:0] alu_valid_o;
-  logic [1:0][31:0] alu_res;
+/*==================================== ALU ====================================*/
 
   for (genvar i = 0; i < 2; i++) begin
-    ArithmeticLogicUnit U_ArithmeticLogicUnit
+    AluPipe inst_AluPipe
     (
-      .clk        (clk),
-      .a_rst_n    (rst_n),
-      .flush_i    (flush_i),
-      .valid_i    (alu_valid_i[i]),
-      .src0_i     (alu_src0_i[i]),
-      .src1_i     (alu_option_code_i[i].use_imm ? alu_imm_i[i] : alu_src1_i),
-      .unsigned_i (alu_option_code_i[i].calc_unsigned),
-      .calc_op_i  (alu_option_code_i[i].calc_op),
-      .res_o      (alu_res[i]),
-      .valid_o    (alu_valid_o[i]),
-      .ready_o    (alu_ready_o[i])
+      .clk         (clk),
+      .a_rst_n     (rst_n),
+      .exe_i       (alu_exe_i[i]),
+      .ready_o     (alu_ready_o[i]),
+      .cmt_o       (alu_cmt_o[i]),
+      .cmt_ready_i (alu_cmt_ready_i[i])
     );
   end
 

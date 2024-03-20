@@ -4,10 +4,14 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Decoder.svh
 // Create  : 2024-03-01 16:04:57
-// Revise  : 2024-03-18 23:33:53
+// Revise  : 2024-03-20 15:27:13
 // Description :
-//   ...
-//   ...
+//   特权指令：与手册的定义有区别，这里的含义为有特殊控制功能的指令
+//      - 整数杂项指令
+//      - CSR访问指令
+//      - Cache维护指令
+//      - TLB维护指令
+//      - 其它杂项指令(IDEL/ERTN)
 // Parameter   :
 //   ...
 //   ...
@@ -27,63 +31,92 @@
 `include "config.svh"
 
 typedef logic [1:0] InstType;
+`define CALC_INST (2'd0)    // 计算指令
+`define BRANCH_INST (2'd1)  // 控制流指令
+`define PRIV_INST (2'd2)    // 特权指令
+`define MEMORY_INST (2'd3)  // 访存指令
 
-`define ALU_INST (2'd0)
-`define BRANCH_INST (2'd1)
-`define PRIV_INST (2'd2)
-`define MEMORY_INST (2'd3)
-
+typedef logic MemType;
 `define MEM_STROE (1'd0)
 `define MEM_LOAD (1'd1)
 
-`define CALC_OP_ADD (4'd0)
-`define CALC_OP_SUB (4'd1)
-`define CALC_OP_SLT (4'd2)
-`define CALC_OP_AND (4'd3)
-`define CALC_OP_OR (4'd4)
-`define CALC_OP_XOR (4'd5)
-`define CALC_OP_NOR (4'd6)
-`define CALC_OP_SL (4'd7)
-`define CALC_OP_SR (4'd8)
-`define CALC_OP_LUI (4'd9)
-`define CALC_OP_MUL (4'd10)
-`define CALC_OP_MULH (4'd11)
-`define CALC_OP_DIV (4'd12)
-`define CALC_OP_MOD (4'd13)
+typedef logic[3:0] AluOpType;
+`define ALU_ADD (4'd0)
+`define ALU_SUB (4'd1)
+`define ALU_SLT (4'd2)
+`define ALU_AND (4'd3)
+`define ALU_OR (4'd4)
+`define ALU_XOR (4'd5)
+`define ALU_NOR (4'd6)
+`define ALU_SL (4'd7)
+`define ALU_SR (4'd8)
+`define ALU_LUI (4'd9)
 
-typedef logic[3:0] CalcOpType;
+typedef logic [1:0] MduOpType;
+`define MDU_MUL (2'd0)
+`define MDU_MULH (2'd1)
+`define MDU_DIV (2'd2)
+`define MDU_MOD (2'd3)
 
-`define ALIGN_TYPE_B  (3'd0)
-`define ALIGN_TYPE_H  (3'd1)
-`define ALIGN_TYPE_W  (3'd2)
-`define ALIGN_TYPE_BU (3'd3)
-`define ALIGN_TYPE_HU (3'd4)
+typedef logic [2:0] AlignOpType;
+`define ALIGN_B  (3'd0)
+`define ALIGN_H  (3'd1)
+`define ALIGN_W  (3'd2)
+`define ALIGN_BU (3'd3)
+`define ALIGN_HU (3'd4)
 
-
-typedef logic[3:0] BranchOpType;
-
+typedef logic[2:0] BranchOpType;
 `define BRANCH_EQ (3'd0)
 `define BRANCH_NE (3'd1)
 `define BRANCH_LT (3'd2)
 `define BRANCH_GE (3'd3)
 `define BRANCH_NC (3'd4)
 
-typedef struct packed {
-  logic mem_type;
-} MemoryOptionCodeSt;
+typedef logic[3:0] PrivOpType;
+`define PRIV_CSR_READ  (4'd0)
+`define PRIV_CSR_WRITE (4'd1)
+`define PRIV_CSR_XCHG  (4'd2)
+`define PRIV_CACOP     (4'd3)
+`define PRIV_TLBSRCH   (4'd4)
+`define PRIV_TLBRD     (4'd5)
+`define PRIV_TLBWR     (4'd6)
+`define PRIV_TLBFILL   (4'd7)
+`define PRIV_TLBINV    (4'd8)
+`define PRIV_ERTN      (4'd9)
+`define PRIV_IDEL      (4'd10)
+`define PRIV_SYSCALL   (4'd11)
+`define PRIV_BREAK     (4'd12)
+`define PRIV_RDCNTVL   (4'd13)
+`define PRIV_RDCNTVH   (4'd14)
+`define PRIV_RDCNTID   (4'd15)
+
+typedef logic[4:0] CacheOpType;
 
 typedef struct packed {
-  CalcOpType calc_op;
-  logic unsigned_op;
-  logic use_imm;
-} AluOptionCodeSt;
+  MemType mem_type;
+  AlignOpType align_op;
+} MemOpCodeSt;
+
+typedef struct packed {
+  AluOpType alu_op;
+  logic signed_op;
+  logic imm_valid;
+} AluOpCodeSt;
+
+typedef struct packed {
+  MduOpType mdu_op;
+  logic signed_op;
+} MduOpCodeSt;
 
 typedef struct packed {
   InstType inst_type;
-  logic unsigned_op;
   BranchOpType branch_op;
+  PrivOpType priv_op;
+  CacheOpType cache_op;
+  logic signed_op;
   logic br_indirect;
-} MiscOptionCodeSt;
+  logic br_link;
+} MiscOpCodeSt;
 
 typedef struct packed {
   InstType inst_type;

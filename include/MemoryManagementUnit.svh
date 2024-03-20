@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MemoryManagementUnit.svh
 // Create  : 2024-03-11 19:21:56
-// Revise  : 2024-03-12 20:18:44
+// Revise  : 2024-03-20 23:25:38
 // Description :
 //   ...
 //   ...
@@ -30,7 +30,9 @@ typedef struct packed {
   logic valid;  // 请求有效
   logic ready;  // 请求方可接收返回数据
   logic [`PROC_VALEN - 1:0] vaddr;
-} MMU_SearchReqSt;
+  logic dmw0_en;
+  logic dmw1_en;
+} MmuSearchReqSt;
 
 typedef struct packed {
   logic valid;  // 数据有效
