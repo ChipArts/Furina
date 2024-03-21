@@ -31,10 +31,11 @@
 `include "config.svh"
 
 typedef logic [1:0] InstType;
-`define CALC_INST (2'd0)    // 计算指令
-`define BRANCH_INST (2'd1)  // 控制流指令
-`define PRIV_INST (2'd2)    // 特权指令
-`define MEMORY_INST (2'd3)  // 访存指令
+`define ALU_INST    (3'd0)  // ALU指令
+`define MDU_INST    (3'd1)  // MDU指令
+`define BR_INST     (3'd2)  // 控制流指令
+`define PRIV_INST   (3'd3)  // 特权指令
+`define MEM_INST    (3'd4)  // 访存指令
 
 typedef logic MemType;
 `define MEM_STROE (1'd0)
@@ -122,16 +123,20 @@ typedef struct packed {
   InstType inst_type;
 } OptionCodeSt;
 
-function MiscOptionCodeSt gen2misc(OptionCodeSt option_code);
+function MiscOpCodeSt gen2misc(OptionCodeSt option_code);
   
 endfunction : gen2misc
 
-function AluOptionCodeSt gen2alu(OptionCodeSt option_code);
+function AluOpCodeSt gen2alu(OptionCodeSt option_code);
 
 endfunction : gen2alu
 
-function MemoryOptionCodeSt gen2mem(OptionCodeSt option_code);
+function MemOpCodeSt gen2mem(OptionCodeSt option_code);
 
 endfunction : gen2mem
+
+function MduOpCodeSt gen2mdu(OptionCodeSt option_code);
+
+endfunction : gen2mdu
 
 `endif  // _DECODER_SVH_

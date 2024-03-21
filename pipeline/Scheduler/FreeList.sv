@@ -42,15 +42,15 @@ parameter
   `RESET_LOGIC(clk, a_rst_n, rst_n);
 
   logic [PHY_REG_NUM - 1:0][$clog2(PHY_REG_NUM) - 1:0] free_list, free_list_n;
-  logic [$clog2(PHY_REG_NUM) - 1:0] tail, head;
-  logic [$clog2(PHY_REG_NUM + 1):0] free_list_cnt;  // free list使用计数器
+  logic [$clog2(PHY_REG_NUM) - 1:0] tail, head, tail_n, head_n;
+  logic [$clog2(PHY_REG_NUM + 1):0] free_list_cnt, free_list_cnt_n;  // free list使用计数器
 
   // read/write logic
   logic [$clog2(`DECODE_WIDTH + 1) - 1:0] alloc_req_cnt;
   logic [$clog2(`COMMIT_WIDTH + 1) - 1:0] free_req_cnt;
-  logic [$clog2(PHY_REG_NUM) - 1:0] tail_n, head_n;
-  logic [$clog2(PHY_REG_NUM + 1):0] free_list_cnt_n;
-  logic [$clog2(`DECODE_WIDTH) - 1:0] preg_idx;
+  logic [$clog2(`DECODE_WIDTH) - 1:0] rd_preg_idx;
+  logic [$clog2(`COMMIT_WIDTH) - 1:0] wr_preg_idx;
+
 
   always_comb begin
     alloc_req_cnt = $countones(alloc_valid_i);
@@ -65,13 +65,23 @@ parameter
     free_ready_o = '1;
 
     // 根据valid信号生成输出
-    preg_idx = head;
+    rd_preg_idx = head;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       if (alloc_valid_i[i]) begin
-        preg_o[i] = free_list[preg_idx];
-        preg_idx = preg_idx + 1;
+        preg_o[i] = free_list[rd_preg_idx];
+        rd_preg_idx = rd_preg_idx < PHY_REG_NUM - 1 ? rd_preg_idx + 1 : 0;
       end else begin
         preg_o[i] = '0;
+      end
+    end
+
+    // 根据Free信号更新freelist
+    free_list_n = free_list;
+    wr_preg_idx = tail;
+    for (int i = 0; i < `COMMIT_WIDTH; i++) begin
+      if (free_valid_i[i]) begin
+        free_list_n[wr_preg_idx] = free_preg_i[i];
+        wr_preg_idx = wr_preg_idx < PHY_REG_NUM - 1 ? wr_preg_idx + 1 : 0;
       end
     end
   end
@@ -86,20 +96,9 @@ parameter
       preg_o <= '0;
     end else begin
       // 释放过程不会阻塞
-      for (int i = 0; i < `COMMIT_WIDTH; i++) begin
-        if (free_valid_i[i]) begin
-          if (tail + i < PHY_REG_NUM) begin
-            free_list[tail + i] <= free_preg_i[i];
-          end else begin
-            free_list[tail + i - PHY_REG_NUM] <= free_preg_i[i];
-          end
-        end
-      end
-      head = head_n;
-      tail = tail_n;
-
-      // output
-      preg_o <= preg_out_n;
+      free_list <= free_list_n;
+      head <= head_n;
+      tail <= tail_n;
     end
   end
 

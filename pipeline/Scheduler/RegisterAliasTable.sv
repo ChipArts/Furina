@@ -34,7 +34,7 @@ parameter
   input logic [31:0][$clog2(PHY_REG_NUM) - 1:0] arch_rat,
 
   // 输入逻辑寄存器编号
-  input [`DECODE_WIDTH - 1:0] valid_i,      // 标志指令使用DEST寄存器
+  input [`DECODE_WIDTH - 1:0] dest_valid_i, // 标志指令使用DEST寄存器
   input [`DECODE_WIDTH - 1:0][4:0] src0_i,  // inst: Dest = Src0 op Src1
   input [`DECODE_WIDTH - 1:0][4:0] src1_i,
   input [`DECODE_WIDTH - 1:0][4:0] dest_i,
@@ -66,7 +66,7 @@ parameter
 
     // 处理WAW相关性
     // RAT写入
-    wen = valid_i;
+    wen = dest_valid_i;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       for (int j = i + 1; j < `DECODE_WIDTH; j++) begin
         wen[i] = wen[i] & (dest_i[i] != dest_i[j]);

@@ -36,8 +36,6 @@
 // Processor
 `define FETCH_WIDTH 8  // 取指令的宽度
 `define DECODE_WIDTH 4  // 解码宽度
-`define ISSUE_WIDTH 4  // 发射宽度
-`define RS_SIZE 16  // 保留站大小
 `define COMMIT_WIDTH 4  // 提交宽度
 `define PROC_VALEN 32
 `define PROC_PALEN 32

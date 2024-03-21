@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : ReorderBuffer.svh
 // Create  : 2024-03-13 21:02:26
-// Revise  : 2024-03-18 22:32:49
+// Revise  : 2024-03-21 15:52:44
 // Description :
 //   ...
 //   ...
@@ -32,30 +32,32 @@ typedef struct packed {
   logic [$clog2(`PHY_REG_NUM) - 1:0] phy_reg;
   logic [$clog2(`PHY_REG_NUM) - 1:0] old_phy_reg;
   logic [`PROC_VALEN - 1:0] pc;
-  ExceptionType exception;  // TODO
+  logic exception;  // TODO
+  ExcCodeType ecode;
   logic [1:0] inst_type;  // TODO
-} ROB_EntrySt;
+} RobEntrySt;
 
 typedef struct packed {
   logic [`DECODE_WIDTH - 1:0] valid;
   ROB_EntrySt [`DECODE_WIDTH - 1:0] rob_entry;
-} ROB_AllocateReqSt;
+} RobAllocReqSt;
 
 typedef struct packed {
   logic ready;
   logic [`DECODE_WIDTH - 1:0] position_bit;
   logic [`DECODE_WIDTH - 1:0][$clog2(`ROB_DEPTH) - 1:0] rob_idx;
-} ROB_AllocateRspSt;
+} RobAllocRspSt;
 
 typedef struct packed {
   logic valid;
   logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
-  ExceptionType exception;
-} ROB_CommitReqSt;
+  logic exception;
+  ExcCodeType ecode;
+} RobCmtReqSt;
 
 typedef struct packed {
   logic ready;
-} ROB_CommitRspSt;
+} RobCmtRspSt;
 
 
 `endif  // _REORDER_BUFFER_SVH_

@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : ControlStatusRegister.svh
 // Create  : 2024-03-19 19:21:21
-// Revise  : 2024-03-19 19:21:28
+// Revise  : 2024-03-21 15:52:16
 // Description :
 //   ...
 //   ...
@@ -98,7 +98,7 @@
 
 `define ESUBCODE_ADEF  9'h0
 
-typedef logic[5:0] ExceptionType;
+typedef logic[5:0] ExcCodeType;
 
 
 
