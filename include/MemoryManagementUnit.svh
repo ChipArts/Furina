@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MemoryManagementUnit.svh
 // Create  : 2024-03-11 19:21:56
-// Revise  : 2024-03-20 23:25:38
+// Revise  : 2024-03-25 15:39:17
 // Description :
 //   ...
 //   ...
@@ -30,16 +30,19 @@ typedef struct packed {
   logic valid;  // 请求有效
   logic ready;  // 请求方可接收返回数据
   logic [`PROC_VALEN - 1:0] vaddr;
-  logic dmw0_en;
-  logic dmw1_en;
-} MmuSearchReqSt;
+} MmuAddrTransReqSt;
 
 typedef struct packed {
   logic valid;  // 数据有效
   logic ready;  // mmu可接收请求
-  
+  logic miss;   // TLB 查询结果未命中
+
   logic [`PROC_PALEN - 1:0] paddr;
-  logic uncached;  // uncached地址
-} MMU_SearchRspSt;
+  logic uncache;
+  logic tlb_valid;
+  logic tlb_dirty;  // 查询结果脏位
+  logic tlb_mat;  // 存储访问类型(MAT)
+  logic tlb_plv;  // 特权等级(PLV)
+} MmuAddrTransRspSt;
 
 `endif  // _MEMORY_MANAGEMENT_UNIT_SVH_

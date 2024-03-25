@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : IntegerBlock.sv
 // Create  : 2024-03-17 22:34:32
-// Revise  : 2024-03-20 23:16:58
+// Revise  : 2024-03-25 15:25:56
 // Description :
 //   ...
 //   ...
@@ -85,6 +85,20 @@ module IntegerBlock (
       .cmt_ready_i (alu_cmt_ready_i[i])
     );
   end
+
+/*==================================== MDU ====================================*/
+
+  MduPipe inst_MduPipe
+  (
+    .clk         (clk),
+    .a_rst_n     (rst_n),
+    .flush_i     (flush_i),
+    .exe_i       (mdu_exe_i),
+    .ready_o     (mdu_ready_o),
+    .cmt_o       (mdu_cmt_o),
+    .cmt_ready_i (mdu_cmt_ready_i)
+  );
+
 
 endmodule : IntegerBlock
 

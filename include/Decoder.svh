@@ -38,8 +38,8 @@ typedef logic [1:0] InstType;
 `define MEM_INST    (3'd4)  // 访存指令
 
 typedef logic MemType;
-`define MEM_STROE (1'd0)
-`define MEM_LOAD (1'd1)
+`define MEM_LOAD (1'd0)
+`define MEM_STORE (1'd1)
 
 typedef logic[3:0] AluOpType;
 `define ALU_ADD (4'd0)

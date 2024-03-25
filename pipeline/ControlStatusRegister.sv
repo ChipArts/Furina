@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : ControlStatusRegister.sv
 // Create  : 2024-03-19 16:58:24
-// Revise  : 2024-03-19 17:03:17
+// Revise  : 2024-03-22 19:44:34
 // Description :
 //   ...
 //   ...
@@ -94,7 +94,7 @@ module ControlStatusRegister #(
     // csr regs for diff
     output [31:0]                   csr_crmd_diff,
     output [31:0]                   csr_prmd_diff,
-    output [31:0]                   csr_ectl_diff,
+    output [31:0]                   csr_ecfg_diff,
     output [31:0]                   csr_estat_diff,
     output [31:0]                   csr_era_diff,
     output [31:0]                   csr_badv_diff,
@@ -122,7 +122,7 @@ module ControlStatusRegister #(
 
 localparam CRMD  = 14'h0;
 localparam PRMD  = 14'h1;
-localparam ECTL  = 14'h4;
+localparam ECFG  = 14'h4;
 localparam ESTAT = 14'h5;
 localparam ERA   = 14'h6;
 localparam BADV  = 14'h7;
@@ -154,7 +154,7 @@ localparam DISABLE_CACHE = 14'h101;
 
 wire crmd_wen   = csr_wr_en & (wr_addr == CRMD);
 wire prmd_wen   = csr_wr_en & (wr_addr == PRMD);
-wire ectl_wen   = csr_wr_en & (wr_addr == ECTL);
+wire ecfg_wen   = csr_wr_en & (wr_addr == ECFG);
 wire estat_wen  = csr_wr_en & (wr_addr == ESTAT);
 wire era_wen    = csr_wr_en & (wr_addr == ERA);
 wire badv_wen   = csr_wr_en & (wr_addr == BADV);
@@ -186,7 +186,7 @@ wire disable_cache_wen = csr_wr_en & (wr_addr == DISABLE_CACHE);
 
 reg [31:0] csr_crmd;
 reg [31:0] csr_prmd;
-reg [31:0] csr_ectl;
+reg [31:0] csr_ecfg;
 reg [31:0] csr_estat;
 reg [31:0] csr_era;
 reg [31:0] csr_badv;
@@ -236,7 +236,7 @@ assign eret_tlbrefill_excp = csr_estat[`ECODE] == 6'h3f;
 assign tlbrd_valid_wr_en   = tlbrd_en && !tlbidx_in[`NE];
 assign tlbrd_invalid_wr_en = tlbrd_en &&  tlbidx_in[`NE];
 
-assign has_int = ((csr_ectl[`LIE] & csr_estat[`IS]) != 13'b0) & csr_crmd[`IE];
+assign has_int = ((csr_ecfg[`LIE] & csr_estat[`IS]) != 13'b0) & csr_crmd[`IE];
 
 assign eentry_out   = csr_eentry;
 assign era_out      = csr_era;
@@ -281,7 +281,7 @@ assign ecode_out    = csr_estat[`ECODE];
 
 assign rd_data = {32{rd_addr == CRMD  }}  & csr_crmd    |
                  {32{rd_addr == PRMD  }}  & csr_prmd    |
-                 {32{rd_addr == ECTL  }}  & csr_ectl    |
+                 {32{rd_addr == ECFG  }}  & csr_ecfg    |
                  {32{rd_addr == ESTAT }}  & csr_estat   |
                  {32{rd_addr == ERA   }}  & csr_era     |
                  {32{rd_addr == BADV  }}  & csr_badv    |
@@ -361,14 +361,14 @@ always @(posedge clk) begin
     end
 end
 
-//ectl
+//ecfg
 always @(posedge clk) begin
     if (reset) begin
-        csr_ectl <= 32'b0;
+        csr_ecfg <= 32'b0;
     end
-    else if (ectl_wen) begin
-        csr_ectl[ `LIE_1] <= wr_data[ `LIE_1];
-        csr_ectl[ `LIE_2] <= wr_data[ `LIE_2];
+    else if (ecfg_wen) begin
+        csr_ecfg[ `LIE_1] <= wr_data[ `LIE_1];
+        csr_ecfg[ `LIE_2] <= wr_data[ `LIE_2];
     end
 end
 
@@ -768,7 +768,7 @@ end
 // difftest
 assign csr_crmd_diff        = csr_crmd;
 assign csr_prmd_diff        = csr_prmd;
-assign csr_ectl_diff        = csr_ectl;
+assign csr_ecfg_diff        = csr_ecfg;
 assign csr_estat_diff       = csr_estat;
 assign csr_era_diff         = csr_era;
 assign csr_badv_diff        = csr_badv;

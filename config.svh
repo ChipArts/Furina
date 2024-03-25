@@ -36,7 +36,7 @@
 // Processor
 `define FETCH_WIDTH 8  // 取指令的宽度
 `define DECODE_WIDTH 4  // 解码宽度
-`define COMMIT_WIDTH 4  // 提交宽度
+`define COMMIT_WIDTH 4  // 每周期最多提交的指令数
 `define PROC_VALEN 32
 `define PROC_PALEN 32
 `define PHY_REG_NUM 64
@@ -44,13 +44,13 @@
 // TLB
 `define TLB_ENTRY_NUM 32
 // Cache
-`define ICACHE_SIZE 1024 * 4  // ICache大小(Byte)
-`define ICACHE_BLOCK_SIZE 4 * 16  // ICache块大小(Byte)
-`define ICACHE_ASSOCIATIVITY 2  // ICache相联度(简化实现 不要更改)
+`define ICACHE_SIZE (1024 * 4)  // ICache大小(Byte)
+`define ICACHE_BLOCK_SIZE (4 * 16)  // ICache块大小(Byte)
+`define ICACHE_WAY_NUM 2  // ICache相联度(简化实现 不要更改)
 
-`define DCACHE_SIZE 1024 * 4  // DCache大小(Byte)
-`define DCACHE_BLOCK_SIZE 4 * 16  // DCache块大小(Byte)
-`define DCACHE_ASSOCIATIVITY 2  // DCache相联度(简化实现 不要更改)
+`define DCACHE_SIZE (1024 * 4)  // DCache大小(Byte)
+`define DCACHE_BLOCK_SIZE (4 * 16)  // DCache块大小(Byte)
+`define DCACHE_WAY_NUM 2  // DCache相联度(简化实现 不要更改)
 
 // Fetch Address Queue
 `define FAQ_DEPTH 16
@@ -60,5 +60,5 @@
 
 `endif // __CONFIG_SVH__
 
-/*====================================== ======================================*/
+/*======================================  ======================================*/
 

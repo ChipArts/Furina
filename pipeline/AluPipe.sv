@@ -53,7 +53,7 @@ module AluPipe (
   always_comb begin
     // 没有要处理的任务 或 信息可以向下一级流动
     // 没有需握手的FU
-    s1_ready = s2_ready | ~s1_exe.base_info.valid;
+    s1_ready = s2_ready | ~s1_exe.base.valid;
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -66,8 +66,8 @@ module AluPipe (
 
   ArithmeticLogicUnit inst_ArithmeticLogicUnit
   (
-    .src0_i   (s1_exe.base_info.src0),
-    .src1_i   (s1_exe.alu_oc.imm_valid ? s1_exe.alu_oc.imm : s1_exe.base_info.src1),
+    .src0_i   (s1_exe.base.src0),
+    .src1_i   (s1_exe.alu_oc.imm_valid ? s1_exe.alu_oc.imm : s1_exe.base.src1),
     .signed_i (s1_exe.alu_oc.signed_op),
     .alu_op_i (s1_exe.alu_oc.alu_op),
     .res_o    (alu_res)
@@ -77,7 +77,7 @@ module AluPipe (
 /*================================== stage2 ===================================*/
   
   always_comb begin
-    s2_ready = cmt_ready_i | ~cmt_o.base_info.valid;
+    s2_ready = cmt_ready_i | ~cmt_o.base.valid;
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -85,10 +85,11 @@ module AluPipe (
       cmt_o <= '0;
     end else begin
       if(s2_ready) begin
-        cmt_o.base_info.valid <= s1_exe.base_info.valid;
-        cmt_o.base_info.we <= s1_exe.base_info.valid;
-        cmt_o.base_info.wdata <= alu_res;
-        cmt_o.base_info.pdest <= s1_exe.base_info.pdest;
+        cmt_o.base.valid <= s1_exe.base.valid;
+        cmt_o.base.we <= s1_exe.base.valid;
+        cmt_o.base.wdata <= alu_res;
+        cmt_o.base.pdest <= s1_exe.base.pdest;
+        cmt_o.base.rob_idx <= s1_exe.base.rob_idx;
       end
     end
   end

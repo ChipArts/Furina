@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : TranslationLookasideBuffer.svh
 // Create  : 2024-02-17 21:38:07
-// Revise  : 2024-03-11 19:21:33
+// Revise  : 2024-03-22 16:41:54
 // Description :
 //   ...
 //   ...
@@ -39,14 +39,14 @@ typedef struct packed {
   logic [1:0][1:0] mat;  // 存储访问类型(MAT)
   logic [1:0][1:0] plv;  // 特权等级(PLV)
   logic [1:0][`PROC_PALEN - 1:12] ppn;  // 物理页号(PPN)
-} TLBEntrySt;
+} TlbEntrySt;
 
 // TLB查询请求
 typedef struct packed {
   logic valid;  // 请求有效
   logic [`PROC_VALEN - 1:12] vpn;
   logic [9:0] asid;
-} TLBSearchReqSt;
+} TlbSearchReqSt;
 
 typedef struct packed {
   logic valid;  // 查询结果有效
@@ -59,29 +59,29 @@ typedef struct packed {
   logic [`PROC_PALEN - 1:12] ppn;  // 物理页号
   logic mat;  // 存储访问类型(MAT)
   logic plv;  // 特权等级(PLV)
-} TLBSearchRspSt;
+} TlbSearchRspSt;
 
 // TLB读取请求
 typedef struct packed {
   logic valid;  // 请求有效
   logic [$clog2(`TLB_ENTRY_NUM) - 1:0] idx;  // 读取的索引值
-} TLBReadReqSt;
+} TlbReadReqSt;
 
 typedef struct packed {
   logic ready;  // TLB 可以进行读取操作
   TLBEntrySt tlb_entry_st;  // 读取的表项
-} TLBReadRspSt;
+} TlbReadRspSt;
 
 // TLB写入请求
 typedef struct packed {
   logic valid;  // 请求有效
   logic [$clog2(`TLB_ENTRY_NUM) - 1:0] idx;  // 写入的索引值
   TLBEntrySt tlb_entry_st;  // 写入的表项
-} TLBWriteReqSt;
+} TlbWriteReqSt;
 
 typedef struct packed {
   logic ready;  // TLB 可以进行写入操作
-} TLBWriteRspSt;
+} TlbWriteRspSt;
 
 // TLB无效化请求
 typedef enum logic [2:0] {
@@ -92,19 +92,18 @@ typedef enum logic [2:0] {
   TLB_INV_GLO0_ASID,
   TLB_INV_GLO0_ASID_VA,
   TLB_INV_GLO1_ASID_VA
-} TLBInvOptionType;
+} TlbInvOptionType;
 
 typedef struct packed {
   logic valid;  // 请求有效
-  logic [$clog2(`TLB_ENTRY_NUM) - 1:0] idx;  // 无效化的索引值
   TLBInvOptionType option_t;  // 无效化选项
   logic [9:0] asid;
   logic [`PROC_VALEN - 1:13] vppn;
-} TLBInvReqSt;
+} TlbInvReqSt;
 
 typedef struct packed {
   logic ready;  // TLB 可以进行无效化操作
-} TLBInvRspSt;
+} TlbInvRspSt;
 
 
 `endif  // _TRANSLATION_LOOKASIDE_BUFFER_SVH_

@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Pipeline.svh
 // Create  : 2024-03-13 22:53:51
-// Revise  : 2024-03-20 17:31:57
+// Revise  : 2024-03-25 15:36:17
 // Description :
 //   ...
 //   ...
@@ -33,24 +33,30 @@ typedef struct packed {
   logic [31:0] imm;
   logic [31:0] src0, src1;
   logic [$clog2(`PHY_REG_NUM) - 1:0] pdest;
+  logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
 } ExeBaseSt;
 
 typedef struct packed {
-  ExeBaseSt base_info;
+  ExeBaseSt base;
   AluOpCodeSt alu_oc;
 } AluExeSt;
 
 typedef struct packed {
-  ExeBaseSt base_info;
+  ExeBaseSt base;
   MduOpCodeSt mdu_oc;
 } MduExeSt;
 
 typedef struct packed {
-  ExeBaseSt base_info;
+  ExeBaseSt base;
   MiscOpCodeSt misc_oc;
   logic [`PROC_VALEN - 1:0] pc;
   logic [`PROC_VALEN - 1:0] npc;
 } MiscExeSt;
+
+typedef struct packed {
+  ExeBaseSt base;
+  MemOpCodeSt mem_oc;
+} MemExeSt;
 
 /*==================================== CMT ====================================*/
 // commit --> cmt
@@ -58,19 +64,22 @@ typedef struct packed {
   logic valid;
   logic we;
   logic [31:0] wdata;
+  logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
   logic [$clog2(`PHY_REG_NUM) - 1:0] pdest;
+  logic exception;
+  ExcCodeType ecode;
 } CmtBaseSt;
 
 typedef struct packed {
-  CmtBaseSt base_info;
+  CmtBaseSt base;
 } AluCmtSt;
 
 typedef struct packed {
-  CmtBaseSt base_info;
+  CmtBaseSt base;
 } MduCmtSt;
 
 typedef struct packed {
-  CmtBaseSt base_info;
+  CmtBaseSt base;
   PrivOpType priv_op;
   CacheOpType cache_op;
   // csr
@@ -86,6 +95,10 @@ typedef struct packed {
   // tlb or cacop
   logic [`PROC_VALEN - 1:0] vaddr;
 } MiscCmtSt;
+
+typedef struct packed {
+  CmtBaseSt base;
+} MemCmtSt;
 
 
 `endif

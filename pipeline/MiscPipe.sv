@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MiscPipe.sv
 // Create  : 2024-03-20 17:02:30
-// Revise  : 2024-03-20 18:41:27
+// Revise  : 2024-03-25 15:29:45
 // Description :
 //   ...
 //   ...
@@ -55,7 +55,7 @@ module MiscPipe (
   always_comb begin
     // 没有要处理的任务 或 信息可以向下一级流动
     // 没有需握手的FU
-    s1_ready = s2_ready | ~s1_exe.base_info.valid;
+    s1_ready = s2_ready | ~s1_exe.base.valid;
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -93,9 +93,9 @@ module MiscPipe (
   always_comb begin
     inst_type = s1_exe.misc_oc.inst_type;
     priv_op = s1_exe.misc_oc.priv_op;
-    src0 = s1_exe.base_info.src0;
-    src1 = s1_exe.base_info.src1;
-    imm = s1_exe.base_info.imm;
+    src0 = s1_exe.base.src0;
+    src1 = s1_exe.base.src1;
+    imm = s1_exe.base.imm;
 
 
     csr_wdata = priv_op == `PRIV_CSR_XCHG ? src0 & src1 : src0;
@@ -107,22 +107,22 @@ module MiscPipe (
 
     vaddr = priv_op == `PRIV_CACOP ? src0 + imm : src1;
 
-    cmt_we = (inst_type == `BRANCH_INST & s1_exe.misc_oc.br_link) | 
+    cmt_we = (inst_type == `BR_INST & s1_exe.misc_oc.br_link) | 
              (inst_type == `PRIV_INST & (priv_op == `PRIV_CSR_READ | 
                                          priv_op == `PRIV_CSR_XCHG |
                                          priv_op == `PRIV_CSR_WRITE));
-    cmt_wdata = inst_type == `BRANCH_INST ? s1_exe.pc + 4 :
+    cmt_wdata = inst_type == `BR_INST ? s1_exe.pc + 4 :
                 inst_type == `PRIV_INST   ? csr_rdata_i : '0;
   end
   
   BranchUnit U_BranchUnit
   (
     .signed_i    (s1_exe.misc_oc.signed_op),
-    .pc_i        (s1_exe.base_info.pc),
-    .npc_i       (s1_exe.base_info.npc),
-    .imm_i       (s1_exe.base_info.imm),
-    .src0_i      (s1_exe.base_info.src0),
-    .src1_i      (s1_exe.base_info.src1),
+    .pc_i        (s1_exe.base.pc),
+    .npc_i       (s1_exe.base.npc),
+    .imm_i       (s1_exe.base.imm),
+    .src0_i      (s1_exe.base.src0),
+    .src1_i      (s1_exe.base.src1),
     .indirect_i  (s1_exe.misc_oc.br_indirect),
     .branch_op_i (s1_exe.misc_oc.branch_op),
     // output
@@ -134,7 +134,7 @@ module MiscPipe (
 /*================================== stage2 ===================================*/
   always_comb begin
     // 没有要处理的任务 或 信息可以向下一级流动
-    s2_ready = ~cmt_o.base_info.valid | cmt_ready_i;
+    s2_ready = ~cmt_o.base.valid | cmt_ready_i;
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -142,10 +142,11 @@ module MiscPipe (
       cmt_o <= 0;
     end else begin
       if (s2_ready) begin
-        cmt_o.base_info.valid <= s1_exe.base_info.valid;
-        cmt_o.base_info.we <= cmt_we;
-        cmt_o.base_info.wdata <= cmt_wdata;
-        cmt_o.base_info.pdest <= s1_exe.base_info.pdest;
+        cmt_o.base.valid <= s1_exe.base.valid;
+        cmt_o.base.we <= cmt_we;
+        cmt_o.base.wdata <= cmt_wdata;
+        cmt_o.base.pdest <= s1_exe.base.pdest;
+        cmt_o.base.rob_idx <= s1_exe.base.rob_idx;
 
         cmt_o.priv_op <= s1_exe.misc_oc.priv_op;
         cmt_o.cache_op <= s1_exe.misc_oc.cache_op;

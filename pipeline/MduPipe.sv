@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MduPipe.sv
 // Create  : 2024-03-20 22:53:44
-// Revise  : 2024-03-20 23:43:12
+// Revise  : 2024-03-25 15:29:17
 // Description :
 //   ...
 //   ...
@@ -68,21 +68,21 @@ module MduPipe (
   always_comb begin
     // 没有要处理的任务 或 信息可以向下一级流动
     // 没有需握手的FU
-    s1_ready = s2_ready & (mult_rsp.ready & div_rsp.ready) | ~s1_exe.base_info.valid;
+    s1_ready = s2_ready & (mult_rsp.ready & div_rsp.ready) | ~s1_exe.base.valid;
 
-    mult_req.valid = s1_exe.base_info.valid;
+    mult_req.valid = s1_exe.base.valid;
     mult_req.ready = '1;
     mult_req.flush = flush_i;
     mult_req.mul_signed = s1_exe.mdu_oc.signed_op;
-    mult_req.multiplicand = s1_exe.base_info.src0;
-    mult_req.multiplier = s1_exe.base_info.src1;
+    mult_req.multiplicand = s1_exe.base.src0;
+    mult_req.multiplier = s1_exe.base.src1;
 
-    div_req.valid = s1_exe.base_info.valid;
+    div_req.valid = s1_exe.base.valid;
     div_req.ready = '1;
     div_req.flush = flush_i;
     div_req.div_signed = s1_exe.mdu_oc.signed_op;
-    div_req.dividend = s1_exe.base_info.src0;
-    div_req.divisor = s1_exe.base_info.src1;
+    div_req.dividend = s1_exe.base.src0;
+    div_req.divisor = s1_exe.base.src1;
 
     case (s1_exe.mdu_oc.mdu_op)
       `MDU_MUL : mdu_res = mult_rsp.res_lo;
@@ -106,7 +106,7 @@ module MduPipe (
 /*================================== stage2 ===================================*/
   // wait for mdu res valid
   always_comb begin
-    s2_ready = cmt_ready_i | ~cmt_o.base_info.valid;
+    s2_ready = cmt_ready_i | ~cmt_o.base.valid;
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -114,10 +114,10 @@ module MduPipe (
       cmt_o <= '0;
     end else begin
       if (cmt_ready_i) begin
-        cmt_o.base_info.valid = mult_rsp.valid | div_rsp.valid;
-        cmt_o.base_info.we = mult_rsp.valid | div_rsp.valid;
-        cmt_o.base_info.pdest = s1_exe.base_info.pdest;
-        cmt_o.base_info.wdata = mdu_res;
+        cmt_o.base.valid = mult_rsp.valid | div_rsp.valid;
+        cmt_o.base.we = mult_rsp.valid | div_rsp.valid;
+        cmt_o.base.pdest = s1_exe.base.pdest;
+        cmt_o.base.wdata = mdu_res;
       end
     end
   end

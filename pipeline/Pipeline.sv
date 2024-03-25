@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Pipeline.sv
 // Create  : 2024-03-11 14:53:30
-// Revise  : 2024-03-19 17:10:20
+// Revise  : 2024-03-25 18:17:09
 // Description :
 //   ...
 //   ...
@@ -80,28 +80,23 @@ module Pipeline (
   logic decoder_flush;
 
   // Scheduler
-  ScheduleReqSt schedule_req_st;
-  ScheduleRspSt schedule_rsp_st;
-
-  // misc(BRU/Priv) * 1
-  logic misc_valid;
-  logic misc_ready;
-  logic [$clog2(`PHY_REG_NUM) - 1:0] misc_psrc0_o, misc_psrc1_o;
-  MiscOptionCodeSt misc_option_code;
-  // ALU * 2
-  logic [1:0] alu_valid_o;
-  logic [1:0] alu_ready_i;
-  logic [1:0][$clog2(`PHY_REG_NUM) - 1:0] alu_psrc0_o, alu_psrc1_o;
-  AluOptionCodeSt [1:0] alu_option_code;
-  // memory * 1
-  logic mem_valid;
-  logic mem_ready;
-  logic [$clog2(`PHY_REG_NUM) - 1:0] mem_psrc0_o, mem_psrc1_o;
-  MemoryOptionCodeSt mem_option_code;
+  MiscIssueSt sche_misc_issue;
+  logic sche_misc_ready;
+  AluIssueSt [1:0] sche_alu_issue;
+  logic [1:0] sche_alu_ready;
+  MduIssueSt sche_mdu_issue;
+  logic sche_mdu_ready;
+  MemIssueSt sche_mem_issue;
+  logic sche_mem_ready;
 
 
   // RegFile
-  logic [`ISSUE_WIDTH * 2 - 1:0][31:0] rf_data_o;
+  // 每周期最多发射misc*1、alu*2、mdu*1、mem*1
+  logic [4:0] rf_we;
+  logic [4:0][$clog2(`PHY_REG_NUM) - 1:0] rf_waddr;
+  logic [9:0][$clog2(`PHY_REG_NUM) - 1:0] rf_raddr;
+  logic [4:0][31:0] rf_wdata;
+  logic [9:0][31:0] rf_rdata;
 
   // CSR
   logic [13:0]  csr_rd_addr      ;
@@ -287,68 +282,74 @@ module Pipeline (
 
   Scheduler inst_Scheduler
   (
-    .clk                   (clk),
-    .a_rst_n               (a_rst_n),
-    .flush_i               (flush_i),
-    .schedule_req          (schedule_req),
-    .rob_allocate_rsp      (rob_allocate_rsp),
-    .freelist_free_valid_i (freelist_free_valid_i),
-    .released_preg_i       (released_preg_i),
-    .arch_rat_i            (arch_rat_i),
-    .commited_pdest_i      (commited_pdest_i),
-    .schedule_rsp          (schedule_rsp),
-    .rob_allocate_req      (rob_allocate_req),
-    // issue ff ouput
-    .misc_valid_o          (misc_valid_o),
-    .misc_ready_i          (misc_ready_i),
-    .misc_psrc0            (misc_psrc0_o),
-    .misc_psrc1            (misc_psrc1_o),
-    .misc_imm_o            (misc_imm_o),
-    .misc_option_code_o    (misc_option_code_o),
-    .alu_valid_o           (alu_valid_o),
-    .alu_ready_i           (alu_ready_i),
-    .alu_psrc0             (alu_psrc0_o),
-    .alu_psrc1             (alu_psrc1_o),
-    .alu_imm_o             (alu_imm_o),
-    .alu_option_code_o     (alu_option_code_o),
-    .mem_valid_o           (mem_valid_o),
-    .mem_ready_i           (mem_ready_i),
-    .mem_psrc0             (mem_psrc0_o),
-    .mem_psrc1             (mem_psrc1_o),
-    .mem_imm_o             (mem_imm_o),
-    .mem_option_code_o     (mem_option_code_o)
+    .clk             (clk),
+    .a_rst_n         (a_rst_n),
+    .flush_i         (flush_i),
+    // schedule
+    .schedule_req    (schedule_req),
+    .schedule_rsp    (schedule_rsp),
+    .rob_alloc_req   (rob_alloc_req),
+    .rob_alloc_rsp   (rob_alloc_rsp),
+    .fl_free_valid_i (fl_free_valid_i),
+    .fl_free_preg_i  (fl_free_preg_i),
+    .arch_rat_i      (arch_rat_i),
+    .cmt_pdest_i     (cmt_pdest_i),
+    // issue
+    .misc_issue_o    (sche_misc_issue),
+    .misc_ready_i    (sche_misc_ready),
+    .alu_issue_o     (sche_alu_issue),
+    .alu_ready_i     (sche_alu_ready),
+    .mdu_issue_o     (sche_mdu_issue),
+    .mdu_ready_i     (sche_mdu_ready),
+    .mem_issue_o     (sche_mem_issue),
+    .mem_ready_i     (sche_mem_ready)
   );
 
   /* Read RegFile */
-  // comb输出用寄存器存一拍
+
+  always_comb begin
+    rf_raddr[0] = sche_alu_issue[0].base_info.psrc0;
+    rf_raddr[1] = sche_alu_issue[0].base_info.psrc1;
+    rf_raddr[2] = sche_alu_issue[1].base_info.psrc0;
+    rf_raddr[3] = sche_alu_issue[1].base_info.psrc1;
+    rf_raddr[4] = sche_misc_issue.base_info.psrc0;
+    rf_raddr[5] = sche_misc_issue.base_info.psrc1;
+    rf_raddr[6] = sche_mdu_issue.base_info.psrc0;
+    rf_raddr[7] = sche_mdu_issue.base_info.psrc1;
+    rf_raddr[8] = sche_mem_issue.base_info.psrc0;
+    rf_raddr[9] = sche_mem_issue.base_info.psrc1;
+  
+  end
+
+  // comb输出，需用寄存器存一拍
   PhysicalRegisterFile #(
-    .READ_PORT_NUM(4),
-    .WRITE_PORT_NUM(4),
+    .READ_PORT_NUM(5),
+    .WRITE_PORT_NUM(5),
     .DATA_WIDTH(32),
     .PHY_REG_NUM(64)
   ) U0_PhysicalRegisterFile (
     .clk     (clk),
     .a_rst_n (rst_n),
-    .we_i    (),
-    .raddr_i ({alu_psrc0, alu_psrc1}),
-    .waddr_i (),
-    .data_i  (),
-    .data_o  (rf_data_o[3:0])
+    .we_i    (rf_we),
+    .raddr_i (rf_raddr[4:0]),
+    .waddr_i (rf_waddr),
+    .data_i  (rf_wdata),
+    .data_o  (rf_rdata[4:0])
   );
 
   PhysicalRegisterFile #(
-    .READ_PORT_NUM(4),
-    .WRITE_PORT_NUM(4),
+    .READ_PORT_NUM(5),
+    .WRITE_PORT_NUM(5),
     .DATA_WIDTH(32),
     .PHY_REG_NUM(64)
   ) U1_PhysicalRegisterFile (
     .clk     (clk),
     .a_rst_n (rst_n),
-    .we_i    (),
-    .raddr_i ({mem_psrc0, mem_psrc1, mem_psrc2, mem_psrc3}),
-    .waddr_i (),
-    .data_i  (),
-    .data_o  (rf_data_o[7:4])
+    .we_i    (rf_we),
+    .raddr_i (rf_raddr[9:5]),
+    .waddr_i (rf_waddr),
+    .data_i  (rf_wdata),
+    .data_o  (rf_rdata[9:5])
   );
 
 
@@ -373,6 +374,24 @@ module Pipeline (
 
 
   /* Memory Block */
+  MemoryBlock inst_MemoryBlock
+  (
+    .clk              (clk),
+    .a_rst_n          (a_rst_n),
+    .exe_i            (exe_i),
+    .exe_ready_o      (exe_ready_o),
+    .mmu_req          (mmu_req),
+    .mmu_rsp          (mmu_rsp),
+    .oldest_rob_idx_i (oldest_rob_idx_i),
+    .axi4_mst         (axi4_mst),
+    .cmt_o            (cmt_o),
+    .cmt_ready_i      (cmt_ready_i)
+  );
+
+  /* Reorder Buffer */
+
+
+  /* Memory Management Unit */
 
 
 
