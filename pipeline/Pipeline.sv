@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Pipeline.sv
 // Create  : 2024-03-11 14:53:30
-// Revise  : 2024-03-25 18:17:09
+// Revise  : 2024-03-26 21:52:09
 // Description :
 //   ...
 //   ...
@@ -36,7 +36,7 @@ module Pipeline (
 );
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);
-  /* Signal Define */
+/*=============================== Signal Define ===============================*/
   logic flush;  // 由退休的异常指令产生
   // Branch Prediction Unit
   BPU_ReqSt bpu_req_st;
@@ -176,8 +176,7 @@ module Pipeline (
   logic [31:0]  csr_pgdl_diff;
   logic [31:0]  csr_pgdh_diff;
 
-
-  /* BPU */
+/*=========================== Branch Prediction Unit ==========================*/
   always_comb begin
     bpu_req_st.next = faq_push_rsp_st.ready;
   end
@@ -189,7 +188,7 @@ module Pipeline (
     .bpu_rsp(bpu_rsp_st)
   );
 
-  /* Fetch Address Queue */
+/*============================ Fetch Address Queue ============================*/
   always_comb begin
     faq_flush = flush;
 
@@ -210,7 +209,7 @@ module Pipeline (
     .pop_rsp_st  (faq_pop_rsp_st)
   );
 
-  /* Instruction Fetch Unit */
+/*========================== Instruction Fetch Unit ===========================*/
   always_comb begin
     icache_fetch_req_st.valid = faq_pop_rsp_st.valid;
     icache_fetch_req_st.vaddr = faq_pop_rsp_st.vaddr;
@@ -228,7 +227,7 @@ module Pipeline (
   );
 
 
-  /* Instruction Buffer */
+/*============================ Instruction Buffer =============================*/
   always_comb begin
     ibuf_flush = 1'b0;  // TODO: add flush logic
 
@@ -266,7 +265,8 @@ module Pipeline (
     .read_data_o   (ibuf_read_data)
   );
 
-  /* Decoder */
+/*================================== Decoder ==================================*/
+
   for (genvar i = 0; i < `DECODE_WIDTH; i++) begin
     Decoder U_Decoder (.instruction(ibuf_read_data[i].instruction), .general_ctrl_signal(general_ctrl_signal));
   end
@@ -279,6 +279,8 @@ module Pipeline (
     end
     schedule_req_st.ready = '1;
   end
+
+/*================================= Scheduler ================================*/
 
   Scheduler inst_Scheduler
   (
@@ -305,7 +307,7 @@ module Pipeline (
     .mem_ready_i     (sche_mem_ready)
   );
 
-  /* Read RegFile */
+/*================================= RegFile ===================================*/
 
   always_comb begin
     rf_raddr[0] = sche_alu_issue[0].base_info.psrc0;
@@ -318,7 +320,6 @@ module Pipeline (
     rf_raddr[7] = sche_mdu_issue.base_info.psrc1;
     rf_raddr[8] = sche_mem_issue.base_info.psrc0;
     rf_raddr[9] = sche_mem_issue.base_info.psrc1;
-  
   end
 
   // comb输出，需用寄存器存一拍
@@ -353,7 +354,7 @@ module Pipeline (
   );
 
 
-  /* Integer Block */
+/*=============================== Integer Block ===============================*/
   IntegerBlock inst_IntegerBlock
   (
     .clk                (clk),
@@ -373,7 +374,7 @@ module Pipeline (
   );
 
 
-  /* Memory Block */
+/*=============================== Memory Block ================================*/
   MemoryBlock inst_MemoryBlock
   (
     .clk              (clk),
@@ -388,14 +389,25 @@ module Pipeline (
     .cmt_ready_i      (cmt_ready_i)
   );
 
-  /* Reorder Buffer */
+/*============================== Reorder Buffer ===============================*/
+
+  ReorderBuffer inst_ReorderBuffer
+  (
+    .clk              (clk),
+    .a_rst_n          (a_rst_n),
+    .flush_i          (flush_i),
+    .alloc_req        (alloc_req),
+    .alloc_rsp        (alloc_rsp),
+    .cmt_req          (cmt_req),
+    .cmt_rsp          (cmt_rsp),
+    .retire_bcst      (retire_bcst),
+    .oldest_rob_idx_o (oldest_rob_idx_o)
+  );
+
+/*========================== Memory Management Unit ===========================*/
 
 
-  /* Memory Management Unit */
-
-
-
-  /* CSR(Control/Status Register) */
+/*======================= CSR(Control/Status Register) ========================*/
   ControlStatusRegister #(
     .TLBNUM(`TLB_ENTRY_NUM)
   ) inst_ControlStatusRegister (

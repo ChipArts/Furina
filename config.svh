@@ -36,7 +36,8 @@
 // Processor
 `define FETCH_WIDTH 8  // 取指令的宽度
 `define DECODE_WIDTH 4  // 解码宽度
-`define COMMIT_WIDTH 4  // 每周期最多提交的指令数
+`define COMMIT_WIDTH 5  // 每周期最多提交的指令数
+`define RETIRE_WIDTH 4  // 每周期最多退休的指令数
 `define PROC_VALEN 32
 `define PROC_PALEN 32
 `define PHY_REG_NUM 64
