@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Pipeline.sv
 // Create  : 2024-03-11 14:53:30
-// Revise  : 2024-03-29 21:22:17
+// Revise  : 2024-03-30 21:35:03
 // Description :
 //   ...
 //   ...
@@ -25,12 +25,14 @@
 `include "common.svh"
 `include "Decoder.svh"
 `include "Pipeline.svh"
+`include "ControlStatusRegister.svh"
 `include "BranchPredictionUnit.svh"
 
 
 module Pipeline (
   input clk,    // Clock
   input a_rst_n,  // Asynchronous reset active low
+  input logic [7:0] interrupt,
   AXI4.Master icache_axi4_mst,
   AXI4.Master dcache_axi4_mst
 );
@@ -109,8 +111,12 @@ module Pipeline (
   logic [1:0] int_blk_alu_ready;
   MduExeSt int_blk_mdu_exe;
   logic int_blk_mdu_ready;
+  
   logic [13:0] int_blk_csr_raddr;
   logic [31:0] int_blk_csr_rdata;
+  logic int_blk_tlbsrch_valid_o;
+  logic int_blk_tlbsrch_found_i;
+  logic [$clog2(`TLB_ENTRY_NUM) - 1:0] int_blk_tlbsrch_idx_i;
 
   MiscCmtSt int_blk_misc_cmt;
   logic int_blk_misc_cmt_ready;
@@ -152,12 +158,17 @@ module Pipeline (
   logic [31:0] mmu_csr_dmw1_i;
   logic [1:0]  mmu_csr_datf_i;
   logic [1:0]  mmu_csr_datm_i;
+  logic [1:0]  mmu_csr_plv_i;
   logic        mmu_csr_da_i;
   logic        mmu_csr_pg_i;
   MmuAddrTransReqSt mmu_inst_trans_req;
   MmuAddrTransRspSt mmu_inst_trans_rsp;
   MmuAddrTransReqSt mmu_data_trans_req;
   MmuAddrTransRspSt mmu_data_trans_rsp;
+  logic                                mmu_tlbsrch_en_i;
+  logic                                mmu_tlbsrch_found_o;
+  logic [$clog2(`TLB_ENTRY_NUM) - 1:0] mmu_tlbsrch_idx_o;
+
   logic        mmu_tlbfill_en_i;
   logic        mmu_tlbwr_en_i;
   logic [ 4:0] mmu_rand_index_i;
@@ -166,11 +177,13 @@ module Pipeline (
   logic [31:0] mmu_tlbelo1_i;
   logic [31:0] mmu_tlbidx_i;
   logic [ 5:0] mmu_ecode_i;
+
   logic [31:0] mmu_tlbehi_o;
   logic [31:0] mmu_tlbelo0_o;
   logic [31:0] mmu_tlbelo1_o;
   logic [31:0] mmu_tlbidx_o;
   logic [ 9:0] mmu_tlbasid_o;
+
   logic        mmu_invtlb_en_i;
   logic [ 9:0] mmu_invtlb_asid_i;
   logic [18:0] mmu_invtlb_vpn_i;
@@ -257,6 +270,8 @@ module Pipeline (
 /*=========================== Branch Prediction Unit ==========================*/
   always_comb begin
     bpu_req_st.next = faq_push_rsp_st.ready;
+    bpu_req_st.redirect = flush;
+    bpu_req_st.target = rob_retire_bcst.rob_entry[0].br_target;
   end
 
   BranchPredictionUnit U_BranchPredictionUnit (
@@ -289,6 +304,8 @@ module Pipeline (
 
 /*========================== Instruction Fetch Unit ===========================*/
   always_comb begin
+    icache_flush_i = flush;
+
     icache_req.valid = faq_pop_rsp_st.valid;
     icache_req.vaddr = faq_pop_rsp_st.vaddr;
     icache_addr_trans_rsp = mmu_inst_trans_rsp;
@@ -300,7 +317,7 @@ module Pipeline (
   (
     .clk            (clk),
     .a_rst_n        (a_rst_n),
-    .flush_i        (flush_i),
+    .flush_i        (icache_flush_i),
     .icache_req     (icache_req),
     .icache_rsp     (icache_rsp),
     .addr_trans_rsp (icache_addr_trans_rsp),
@@ -524,9 +541,12 @@ module Pipeline (
     int_blk_mdu_exe.mdu_oc = sche_mdu_issue.mdu_oc;
 
     int_blk_csr_rdata = csr_rd_data;
+    int_blk_tlbsrch_found_i = mmu_tlbsrch_found_o;
+    int_blk_tlbsrch_idx_i = mmu_tlbsrch_idx_o;
 
     int_blk_alu_cmt_ready = '1;
-    int_blk_misc_cmt_ready = ~int_blk_misc_cmt.csr_we | 
+    // 特权指令在成为最旧指令时才执行
+    int_blk_misc_cmt_ready = ~int_blk_misc_cmt.priv_inst | 
                               int_blk_misc_cmt.base.rob_idx == rob_oldest_rob_idx_o;
     int_blk_mdu_cmt_ready = '1;
   end
@@ -545,6 +565,9 @@ module Pipeline (
     .mdu_exe_i        (int_blk_mdu_exe),
     .mdu_ready_o      (int_blk_mdu_ready),
     /* other exe info */
+    .tlbsrch_valid_o  (int_blk_tlbsrch_valid_o),
+    .tlbsrch_found_i  (int_blk_tlbsrch_found_i),
+    .tlbsrch_idx_i    (int_blk_tlbsrch_idx_i),
     .csr_raddr_o      (int_blk_csr_raddr),
     .csr_rdata_i      (int_blk_csr_rdata),
     /* commit */
@@ -632,6 +655,8 @@ module Pipeline (
     .oldest_rob_idx_o (rob_oldest_rob_idx_o)
   );
 /*================================== Retire ===================================*/
+  assign flush = rob_retire_bcst.valid[0] & (rob_retire_bcst.rob_entry[0].exception | rob_retire_bcst.rob_entry[0].redirect);
+
   always_comb begin
     for (int i = 0; i < `RETIRE_WIDTH; i++) begin
       arch_rat_dest_valid_i[i] = rob_retire_bcst.valid[i] & rob_retire_bcst.rob_entry[i].phy_reg_valid;
@@ -665,6 +690,31 @@ module Pipeline (
 
     mmu_inst_trans_req = icache_addr_trans_req;
     mmu_data_trans_req = mem_blk_mmu_req;
+
+    mmu_tlbsrch_en_i = int_blk_tlbsrch_valid_o;
+
+    mmu_tlbfill_en_i = int_blk_misc_cmt.base.valid &
+                       int_blk_misc_cmt_ready &
+                       int_blk_misc_cmt.priv_inst  &
+                       int_blk_misc_cmt.priv_op == `PRIV_TLBFILL;
+    mmu_tlbwr_en_i = int_blk_misc_cmt.base.valid &
+                     int_blk_misc_cmt_ready &
+                     int_blk_misc_cmt.priv_inst &
+                     int_blk_misc_cmt.priv_op == `PRIV_TLBWR;
+    mmu_rand_index_i = csr_rand_index;
+    mmu_tlbehi_i = csr_tlbehi_out;
+    mmu_tlbelo0_i = csr_tlbelo0_out;
+    mmu_tlbelo1_i = csr_tlbelo1_out;
+    mmu_tlbidx_i = csr_tlbidx_out;
+    mmu_ecode_i = csr_ecode_out;
+
+    mmu_invtlb_en_i = int_blk_misc_cmt.base.valid &
+                      int_blk_misc_cmt_ready &
+                      int_blk_misc_cmt.priv_inst &
+                      int_blk_misc_cmt.priv_op == `PRIV_TLBINV;
+    mmu_invtlb_asid_i = int_blk_misc_cmt.invtlb_asid;
+    mmu_invtlb_vpn_i = int_blk_misc_cmt.vaddr[`PROC_VALEN - 1:13];
+    mmu_invtlb_op_i = int_blk_misc_cmt.invtlb_op;
   end
 
   MemoryManagementUnit inst_MemoryManagementUnit
@@ -679,12 +729,17 @@ module Pipeline (
     .csr_datm_i     (mmu_csr_datm_i),
     .csr_da_i       (mmu_csr_da_i),
     .csr_pg_i       (mmu_csr_pg_i),
+    .csr_plv_i      (mmu_csr_plv_i),
     // inst addr trans
     .inst_trans_req (mmu_inst_trans_req),
     .inst_trans_rsp (mmu_inst_trans_rsp),
     // data addr trans
     .data_trans_req (mmu_data_trans_req),
     .data_trans_rsp (mmu_data_trans_rsp),
+    // tlb search
+    .tlbsrch_en_i   (mmu_tlbsrch_en_i),
+    .tlbsrch_found_o(mmu_tlbsrch_found_o),
+    .tlbsrch_idx_o  (mmu_tlbsrch_idx_o),
     // tlbfill tlbwr tlb write
     .tlbfill_en_i   (mmu_tlbfill_en_i),
     .tlbwr_en_i     (mmu_tlbwr_en_i),
@@ -709,7 +764,59 @@ module Pipeline (
 
 /*======================= CSR(Control/Status Register) ========================*/
   always_comb begin
-    ;
+    csr_rd_addr = int_blk_csr_raddr;
+    csr_wr_en = int_blk_misc_cmt.base.valid &
+                int_blk_misc_cmt_ready &
+                int_blk_misc_cmt.csr_we;
+    csr_wr_addr = int_blk_misc_cmt.csr_waddr;
+    csr_wr_data = int_blk_misc_cmt.csr_wdata;
+
+    csr_interrupt = interrupt;
+
+    csr_excp_flush = rob_retire_bcst.valid[0] & rob_retire_bcst.rob_entry.exception;
+    csr_ertn_flush = int_blk_misc_cmt.base.valid &
+                     int_blk_misc_cmt_ready &
+                     int_blk_misc_cmt.priv_inst &
+                     int_blk_misc_cmt.priv_op == `PRIV_ERTN;
+    csr_era_in = rob_retire_bcst.rob_entry.pc;
+    csr_esubcode_in = rob_retire_bcst.rob_entry.sub_ecode;
+    csr_ecode_in = rob_retire_bcst.rob_entry.ecode;
+    csr_va_error_in = rob_retire_bcst.valid[0] & 
+                      rob_retire_bcst.rob_entry.exception &
+                      rob_retire_bcst.rob_entry.ecode inside 
+                      {`ECODE_ADE, `ECODE_TLBR, `ECODE_PIF, `ECODE_PPI,
+                       `ECODE_ALE, `ECODE_PME,  `ECODE_PIS, `ECODE_PIL};
+    csr_bad_va_in = rob_retire_bcst.rob_entry[0].error_vaddr;
+
+    csr_tlbsrch_en = int_blk_misc_cmt.base.valid &
+                     int_blk_misc_cmt_ready &
+                     int_blk_misc_cmt.priv_inst &
+                     int_blk_misc_cmt.priv_op == `PRIV_TLBSRCH;
+    csr_tlbsrch_found = int_blk_misc_cmt.tlbsrch_found;
+    csr_tlbsrch_index = int_blk_misc_cmt.tlbsrch_idx;
+
+    csr_excp_tlbrefill = rob_retire_bcst.valid[0] & 
+                         rob_retire_bcst.rob_entry.exception &
+                         rob_retire_bcst.rob_entry.ecode == `ECODE_TLBR;
+    csr_excp_tlb = rob_retire_bcst.valid[0] & 
+                   rob_retire_bcst.rob_entry.exception &
+                   rob_retire_bcst.rob_entry.ecode inside
+                   {`ECODE_TLBR, `ECODE_PIF, `ECODE_PPI,
+                    `ECODE_PME,  `ECODE_PIS, `ECODE_PIL};
+    csr_excp_tlb_vppn = rob_retire_bcst.rob_entry[0].error_vaddr;
+
+    csr_llbit_in = '0;
+    csr_llbit_set_in = '0;
+
+    csr_tlbrd_en = int_blk_misc_cmt.base.valid &
+                   int_blk_misc_cmt_ready &
+                   int_blk_misc_cmt.priv_inst &
+                   int_blk_misc_cmt.priv_op == `PRIV_TLBRD;
+    csr_tlbehi_in = int_blk_misc_cmt.tlbrd_ehi;
+    csr_tlbelo0_in = int_blk_misc_cmt.tlbrd_elo0;
+    csr_tlbelo1_in = int_blk_misc_cmt.tlbrd_elo1;
+    csr_tlbidx_in = int_blk_misc_cmt.tlbrd_idx;
+    csr_asid_in = int_blk_misc_cmt.tlbrd_asid;
   end
 
   ControlStatusRegister #(
@@ -717,15 +824,20 @@ module Pipeline (
   ) inst_ControlStatusRegister (
     .clk                (clk),
     .reset              (~rst_n),
+    // csr rd
     .rd_addr            (csr_rd_addr),
     .rd_data            (csr_rd_data),
+    // timer 64
     .timer_64_out       (csr_timer_64_out),
     .tid_out            (csr_tid_out),
+    // csr wr
     .csr_wr_en          (csr_wr_en),
     .wr_addr            (csr_wr_addr),
     .wr_data            (csr_wr_data),
+    // interrupt
     .interrupt          (csr_interrupt),
     .has_int            (csr_has_int),
+    // excp
     .excp_flush         (csr_excp_flush),
     .ertn_flush         (csr_ertn_flush),
     .era_in             (csr_era_in),
@@ -739,14 +851,18 @@ module Pipeline (
     .excp_tlbrefill     (csr_excp_tlbrefill),
     .excp_tlb           (csr_excp_tlb),
     .excp_tlb_vppn      (csr_excp_tlb_vppn),
+    // llbit
     .llbit_in           (csr_llbit_in),
     .llbit_set_in       (csr_llbit_set_in),
+    // to atomic
     .llbit_out          (csr_llbit_out),
     .vppn_out           (csr_vppn_out),
+    // to fetch
     .eentry_out         (csr_eentry_out),
     .era_out            (csr_era_out),
     .tlbrentry_out      (csr_tlbrentry_out),
     .disable_cache_out  (csr_disable_cache_out),
+    // to mmu
     .asid_out           (csr_asid_out),
     .rand_index         (csr_rand_index),
     .tlbehi_out         (csr_tlbehi_out),
@@ -760,13 +876,16 @@ module Pipeline (
     .datf_out           (csr_datf_out),
     .datm_out           (csr_datm_out),
     .ecode_out          (csr_ecode_out),
+    // from mmu
     .tlbrd_en           (csr_tlbrd_en),
     .tlbehi_in          (csr_tlbehi_in),
     .tlbelo0_in         (csr_tlbelo0_in),
     .tlbelo1_in         (csr_tlbelo1_in),
     .tlbidx_in          (csr_tlbidx_in),
     .asid_in            (csr_asid_in),
+    // general use
     .plv_out            (csr_plv_out),
+    // csr regs for diff
     .csr_crmd_diff      (csr_crmd_diff),
     .csr_prmd_diff      (csr_prmd_diff),
     .csr_ectl_diff      (csr_ectl_diff),

@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : IntegerBlock.sv
 // Create  : 2024-03-17 22:34:32
-// Revise  : 2024-03-27 20:26:39
+// Revise  : 2024-03-30 21:32:09
 // Description :
 //   ...
 //   ...
@@ -43,6 +43,14 @@ module IntegerBlock (
   input MduExeSt mdu_exe_i,
   output logic mdu_ready_o,
   /* other exe io */
+  output logic tlbsrch_valid_o,
+  input logic tlbsrch_found_i,
+  input logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbsrch_idx_i,
+  input logic [31:0] tlbehi_i ,
+  input logic [31:0] tlbelo0_i,
+  input logic [31:0] tlbelo1_i,
+  input logic [31:0] tlbidx_i ,
+  input logic [ 9:0] tlbasid_i,
   output logic [13:0] csr_raddr_o,
   input logic [31:0] csr_rdata_i,
   /* commit */
@@ -67,6 +75,15 @@ module IntegerBlock (
     .flush_i     (flush_i),
     .exe_i       (misc_exe_i),
     .ready_o     (misc_ready_o),
+    .tlbsrch_valid_o(tlbsrch_valid_o),
+    .tlbsrch_found_i(tlbsrch_found_i),
+    .tlbsrch_idx_i  (tlbsrch_idx_i),
+    .tlbrd_valid_o  (tlbrd_valid_o),
+    .tlbehi_i       (tlbehi_i),
+    .tlbidx_i       (tlbidx_i),
+    .tlbelo0_i      (tlbelo0_i),
+    .tlbelo1_i      (tlbelo1_i),
+    .tlbasid_i      (tlbasid_i),
     .csr_raddr_o (csr_raddr_o),
     .csr_rdata_i (csr_rdata_i),
     .cmt_o       (misc_cmt_o),

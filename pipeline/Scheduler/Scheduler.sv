@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Scheduler.sv
 // Create  : 2024-03-12 23:16:08
-// Revise  : 2024-03-29 20:48:28
+// Revise  : 2024-03-30 16:55:36
 // Description :
 //   ...
 //   ...
@@ -230,10 +230,10 @@ module Scheduler (
   SyncMultiChannelFIFO #(
     .FIFO_DEPTH(16),
     .DATA_WIDTH($bits(DqEntrySt)),
-    .RPORTS_NUM(4),
+    .RPORTS_NUM(`DISPATCH_WIDTH),
     .WPORTS_NUM(`DECODE_WIDTH),
     .FIFO_MEMORY_TYPE("auto")
-  ) inst_SyncMultiChannelFIFO (
+  ) inst_DispatchQueue (
     .clk           (clk),
     .a_rst_n       (rst_n),
     .flush_i       (flush_i),
@@ -294,7 +294,7 @@ module Scheduler (
     misc_cnt = 0;
     mem_cnt = 0;
 
-    for (int i = 1; i < 3; i++) begin
+    for (int i = 1; i < `DISPATCH_WIDTH; i++) begin
       if (dq_rdata[i - 1].oc.inst_type == `ALU_INST) begin
         alu_cnt[i] = alu_cnt[i - 1] + 1;
       end
@@ -320,7 +320,7 @@ module Scheduler (
           default : dq_read_ready[0] = '0;
         endcase
     end
-    for (int i = 1; i < 3; i++) begin
+    for (int i = 1; i < `DISPATCH_WIDTH; i++) begin
       if (dq_rdata[i].valid) begin
         case (dq_rdata[i].oc.inst_type)
           `ALU_INST : dq_read_ready[i] = alu_cnt[i] < $countones(alu_rs_wr_ready) & dq_read_ready[i - 1];
@@ -334,7 +334,7 @@ module Scheduler (
 
     // 写入发射队列
     dispatched = '0;
-    for (int i = 0; i < 3; i++) begin
+    for (int i = 0; i < `DISPATCH_WIDTH; i++) begin
       if (dq_rdata[i].oc.inst_type == `ALU_INST && alu_cnt[i] == 0) begin
         if (alu_rs_wr_ready[0]) begin
           alu_rs_wr_valid[0] = dq_read_ready[i];

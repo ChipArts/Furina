@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MiscPipe.sv
 // Create  : 2024-03-20 17:02:30
-// Revise  : 2024-03-29 18:09:29
+// Revise  : 2024-03-30 21:31:35
 // Description :
 //   ...
 //   ...
@@ -34,9 +34,20 @@ module MiscPipe (
   input MiscExeSt exe_i,
   output logic ready_o,
   /* other exe io */
+  // tlb search
+  output logic tlbsrch_valid_o,
+  input logic tlbsrch_found_i,
+  input logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbsrch_idx_i,
+  // tlb read
+  output logic tlbrd_valid_o,
+  input logic [31:0] tlbehi_i ,
+  input logic [31:0] tlbelo0_i,
+  input logic [31:0] tlbelo1_i,
+  input logic [31:0] tlbidx_i ,
+  input logic [ 9:0] tlbasid_i,
+  // csr read
   output logic [13:0] csr_raddr_o,
   input logic [31:0] csr_rdata_i,
-  input [$clog2(`ROB_DEPTH) - 1:0] oldest_rob_idx_i,
   /* commit */
   output MiscCmtSt cmt_o,
   input cmt_ready_i
@@ -45,9 +56,12 @@ module MiscPipe (
   logic s0_ready, s1_ready, s2_ready;
 /*================================== stage0 ===================================*/
   // regfile comb输出 数据缓存一拍
+  // 执行tlb search
   always_comb begin
     s0_ready = s1_ready;
     ready_o = s0_ready;
+    tlbsrch_valid_o = exe_i.base.valid & exe_i.misc_oc.inst_type == `PRIV_INST & exe_i.misc_oc.priv_op == `PRIV_TLBSRCH;
+    tlbrd_valid_o = exe_i.base.valid & exe_i.misc_oc.inst_type == `PRIV_INST & exe_i.misc_oc.priv_op == `PRIV_TLBRD;
   end
 
 /*================================== stage1 ===================================*/
@@ -143,6 +157,9 @@ module MiscPipe (
       cmt_o <= 0;
     end else begin
       if (s2_ready) begin
+        cmt_o.priv_inst <= s1_exe.misc_oc.inst_type == `PRIV_INST;
+        cmt_o.br_inst <= s1_exe.misc_oc.inst_type == `BR_INST;
+
         cmt_o.base.valid <= s1_exe.base.valid;
         cmt_o.base.we <= cmt_we;
         cmt_o.base.wdata <= cmt_wdata;
@@ -155,8 +172,19 @@ module MiscPipe (
         cmt_o.csr_we <= csr_we;
         cmt_o.csr_waddr <= csr_waddr;
         cmt_o.csr_wdata <= csr_wdata;
+
         cmt_o.invtlb_asid <= invtlb_asid;
+        cmt_o.invtlb_op <= s1_exe.base.imm[4:0];
+        cmt_o.tlbsrch_found <= tlbsrch_found_i;
+        cmt_o.tlbsrch_idx <= tlbsrch_idx_i;
+        cmt_o.tlbrd_ehi <= tlbehi_i;
+        cmt_o.tlbrd_elo0 <= tlbelo0_i;
+        cmt_o.tlbrd_elo1 <= tlbelo1_i;
+        cmt_o.tlbrd_idx <= tlbidx_i;
+        cmt_o.tlbrd_asid <= tlbasid_i;
+
         cmt_o.vaddr <= vaddr;
+
         cmt_o.br_taken <= br_taken;
         cmt_o.br_redirect <= br_redirect;
         cmt_o.br_target <= br_target;

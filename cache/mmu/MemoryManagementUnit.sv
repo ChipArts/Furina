@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MemoryManagementUnit.sv
 // Create  : 2024-03-11 19:19:09
-// Revise  : 2024-03-30 15:52:35
+// Revise  : 2024-03-30 20:31:00
 // Description :
 //   ...
 //   ...
@@ -46,16 +46,13 @@ module MemoryManagementUnit (
   input MmuAddrTransReqSt data_trans_req,
   output MmuAddrTransRspSt data_trans_rsp,
   // tlb search
-  input logic         tlbsearch_en_i,
-  input logic [ 9:0]  tlbsearch_asid_i,
-  input logic [31:13] tlbsearch_vpn_i,
-  output logic tlbsearch_found_o,
-  output logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbsearch_idx_o,
-  output logic [31:12] tlbsearch_ppn_o,
+  input logic  tlbsrch_en_i,
+  output logic tlbsrch_found_o,
+  output logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbsrch_idx_o,
   // tlbfill tlbwr tlb write
   input logic        tlbfill_en_i,
   input logic        tlbwr_en_i  ,
-  input logic [ 4:0] rand_idex_i,
+  input logic [ 4:0] rand_idx_i,
   input logic [31:0] tlbehi_i ,
   input logic [31:0] tlbelo0_i,
   input logic [31:0] tlbelo1_i,
@@ -138,13 +135,13 @@ module MemoryManagementUnit (
     tlb_search_req[1].asid  = csr_asid_i;
     tlb_search_req[1].vpn   = inst_trans_req.vaddr[`PROC_VALEN:12];
 
-    tlb_search_req[2].valid = tlbsearch_en_i;
-    tlb_search_req[2].asid  = tlbsearch_asid_i;
-    tlb_search_req[2].vpn   = tlbsearch_vpn_i;
+    tlb_search_req[2].valid = tlbsrch_en_i;
+    tlb_search_req[2].asid  = csr_asid_i;
+    tlb_search_req[2].vpn   = {tlbehi_i[`VPPN], 1'b0};
 
     // write req
     tlb_write_req.valid = tlbfill_en_i || tlbwr_en_i;
-    tlb_write_req.idx = ({5{tlbfill_en_i}} & rand_idex_i) | ({5{tlbwr_en_i}} & tlbidx_i[`INDEX]);
+    tlb_write_req.idx = ({5{tlbfill_en_i}} & rand_idx_i) | ({5{tlbwr_en_i}} & tlbidx_i[`INDEX]);
     tlb_write_req.tlb_entry_st = '{exist: (ecode_i == 6'h3f) ? 1'b1 : !tlbidx_i[`NE],
                                    asid: csr_asid_i,
                                    glo: tlbelo0_i[`TLB_G] && tlbelo1_i[`TLB_G],
@@ -245,9 +242,8 @@ module MemoryManagementUnit (
     data_trans_rsp.tlb_mat   = tlb_search_rsp[1].mat;
     data_trans_rsp.tlb_plv   = tlb_search_rsp[1].plv;
 
-    tlbsearch_found_o = tlb_search_rsp[2].valid;
-    tlbsearch_idx_o = tlb_search_rsp[2].idx;
-    tlbsearch_ppn_o = tlb_search_rsp[2].ppn;
+    tlbsrch_found_o = tlb_search_rsp[2].valid;
+    tlbsrch_idx_o = tlb_search_rsp[2].idx;
   end
 
   TranslationLookasideBuffer #(

@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Pipeline.svh
 // Create  : 2024-03-13 22:53:51
-// Revise  : 2024-03-29 17:48:33
+// Revise  : 2024-03-30 21:28:19
 // Description :
 //   ...
 //   ...
@@ -87,6 +87,8 @@ typedef struct packed {
 
 typedef struct packed {
   CmtBaseSt base;
+  logic priv_inst;
+  logic br_inst;
   PrivOpType priv_op;
   CacheOpType cache_op;
   // csr
@@ -99,6 +101,15 @@ typedef struct packed {
   logic [`PROC_VALEN - 1:0] br_target;
   // tlb
   logic [9:0] invtlb_asid;
+  logic [4:0] invtlb_op;
+  logic tlbsrch_found;
+  logic [`TLB_ENTRY_NUM - 1:0] tlbsrch_idx;
+
+  logic [31:0] tlbrd_ehi;
+  logic [31:0] tlbrd_elo0;
+  logic [31:0] tlbrd_elo1;
+  logic [31:0] tlbrd_idx;
+  logic [ 9:0] tlbrd_asid;
   // tlb or cacop
   logic [`PROC_VALEN - 1:0] vaddr;
 } MiscCmtSt;

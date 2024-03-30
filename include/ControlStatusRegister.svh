@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : ControlStatusRegister.svh
 // Create  : 2024-03-19 19:21:21
-// Revise  : 2024-03-21 15:52:16
+// Revise  : 2024-03-30 18:27:07
 // Description :
 //   ...
 //   ...
@@ -87,7 +87,7 @@
 `define ECODE_PIF  6'h3
 `define ECODE_PME  6'h4
 `define ECODE_PPI  6'h7
-`define ECODE_ADEF 6'h8
+`define ECODE_ADE  6'h8
 `define ECODE_ALE  6'h9
 `define ECODE_SYS  6'hb
 `define ECODE_BRK  6'hc
@@ -97,8 +97,10 @@
 `define ECODE_TLBR 6'h3f
 
 `define ESUBCODE_ADEF  9'h0
+`define ESUBCODE_ADEM  9'h1
 
 typedef logic[5:0] ExcCodeType;
+typedef logic[8:0] SubEcodeType;
 
 
 
