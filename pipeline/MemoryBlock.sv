@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MemoryBlock.sv
 // Create  : 2024-03-17 22:34:12
-// Revise  : 2024-03-25 17:45:37
+// Revise  : 2024-03-27 20:36:24
 // Description :
 //   ...
 //   ...
@@ -30,6 +30,7 @@
 module MemoryBlock (
   input clk,    // Clock
   input a_rst_n,  // Asynchronous reset active low
+  input flush_i,
   /* exe */
   input MemExeSt exe_i,
   output logic exe_ready_o,
@@ -41,7 +42,7 @@ module MemoryBlock (
   /* commit */
   // MISC
   output MemCmtSt cmt_o,
-  input cmt_ready_i
+  input logic cmt_ready_i
 );
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);
@@ -58,7 +59,7 @@ module MemoryBlock (
   MemExeSt s1_exe;
 
   always_ff @(posedge clk or negedge rst_n) begin
-    if(~rst_n) begin
+    if(~rst_n || flush_i) begin
       s1_exe <= '0;
     end else begin
       if (s1_ready) begin

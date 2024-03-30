@@ -38,7 +38,7 @@ parameter
   input [`DECODE_WIDTH - 1:0][4:0] src0_i,  // inst: Dest = Src0 op Src1
   input [`DECODE_WIDTH - 1:0][4:0] src1_i,
   input [`DECODE_WIDTH - 1:0][4:0] dest_i,
-  input [`DECODE_WIDTH - 1:0][4:0] preg_i,  // 从FreeList分配的空闲物理寄存器(已按照有效项分配)
+  input [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] preg_i,  // 从FreeList分配的空闲物理寄存器(已按照有效项分配)
   // 输出逻辑寄存器对应的物理寄存器编号
   output logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc0_o,
   output logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc1_o,

@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Pipeline.svh
 // Create  : 2024-03-13 22:53:51
-// Revise  : 2024-03-25 15:36:17
+// Revise  : 2024-03-29 17:48:33
 // Description :
 //   ...
 //   ...
@@ -26,6 +26,13 @@
 
 `include "config.svh"
 `include "Decoder.svh"
+
+typedef struct packed {
+  logic valid;
+  logic [31:0] instruction;
+  logic [`PROC_VALEN - 1:0] pc;
+  logic [`PROC_VALEN - 1:0] npc;
+} IbufDataSt;
 
 /*==================================== EXE ====================================*/
 typedef struct packed {

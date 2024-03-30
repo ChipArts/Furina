@@ -154,7 +154,7 @@ module DCache (
     REFILL
   } AxiState;
 
-  AxiState axi_stage;
+  AxiState axi_state;
   logic [$clog2(`DCACHE_BLOCK_SIZE / 4) - 1:0] axi_rdata_ofs;
   logic [`DCACHE_BLOCK_SIZE / 4 - 1:0][31:0] axi_rdata_buffer;
 
@@ -204,7 +204,7 @@ module DCache (
     meta_ram_waddr = `DCACHE_IDX_OF(paddr);
     data_ram_we = '0;
     data_ram_waddr = `DCACHE_IDX_OF(paddr);
-    if (axi_stage == REFILL) begin
+    if (axi_state == REFILL) begin
       if (axi4_mst.r_last) begin
         tag_ram_we[repl_way] = '1;
         meta_ram_we[repl_way] = '1;
@@ -243,26 +243,26 @@ module DCache (
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
-      axi_stage <= IDEL;
+      axi_state <= IDEL;
       axi_rdata_ofs <= '0;
       axi_rdata_buffer <= '0;
     end else begin
-      case (axi_stage)
-        IDEL : if(miss && s1_valid) axi_stage <= MISS;
+      case (axi_state)
+        IDEL : if(miss && s1_valid) axi_state <= MISS;
         MISS : begin
           if (meta_ram_rdata[repl_way].valid &&
               meta_ram_rdata[repl_way].dirty ) begin
-            if (axi4_mst.aw_ready) axi_stage <= REPLACE;
+            if (axi4_mst.aw_ready) axi_state <= REPLACE;
           end else begin
-            axi_stage <= REFILL;
+            axi_state <= REFILL;
           end
         end
-        REPLACE : if(axi4_mst.w_last) axi_stage <= REFILL;
-        REFILL : if(axi4_mst.r_last) axi_stage <= IDEL;
+        REPLACE : if(axi4_mst.w_last) axi_state <= REFILL;
+        REFILL : if(axi4_mst.r_last) axi_state <= IDEL;
         default : /* default */;
       endcase
       // axi读数据缓存
-      if (axi_stage == REFILL) begin
+      if (axi_state == REFILL) begin
         if (axi4_mst.r_valid && axi4_mst.r_ready) begin
           axi_rdata_buffer[axi_rdata_ofs] <= axi4_mst.r_data;
           axi_rdata_ofs <= axi_rdata_ofs + 1;
@@ -285,7 +285,7 @@ module DCache (
     axi4_mst.aw_qos = '0;
     axi4_mst.aw_region = '0;
     axi4_mst.aw_user = '0;
-    axi4_mst.aw_valid = axi_stage == MISS;
+    axi4_mst.aw_valid = axi_state == MISS;
     // input: axi4_mst.aw_ready
 
     axi4_mst.w_data = '0;
@@ -312,7 +312,7 @@ module DCache (
     axi4_mst.ar_qos = '0;
     axi4_mst.ar_region = '0;
     axi4_mst.ar_user = '0;
-    axi4_mst.ar_valid = axi_stage == REFILL;
+    axi4_mst.ar_valid = axi_state == REFILL;
     // input: axi4_mst.ar_ready
 
     // input: axi4_mst.r_id
@@ -321,7 +321,7 @@ module DCache (
     // input: axi4_mst.r_last
     // input: axi4_mst.r_user
     // input: axi4_mst.r_valid
-    axi4_mst.r_ready = axi_stage == REFILL;
+    axi4_mst.r_ready = axi_state == REFILL;
   end
   
 

@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Scheduler.sv
 // Create  : 2024-03-12 23:16:08
-// Revise  : 2024-03-21 23:44:48
+// Revise  : 2024-03-29 20:48:28
 // Description :
 //   ...
 //   ...
@@ -39,11 +39,12 @@ module Scheduler (
   input RobAllocRspSt rob_alloc_rsp,
 
   // freelist
-  input [`COMMIT_WIDTH - 1:0] fl_free_valid_i,
-  input [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] fl_free_preg_i,
+  input [`RETIRE_WIDTH - 1:0] fl_free_valid_i,
+  input [`RETIRE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] fl_free_preg_i,
   // rat
   input [31:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_i,
   // wake up
+  input logic [`COMMIT_WIDTH - 1:0] cmt_pdest_valid_i,
   input [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] cmt_pdest_i,
 
   /* issue */

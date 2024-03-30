@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : OrderReservationStation.sv
 // Create  : 2024-03-21 20:23:24
-// Revise  : 2024-03-21 23:17:13
+// Revise  : 2024-03-29 20:58:51
 // Description :
 //   ...
 //   ...
@@ -42,6 +42,7 @@ parameter
   output logic wr_ready_o,
 
   /* wake up */
+  input logic [`COMMIT_WIDTH - 1:0] cmt_pdest_valid_i,
   input logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] cmt_pdest_i,
 
   /* issue */
@@ -107,13 +108,15 @@ parameter
       // wake up
       for (int i = 0; i < RS_SIZE; i++) begin
         for (int j = 0; j < `COMMIT_WIDTH; j++) begin
-          if (mem_q[i].base.valid &&
+          if (cmt_pdest_valid_i[j]) begin
+            if (mem_q[i].base.valid &&
               mem_q[i].base.psrc0 == cmt_pdest_i[j]) begin
-            mem_n[i].psrc0_ready = '1;
-          end
-          if (mem_q[i].base.valid &&
-              mem_q[i].base.psrc1 == cmt_pdest_i[j]) begin
-            mem_n[i].psrc1_ready = '1;
+              mem_n[i].psrc0_ready = '1;
+            end
+            if (mem_q[i].base.valid &&
+                mem_q[i].base.psrc1 == cmt_pdest_i[j]) begin
+              mem_n[i].psrc1_ready = '1;
+            end
           end
         end
       end

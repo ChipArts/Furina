@@ -23,7 +23,7 @@
 
 module Decoder (
   input logic [31:0] instruction,
-  output GeneralCtrlSignalSt general_ctrl_signal
+  output OptionCodeSt option_code
 );
 
   // TODO: generate decoder by SpinalHDL

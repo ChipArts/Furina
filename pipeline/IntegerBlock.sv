@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : IntegerBlock.sv
 // Create  : 2024-03-17 22:34:32
-// Revise  : 2024-03-25 15:25:56
+// Revise  : 2024-03-27 20:26:39
 // Description :
 //   ...
 //   ...
@@ -48,13 +48,13 @@ module IntegerBlock (
   /* commit */
   // MISC
   output MiscCmtSt misc_cmt_o,
-  input misc_cmt_ready_i,
+  input logic misc_cmt_ready_i,
   // ALU * 2
   output AluCmtSt [1:0] alu_cmt_o,
-  input [1:0] alu_cmt_ready_i,
+  input logic [1:0] alu_cmt_ready_i,
   // MDU
   output MduCmtSt mdu_cmt_o,
-  input mdu_cmt_ready_i
+  input logic mdu_cmt_ready_i
 );
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);

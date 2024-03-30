@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Pipeline.sv
 // Create  : 2024-03-11 14:53:30
-// Revise  : 2024-03-26 21:52:09
+// Revise  : 2024-03-29 21:22:17
 // Description :
 //   ...
 //   ...
@@ -38,48 +38,52 @@ module Pipeline (
   `RESET_LOGIC(clk, a_rst_n, rst_n);
 /*=============================== Signal Define ===============================*/
   logic flush;  // 由退休的异常指令产生
-  // Branch Prediction Unit
+  /* Branch Prediction Unit */
   BPU_ReqSt bpu_req_st;
   BPU_RspSt bpu_rsp_st;
 
-  // Fetch Address Queue
+  /* Fetch Address Queue */
   FAQ_PushReqSt faq_push_req_st;
   FAQ_PopReqSt faq_pop_req_st;
   FAQ_PushRspSt faq_push_rsp_st;
   FAQ_PopRspSt faq_pop_rsp_st;
   logic faq_flush;
 
-  // ICache
-  ICacheFetchReqSt icache_fetch_req_st;
-  ICacheFetchRspSt icache_fetch_rsp_st;
-  MMU_SearchReqSt icahe_mmu_search_req_st;
-  MMU_SearchRspSt icache_mmu_search_rsp_st;
-  AXI4 #(
-    .AXI_ADDR_WIDTH(`PROC_PALEN),
-    .AXI_DATA_WIDTH(32),
-  ) icache_axi4_intf;
+  /* ICache */
+  logic icache_flush_i;
+  ICacheReqSt icache_req;
+  ICacheRspSt icache_rsp;
+  MmuAddrTransRspSt icache_addr_trans_rsp;
+  MmuAddrTransReqSt icache_addr_trans_req;
+  IcacopReqSt icacop_req;
+  IcacopRspSt icacop_rsp;
+  
 
-  // Instruction Buffer
-  typedef struct packed {
-    logic valid;
-    logic [31:0] instruction;
-    logic [`PROC_VALEN - 1:0] vaddr;
-  } IBUF_DataSt;
+  /* Instruction Buffer */
   logic ibuf_flush;
   logic ibuf_write_valid;
   logic ibuf_write_ready;
   logic [$clog2(`FETCH_WIDTH) - 1:0] ibuf_write_num;
-  IBUF_DataSt [`FETCH_WIDTH - 1:0] ibuf_write_data;
+  IbufDataSt [`FETCH_WIDTH - 1:0] ibuf_write_data;
   logic [$clog2(`DECODE_WIDTH) - 1:0] ibuf_read_num;
   logic [`DECODE_WIDTH - 1:0]ibuf_read_valid;
   logic ibuf_read_ready;
-  IBUF_DataSt [`DECODE_WIDTH - 1:0] ibuf_read_data;
+  IbufDataSt [`DECODE_WIDTH - 1:0] ibuf_read_data;
 
-  // Decoder
-  GeneralCtrlSignalSt [`DECODE_WIDTH - 1:0] general_ctrl_signal;
-  logic decoder_flush;
+  /* Decoder */
+  OptionCodeSt [`DECODE_WIDTH - 1:0] decoder_option_code;
 
-  // Scheduler
+  /* Scheduler */
+  logic sche_flush;
+  ScheduleReqSt sche_schedule_req;
+  ScheduleRspSt sche_schedule_rsp;
+  RobAllocReqSt sche_rob_alloc_req;
+  RobAllocRspSt sche_rob_alloc_rsp;
+  logic [`RETIRE_WIDTH - 1:0] sche_fl_free_valid_i;
+  logic [`RETIRE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_fl_free_preg_i;
+  logic [31:0][$clog2(`PHY_REG_NUM) - 1:0] sche_arch_rat_i;
+  logic [`COMMIT_WIDTH - 1:0] sche_cmt_pdest_valid_i;
+  logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_cmt_pdest_i;
   MiscIssueSt sche_misc_issue;
   logic sche_misc_ready;
   AluIssueSt [1:0] sche_alu_issue;
@@ -89,8 +93,7 @@ module Pipeline (
   MemIssueSt sche_mem_issue;
   logic sche_mem_ready;
 
-
-  // RegFile
+  /* RegFile */
   // 每周期最多发射misc*1、alu*2、mdu*1、mem*1
   logic [4:0] rf_we;
   logic [4:0][$clog2(`PHY_REG_NUM) - 1:0] rf_waddr;
@@ -98,7 +101,82 @@ module Pipeline (
   logic [4:0][31:0] rf_wdata;
   logic [9:0][31:0] rf_rdata;
 
-  // CSR
+  /* Integer Block */
+  logic int_blk_flush;
+  MiscExeSt int_blk_misc_exe;
+  logic int_blk_misc_ready;
+  AluExeSt [1:0] int_blk_alu_exe;
+  logic [1:0] int_blk_alu_ready;
+  MduExeSt int_blk_mdu_exe;
+  logic int_blk_mdu_ready;
+  logic [13:0] int_blk_csr_raddr;
+  logic [31:0] int_blk_csr_rdata;
+
+  MiscCmtSt int_blk_misc_cmt;
+  logic int_blk_misc_cmt_ready;
+  AluCmtSt [1:0] int_blk_alu_cmt;
+  logic [1:0] int_blk_alu_cmt_ready;
+  MduCmtSt int_blk_mdu_cmt;
+  logic int_blk_mdu_cmt_ready;
+
+  /* Memory Block */
+  logic mem_blk_flush;
+  MemExeSt mem_blk_exe;
+  logic mem_blk_exe_ready;
+  MmuAddrTransReqSt mem_blk_mmu_req;
+  MmuAddrTransRspSt mem_blk_mmu_rsp;
+  logic [$clog2(`ROB_DEPTH) - 1:0] mem_blk_oldest_rob_idx_i;
+  AXI4.Master mem_blk_axi4_mst;
+  MemCmtSt mem_blk_cmt;
+  logic mem_blk_cmt_ready;
+
+  /* Reorder Buffer */
+  logic rob_flush;
+  RobAllocReqSt rob_alloc_req;
+  RobAllocRspSt rob_alloc_rsp;
+  RobCmtReqSt [`COMMIT_WIDTH - 1:0] rob_cmt_req;
+  RobCmtRspSt [`COMMIT_WIDTH - 1:0] rob_cmt_rsp;
+  RobRetireBcstSt rob_retire_bcst;
+  logic [$clog2(`ROB_DEPTH) - 1:0] rob_oldest_rob_idx_o;
+
+  /* retire */
+  RobRetireBcstSt retire_bcst_buffer;
+  logic [31:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_o;
+  logic [`DECODE_WIDTH - 1:0] arch_rat_dest_valid_i;
+  logic [`DECODE_WIDTH - 1:0][4:0] arch_rat_dest_i;
+  logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_preg_i;
+
+  /* Memory Management Unit */
+  logic [9:0]  mmu_csr_asid_i;
+  logic [31:0] mmu_csr_dmw0_i;
+  logic [31:0] mmu_csr_dmw1_i;
+  logic [1:0]  mmu_csr_datf_i;
+  logic [1:0]  mmu_csr_datm_i;
+  logic        mmu_csr_da_i;
+  logic        mmu_csr_pg_i;
+  MmuAddrTransReqSt mmu_inst_trans_req;
+  MmuAddrTransRspSt mmu_inst_trans_rsp;
+  MmuAddrTransReqSt mmu_data_trans_req;
+  MmuAddrTransRspSt mmu_data_trans_rsp;
+  logic        mmu_tlbfill_en_i;
+  logic        mmu_tlbwr_en_i;
+  logic [ 4:0] mmu_rand_index_i;
+  logic [31:0] mmu_tlbehi_i;
+  logic [31:0] mmu_tlbelo0_i;
+  logic [31:0] mmu_tlbelo1_i;
+  logic [31:0] mmu_tlbidx_i;
+  logic [ 5:0] mmu_ecode_i;
+  logic [31:0] mmu_tlbehi_o;
+  logic [31:0] mmu_tlbelo0_o;
+  logic [31:0] mmu_tlbelo1_o;
+  logic [31:0] mmu_tlbidx_o;
+  logic [ 9:0] mmu_tlbasid_o;
+  logic        mmu_invtlb_en_i;
+  logic [ 9:0] mmu_invtlb_asid_i;
+  logic [18:0] mmu_invtlb_vpn_i;
+  logic [ 4:0] mmu_invtlb_op_i;
+
+  /* Control Status Register */
   logic [13:0]  csr_rd_addr      ;
   logic [31:0]  csr_rd_data      ;
   logic [63:0]  csr_timer_64_out ;
@@ -211,25 +289,30 @@ module Pipeline (
 
 /*========================== Instruction Fetch Unit ===========================*/
   always_comb begin
-    icache_fetch_req_st.valid = faq_pop_rsp_st.valid;
-    icache_fetch_req_st.vaddr = faq_pop_rsp_st.vaddr;
-    icache_axi4_mst = icache_axi4_intf;
+    icache_req.valid = faq_pop_rsp_st.valid;
+    icache_req.vaddr = faq_pop_rsp_st.vaddr;
+    icache_addr_trans_rsp = mmu_inst_trans_rsp;
+
+    icacop_req.valid = 0;
   end
 
-  ICache U_ICache (
-    .clk               (clk),
-    .a_rst_n           (rst_n),
-    .fetch_req_st      (icache_fetch_req_st),
-    .mmu_search_rsp_st (icahe_mmu_search_req_st),
-    .fetch_rsp_st      (icache_fetch_rsp_st),
-    .mmu_search_req_st (icache_mmu_search_rsp_st),
-    .axi4_mst          (icache_axi4_intf)
+  ICache inst_ICache
+  (
+    .clk            (clk),
+    .a_rst_n        (a_rst_n),
+    .flush_i        (flush_i),
+    .icache_req     (icache_req),
+    .icache_rsp     (icache_rsp),
+    .addr_trans_rsp (icache_addr_trans_rsp),
+    .addr_trans_req (icache_addr_trans_req),
+    .icacop_req     (icacop_req),
+    .icacop_rsp     (icacop_rsp),
+    .axi4_mst       (icache_axi4_mst)
   );
-
 
 /*============================ Instruction Buffer =============================*/
   always_comb begin
-    ibuf_flush = 1'b0;  // TODO: add flush logic
+    ibuf_flush = flush;
 
     ibuf_write_valid = |icache_fetch_rsp_st.valid;
     ibuf_write_num = '0;
@@ -247,7 +330,7 @@ module Pipeline (
 
   SyncMultiChannelFIFO #(
     .FIFO_DEPTH(`IBUF_DEPTH),
-    .DATA_WIDTH($bits(IBUF_DataSt)),
+    .DATA_WIDTH($bits(IbufDataSt)),
     .RPORTS_NUM(`DECODE_WIDTH),
     .WPORTS_NUM(`FETCH_WIDTH),
     .FIFO_MEMORY_TYPE("auto")
@@ -268,34 +351,66 @@ module Pipeline (
 /*================================== Decoder ==================================*/
 
   for (genvar i = 0; i < `DECODE_WIDTH; i++) begin
-    Decoder U_Decoder (.instruction(ibuf_read_data[i].instruction), .general_ctrl_signal(general_ctrl_signal));
-  end
-
-  /* Dispatch/Wake up/Select */
-  always_comb begin
-    schedule_req_st.valid = '0;
-    for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      schedule_req_st.valid |= schedule_req_st.inst_info[i].valid;
-    end
-    schedule_req_st.ready = '1;
+    Decoder inst_Decoder (
+      .instruction(ibuf_read_data[i].instruction), 
+      .option_code(decoder_option_code)
+    );
   end
 
 /*================================= Scheduler ================================*/
+  /* Dispatch/Wake up/Select */
+  always_comb begin
+    sche_flush = flush;
+
+    for (int i = 0; i < `DECODE_WIDTH; i++) begin
+      sche_schedule_req.valid[i] = ibuf_read_valid[i];
+      sche_schedule_req.pc[i] = ibuf_read_data[i].pc;
+      sche_schedule_req.npc[i] = ibuf_read_data[i].npc;
+      sche_schedule_req.imm[i] = ibuf_read_data[i].imm;
+      sche_schedule_req.option_code[i] = decoder_option_code[i];
+    end
+
+    sche_arch_rat_i = arch_rat_o;
+    sche_rob_alloc_rsp = rob_alloc_rsp;
+    sche_fl_free_valid_i = rob_retire_bcst.valid;
+    for (int i = 0; i < `RETIRE_WIDTH; i++) begin
+      sche_fl_free_preg_i[i] = rob_retire_bcst.rob_entry[i].old_phy_reg;
+    end
+
+    sche_cmt_pdest_i[0] = int_blk_misc_cmt.base.pdest;
+    sche_cmt_pdest_i[1] = int_blk_alu_cmt[0].base.pdest;
+    sche_cmt_pdest_i[2] = int_blk_alu_cmt[1].base.pdest;
+    sche_cmt_pdest_i[3] = int_blk_mdu_cmt.base.pdest;
+    sche_cmt_pdest_i[4] = mem_blk_cmt.base.pdest;
+
+    sche_cmt_pdest_valid_i[0] = int_blk_misc_cmt.base.valid & int_blk_misc_cmt.base.we & int_blk_misc_cmt_ready;
+    sche_cmt_pdest_valid_i[1] = int_blk_alu_cmt[0].base.valid & int_blk_alu_cmt[0].base.we & int_blk_alu_cmt_ready;
+    sche_cmt_pdest_valid_i[2] = int_blk_alu_cmt[1].base.valid & int_blk_alu_cmt[1].base.we & int_blk_alu_cmt_ready;
+    sche_cmt_pdest_valid_i[3] = int_blk_mdu_cmt.base.valid & int_blk_mdu_cmt.base.we & int_blk_mdu_cmt_ready;
+    sche_cmt_pdest_valid_i[4] = mem_blk_cmt.base.valid & mem_blk_cmt.base.we & mem_blk_cmt_ready;
+
+    sche_misc_ready = int_blk_misc_ready;
+    sche_alu_ready = int_blk_alu_ready;
+    sche_mdu_ready = int_blk_mdu_ready;
+    sche_mem_ready = mem_blk_exe_ready;
+
+  end
 
   Scheduler inst_Scheduler
   (
     .clk             (clk),
     .a_rst_n         (a_rst_n),
-    .flush_i         (flush_i),
+    .flush_i         (sche_flush),
     // schedule
-    .schedule_req    (schedule_req),
-    .schedule_rsp    (schedule_rsp),
-    .rob_alloc_req   (rob_alloc_req),
-    .rob_alloc_rsp   (rob_alloc_rsp),
-    .fl_free_valid_i (fl_free_valid_i),
-    .fl_free_preg_i  (fl_free_preg_i),
-    .arch_rat_i      (arch_rat_i),
-    .cmt_pdest_i     (cmt_pdest_i),
+    .schedule_req    (sche_schedule_req),
+    .schedule_rsp    (sche_schedule_rsp),
+    .rob_alloc_req   (sche_rob_alloc_req),
+    .rob_alloc_rsp   (sche_rob_alloc_rsp),
+    .fl_free_valid_i (sche_fl_free_valid_i),
+    .fl_free_preg_i  (sche_fl_free_preg_i),
+    .arch_rat_i      (sche_arch_rat_i),
+    .cmt_pdest_valid_i(sche_cmt_pdest_valid_i),
+    .cmt_pdest_i     (sche_cmt_pdest_i),
     // issue
     .misc_issue_o    (sche_misc_issue),
     .misc_ready_i    (sche_misc_ready),
@@ -308,7 +423,6 @@ module Pipeline (
   );
 
 /*================================= RegFile ===================================*/
-
   always_comb begin
     rf_raddr[0] = sche_alu_issue[0].base_info.psrc0;
     rf_raddr[1] = sche_alu_issue[0].base_info.psrc1;
@@ -320,6 +434,24 @@ module Pipeline (
     rf_raddr[7] = sche_mdu_issue.base_info.psrc1;
     rf_raddr[8] = sche_mem_issue.base_info.psrc0;
     rf_raddr[9] = sche_mem_issue.base_info.psrc1;
+
+    rf_we[0] = int_blk_alu_cmt[0].base.valid & int_blk_alu_cmt[0].base.we;
+    rf_we[1] = int_blk_alu_cmt[1].base.valid & int_blk_alu_cmt[1].base.we;
+    rf_we[2] = int_blk_mdu_cmt.base.valid & int_blk_mdu_cmt.base.we;
+    rf_we[3] = mem_blk_cmt.base.valid & mem_blk_cmt.base.we;
+    rf_we[4] = int_blk_misc_cmt.base.valid & int_blk_misc_cmt.base.we;
+
+    rf_waddr[0] = int_blk_alu_cmt[0].base.pdest;
+    rf_waddr[1] = int_blk_alu_cmt[1].base.pdest;
+    rf_waddr[2] = int_blk_mdu_cmt.base.pdest;
+    rf_waddr[3] = int_blk_mem_cmt.base.pdest;
+    rf_waddr[4] = int_blk_misc_cmt.base.pdest;
+
+    rf_wdata[0] = int_blk_alu_cmt[0].base.wdata;
+    rf_wdata[1] = int_blk_alu_cmt[1].base.wdata;
+    rf_wdata[2] = int_blk_mdu_cmt.base.wdata;
+    rf_wdata[3] = int_blk_mem_cmt.base.wdata;
+    rf_wdata[4] = int_blk_misc_cmt.base.wdata;
   end
 
   // comb输出，需用寄存器存一拍
@@ -355,59 +487,231 @@ module Pipeline (
 
 
 /*=============================== Integer Block ===============================*/
+  always_comb begin
+    int_blk_flush = flush;
+    int_blk_misc_exe.base = '{valid: sche_misc_issue.valid, 
+                              imm: sche_misc_issue.base_info.imm, 
+                              src0: rf_rdata[4],
+                              src1: rf_rdata[5],
+                              pdest: sche_misc_issue.base_info.pdest, 
+                              rob_idx: sche_misc_issue.base_info.rob_idx};
+    int_blk_misc_exe.misc_oc = sche_misc_issue.misc_oc;
+    int_blk_misc_exe.pc = sche_misc_issue.base_info.pc;
+    int_blk_misc_exe.npc = sche_misc_issue.base_info.npc;
+
+    int_blk_alu_exe[0].base = '{valid: sche_alu_issue[0].base_info.valid, 
+                                imm: sche_alu_issue[0].base_info.imm, 
+                                src0: rf_rdata[0],
+                                src1: rf_rdata[1],
+                                pdest: sche_alu_issue[0].base_info.pdest, 
+                                rob_idx: sche_alu_issue[0].base_info.rob_idx};
+    int_blk_alu_exe[0].alu_oc = sche_alu_issue[0].alu_oc;
+
+    int_blk_alu_exe[1].base = '{valid: sche_alu_issue[1].base_info.valid, 
+                                imm: sche_alu_issue[1].base_info.imm, 
+                                src0: rf_rdata[2],
+                                src1: rf_rdata[3],
+                                pdest: sche_alu_issue[1].base_info.pdest, 
+                                rob_idx: sche_alu_issue[1].base_info.rob_idx};
+    int_blk_alu_exe[1].alu_oc = sche_alu_issue[1].alu_oc;
+
+    int_blk_mdu_exe.base = '{valid: sche_mdu_issue.base_info.valid, 
+                             imm: sche_mdu_issue.base_info.imm, 
+                             src0: rf_rdata[6],
+                             src1: rf_rdata[7],
+                             pdest: sche_mdu_issue.base_info.pdest, 
+                             rob_idx: sche_mdu_issue.base_info.rob_idx};
+    int_blk_mdu_exe.mdu_oc = sche_mdu_issue.mdu_oc;
+
+    int_blk_csr_rdata = csr_rd_data;
+
+    int_blk_alu_cmt_ready = '1;
+    int_blk_misc_cmt_ready = ~int_blk_misc_cmt.csr_we | 
+                              int_blk_misc_cmt.base.rob_idx == rob_oldest_rob_idx_o;
+    int_blk_mdu_cmt_ready = '1;
+  end
+
+
   IntegerBlock inst_IntegerBlock
   (
-    .clk                (clk),
-    .rst_n              (rst_n),
-    .misc_valid_o       (misc_valid_o),
-    .misc_ready_i       (misc_ready_i),
-    .misc_imm_i         (misc_imm_i),
-    .misc_src0_i        (misc_src0_i),
-    .misc_src1_i        (misc_src1_i),
-    .misc_option_code_o (misc_option_code_o),
-    .alu_valid_o        (alu_valid_o),
-    .alu_ready_i        (alu_ready_i),
-    .alu_imm_i          (alu_imm_i),
-    .alu_src0_i         (alu_src0_i),
-    .alu_src1_i         (alu_src1_i),
-    .alu_option_code_o  (alu_option_code_o)
+    .clk              (clk),
+    .a_rst_n          (rst_n),
+    .flush_i          (int_blk_flush),
+    /* exe */
+    .misc_exe_i       (int_blk_misc_exe),
+    .misc_ready_o     (int_blk_misc_ready),
+    .alu_exe_i        (int_blk_alu_exe),
+    .alu_ready_o      (int_blk_alu_ready),
+    .mdu_exe_i        (int_blk_mdu_exe),
+    .mdu_ready_o      (int_blk_mdu_ready),
+    /* other exe info */
+    .csr_raddr_o      (int_blk_csr_raddr),
+    .csr_rdata_i      (int_blk_csr_rdata),
+    /* commit */
+    .misc_cmt_o       (int_blk_misc_cmt),
+    .misc_cmt_ready_i (int_blk_misc_cmt_ready),
+    .alu_cmt_o        (int_blk_alu_cmt),
+    .alu_cmt_ready_i  (int_blk_alu_cmt_ready),
+    .mdu_cmt_o        (int_blk_mdu_cmt),
+    .mdu_cmt_ready_i  (int_blk_mdu_cmt_ready)
   );
 
 
 /*=============================== Memory Block ================================*/
+  always_comb begin
+    mem_blk_flush = flush;
+
+    mem_blk_exe.base = '{valid: sche_mem_issue.base_info.valid, 
+                         imm: sche_mem_issue.base_info.imm, 
+                         src0: rf_rdata[8],
+                         src1: rf_rdata[9],
+                         pdest: sche_mem_issue.base_info.pdest, 
+                         rob_idx: sche_mem_issue.base_info.rob_idx};
+    mem_blk_exe.mem_oc = sche_mem_issue.mem_oc;
+
+    mem_blk_mmu_rsp = mmu_data_trans_rsp;
+    mem_blk_oldest_rob_idx_i = rob_oldest_rob_idx_o;
+    mem_blk_axi4_mst = dcache_axi4_mst;
+
+    mem_blk_cmt_ready = '1;
+  end
+
+
   MemoryBlock inst_MemoryBlock
   (
     .clk              (clk),
     .a_rst_n          (a_rst_n),
-    .exe_i            (exe_i),
-    .exe_ready_o      (exe_ready_o),
-    .mmu_req          (mmu_req),
-    .mmu_rsp          (mmu_rsp),
-    .oldest_rob_idx_i (oldest_rob_idx_i),
-    .axi4_mst         (axi4_mst),
-    .cmt_o            (cmt_o),
-    .cmt_ready_i      (cmt_ready_i)
+    .flush_i          (mem_blk_flush),
+    .exe_i            (mem_blk_exe),
+    .exe_ready_o      (mem_blk_exe_ready),
+    .mmu_req          (mem_blk_mmu_req),
+    .mmu_rsp          (mem_blk_mmu_rsp),
+    .oldest_rob_idx_i (mem_blk_oldest_rob_idx_i),
+    .axi4_mst         (mem_blk_axi4_mst),
+    .cmt_o            (mem_blk_cmt),
+    .cmt_ready_i      (mem_blk_cmt_ready)
   );
 
 /*============================== Reorder Buffer ===============================*/
+  always_comb begin
+    rob_flush = flush;
+
+    rob_alloc_req = sche_rob_alloc_req;
+    rob_cmt_req[0] = '{valid: int_blk_misc_cmt.base.valid,
+                       rob_idx: int_blk_misc_cmt.base.rob_idx,
+                       exception: int_blk_misc_cmt.base.exception,
+                       ecode: int_blk_misc_cmt.base.ecode};
+    rob_cmt_req[1] = '{valid: int_blk_alu_cmt[0].base.valid,
+                       rob_idx: int_blk_alu_cmt[0].base.rob_idx,
+                       exception: int_blk_alu_cmt[0].base.exception,
+                       ecode: int_blk_alu_cmt[0].base.ecode};
+    rob_cmt_req[2] = '{valid: int_blk_alu_cmt[1].base.valid,
+                       rob_idx: int_blk_alu_cmt[1].base.rob_idx,
+                       exception: int_blk_alu_cmt[1].base.exception,
+                       ecode: int_blk_alu_cmt[1].base.ecode};
+    rob_cmt_req[3] = '{valid: int_blk_mdu_cmt.base.valid,
+                       rob_idx: int_blk_mdu_cmt.base.rob_idx,
+                       exception: int_blk_mdu_cmt.base.exception,
+                       ecode: int_blk_mdu_cmt.base.ecode};
+    rob_cmt_rsp[4] = '{valid: mem_blk_cmt.base.valid,
+                       rob_idx: mem_blk_cmt.base.rob_idx,
+                       exception: mem_blk_cmt.base.exception,
+                       ecode: mem_blk_cmt.base.ecode};
+  end
 
   ReorderBuffer inst_ReorderBuffer
   (
     .clk              (clk),
     .a_rst_n          (a_rst_n),
-    .flush_i          (flush_i),
-    .alloc_req        (alloc_req),
-    .alloc_rsp        (alloc_rsp),
-    .cmt_req          (cmt_req),
-    .cmt_rsp          (cmt_rsp),
-    .retire_bcst      (retire_bcst),
-    .oldest_rob_idx_o (oldest_rob_idx_o)
+    .flush_i          (rob_flush),
+    .alloc_req        (rob_alloc_req),
+    .alloc_rsp        (rob_alloc_rsp),
+    .cmt_req          (rob_cmt_req),
+    .cmt_rsp          (rob_cmt_rsp),
+    .retire_bcst      (rob_retire_bcst),
+    .oldest_rob_idx_o (rob_oldest_rob_idx_o)
+  );
+/*================================== Retire ===================================*/
+  always_comb begin
+    for (int i = 0; i < `RETIRE_WIDTH; i++) begin
+      arch_rat_dest_valid_i[i] = rob_retire_bcst.valid[i] & rob_retire_bcst.rob_entry[i].phy_reg_valid;
+      arch_rat_dest_i[i] = rob_retire_bcst.rob_entry[i].arch_reg;
+      arch_rat_preg_i[i] = rob_retire_bcst.rob_entry[i].phy_reg;
+    end
+  end
+
+
+  ArchRegisterAliasTable #(
+    .PHY_REG_NUM(`PHY_REG_NUM)
+  ) inst_ArchRegisterAliasTable (
+    .clk          (clk),
+    .a_rst_n      (rst_n),
+    .arch_rat_o   (arch_rat_o),
+    .dest_valid_i (arch_rat_dest_valid_i),
+    .dest_i       (arch_rat_dest_i),
+    .preg_i       (arch_rat_preg_i)
   );
 
 /*========================== Memory Management Unit ===========================*/
 
+  always_comb begin
+    mmu_csr_asid_i = csr_asid_out;
+    mmu_csr_dmw0_i = csr_dmw0_out;
+    mmu_csr_dmw1_i = csr_dmw1_out;
+    mmu_csr_datf_i = csr_datf_out;
+    mmu_csr_datm_i = csr_datm_out;
+    mmu_csr_da_i = csr_da_out;
+    mmu_csr_pg_i = csr_pg_out;
+
+    mmu_inst_trans_req = icache_addr_trans_req;
+    mmu_data_trans_req = mem_blk_mmu_req;
+  end
+
+  MemoryManagementUnit inst_MemoryManagementUnit
+  (
+    .clk            (clk),
+    .a_rst_n        (a_rst_n),
+    // from csr
+    .csr_asid_i     (mmu_csr_asid_i),
+    .csr_dmw0_i     (mmu_csr_dmw0_i),
+    .csr_dmw1_i     (mmu_csr_dmw1_i),
+    .csr_datf_i     (mmu_csr_datf_i),
+    .csr_datm_i     (mmu_csr_datm_i),
+    .csr_da_i       (mmu_csr_da_i),
+    .csr_pg_i       (mmu_csr_pg_i),
+    // inst addr trans
+    .inst_trans_req (mmu_inst_trans_req),
+    .inst_trans_rsp (mmu_inst_trans_rsp),
+    // data addr trans
+    .data_trans_req (mmu_data_trans_req),
+    .data_trans_rsp (mmu_data_trans_rsp),
+    // tlbfill tlbwr tlb write
+    .tlbfill_en_i   (mmu_tlbfill_en_i),
+    .tlbwr_en_i     (mmu_tlbwr_en_i),
+    .rand_index_i   (mmu_rand_index_i),
+    .tlbehi_i       (mmu_tlbehi_i),
+    .tlbelo0_i      (mmu_tlbelo0_i),
+    .tlbelo1_i      (mmu_tlbelo1_i),
+    .tlbidx_i       (mmu_tlbidx_i),
+    .ecode_i        (mmu_ecode_i),
+    //tlbr tlb read
+    .tlbehi_o       (mmu_tlbehi_o),
+    .tlbelo0_o      (mmu_tlbelo0_o),
+    .tlbelo1_o      (mmu_tlbelo1_o),
+    .tlbidx_o       (mmu_tlbidx_o),
+    .tlbasid_o      (mmu_tlbasid_o),
+    // invtlb
+    .invtlb_en_i    (mmu_invtlb_en_i),
+    .invtlb_asid_i  (mmu_invtlb_asid_i),
+    .invtlb_vpn_i   (mmu_invtlb_vpn_i),
+    .invtlb_op_i    (mmu_invtlb_op_i)
+  );
 
 /*======================= CSR(Control/Status Register) ========================*/
+  always_comb begin
+    ;
+  end
+
   ControlStatusRegister #(
     .TLBNUM(`TLB_ENTRY_NUM)
   ) inst_ControlStatusRegister (
@@ -490,9 +794,6 @@ module Pipeline (
     .csr_pgdl_diff      (csr_pgdl_diff),
     .csr_pgdh_diff      (csr_pgdh_diff)
   );
-
-
-
   
 
 endmodule : Pipeline

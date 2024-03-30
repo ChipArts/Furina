@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Cache.svh
 // Create  : 2024-03-01 21:28:47
-// Revise  : 2024-03-25 17:46:43
+// Revise  : 2024-03-29 16:23:51
 // Description :
 //   ...
 //   ...
@@ -36,16 +36,16 @@
 //       |       ICacheIndexOffset
 //       ICacheTagOffset
 // 地址偏移
-`define ICACHE_INDEX_OFFSET $clog2(`ICACHE_SIZE / `DCACHE_WAY_NUM / `ICACHE_BLOCK_SIZE)
+`define ICACHE_IDX_OFFSET $clog2(`ICACHE_SIZE / `DCACHE_WAY_NUM / `ICACHE_BLOCK_SIZE)
 `define ICACHE_TAG_OFFSET $clog2(`ICACHE_SIZE / `DCACHE_WAY_NUM)
 // 地址位宽
-`define ICACHE_BYTE_WIDTH `ICACHE_INDEX_OFFSET
-`define ICACHE_INDEX_WIDTH (`ICACHE_TAG_OFFSET - `ICACHE_TAG_OFFSET)
+`define ICACHE_OFS_WIDTH `ICACHE_IDX_OFFSET
+`define ICACHE_IDX_WIDTH (`ICACHE_TAG_OFFSET - `ICACHE_TAG_OFFSET)
 // 存储器数据位宽
 `define ICACHE_TAG_WIDTH (`PROC_VALEN - `ICACHE_TAG_OFFSET)
 
-`define ICACHE_WORD_OF(ADDR) ADDR[`ICACHE_INDEX_OFFSET - 1:2]
-`define ICACHE_INDEX_OF(ADDR) ADDR[`ICACHE_TAG_OFFSET - 1:`ICACHE_INDEX_OFFSET]
+`define ICACHE_OFS_OF(ADDR) ADDR[`ICACHE_IDX_OFFSET - 1:0]
+`define ICACHE_IDX_OF(ADDR) ADDR[`ICACHE_TAG_OFFSET - 1:`ICACHE_IDX_OFFSET]
 `define ICACHE_TAG_OF(ADDR) ADDR[`PROC_PALEN - 1:`ICACHE_TAG_OFFSET]
 
 // 要保证每次请求的指令在同一Cache行即idx相同
@@ -53,7 +53,7 @@ typedef struct packed {
   logic [`FETCH_WIDTH - 1:0] valid;  // 请求有效
   logic ready;  // 请求方可接收相应(暂时无用)
   logic [`PROC_VALEN - 1:0] vaddr;  // 请求地址
-} ICacheFetchReqSt;
+} ICacheReqSt;
 
 typedef struct packed {
   logic [`FETCH_WIDTH - 1:0] valid;
@@ -61,7 +61,17 @@ typedef struct packed {
 
   logic [`FETCH_WIDTH - 1:0][`PROC_VALEN - 1:0] vaddr;
   logic [`FETCH_WIDTH - 1:0][31:0] instructions;  // 指令
-} ICacheFetchRspSt;
+} ICacheRspSt;
+
+typedef struct packed {
+  logic valid;
+  logic ready;
+} IcacopReqSt;
+
+typedef struct packed {
+  logic valid;
+  logic ready;
+} IcacopRspSt;
 
 /* DCache */
 //       Virtual Address

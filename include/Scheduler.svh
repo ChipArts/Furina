@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Scheduler.svh
 // Create  : 2024-03-12 23:17:37
-// Revise  : 2024-03-21 23:38:19
+// Revise  : 2024-03-27 22:02:51
 // Description :
 //   ...
 //   ...
@@ -29,7 +29,8 @@
 
 typedef struct packed {
   logic [`DECODE_WIDTH - 1:0] valid;
-  logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] vaddr;
+  logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] pc;
+  logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] npc;
   logic [`DECODE_WIDTH - 1:0][31:0] imm;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] psrc0, psrc1, pdest;
   OptionCodeSt [`DECODE_WIDTH - 1:0] option_code;
@@ -94,6 +95,7 @@ typedef struct packed {
   logic [$clog2(`PHY_REG_NUM) - 1:0] psrc0;
   logic [$clog2(`PHY_REG_NUM) - 1:0] psrc1;
   logic [$clog2(`PHY_REG_NUM) - 1:0] pdest;
+  logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
 } IssueBaseSt;
 
 typedef struct packed {

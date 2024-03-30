@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MiscPipe.sv
 // Create  : 2024-03-20 17:02:30
-// Revise  : 2024-03-25 15:29:45
+// Revise  : 2024-03-29 18:09:29
 // Description :
 //   ...
 //   ...
@@ -36,6 +36,7 @@ module MiscPipe (
   /* other exe io */
   output logic [13:0] csr_raddr_o,
   input logic [31:0] csr_rdata_i,
+  input [$clog2(`ROB_DEPTH) - 1:0] oldest_rob_idx_i,
   /* commit */
   output MiscCmtSt cmt_o,
   input cmt_ready_i
@@ -112,7 +113,7 @@ module MiscPipe (
                                          priv_op == `PRIV_CSR_XCHG |
                                          priv_op == `PRIV_CSR_WRITE));
     cmt_wdata = inst_type == `BR_INST ? s1_exe.pc + 4 :
-                inst_type == `PRIV_INST   ? csr_rdata_i : '0;
+                inst_type == `PRIV_INST ? csr_rdata_i : '0;
   end
   
   BranchUnit U_BranchUnit

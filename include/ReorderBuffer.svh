@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : ReorderBuffer.svh
 // Create  : 2024-03-13 21:02:26
-// Revise  : 2024-03-26 17:30:50
+// Revise  : 2024-03-29 17:56:37
 // Description :
 //   ...
 //   ...
@@ -29,6 +29,7 @@
 typedef struct packed {
   logic complete;
   logic [4:0] arch_reg;
+  logic phy_reg_valid;
   logic [$clog2(`PHY_REG_NUM) - 1:0] phy_reg;
   logic [$clog2(`PHY_REG_NUM) - 1:0] old_phy_reg;
   logic [`PROC_VALEN - 1:0] pc;
@@ -42,7 +43,7 @@ typedef struct packed {
 
 typedef struct packed {
   logic [`DECODE_WIDTH - 1:0] valid;
-  ROB_EntrySt [`DECODE_WIDTH - 1:0] rob_entry;
+  RobEntrySt [`DECODE_WIDTH - 1:0] rob_entry;
 } RobAllocReqSt;
 
 typedef struct packed {

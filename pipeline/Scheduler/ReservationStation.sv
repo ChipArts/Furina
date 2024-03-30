@@ -43,6 +43,7 @@ parameter
   output logic [BANK_NUM - 1:0] wr_ready_o,
 
   /* wake up */
+  input logic [`COMMIT_WIDTH - 1:0] cmt_pdest_valid_i,
   input logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] cmt_pdest_i,
 
   /* issue */
@@ -101,13 +102,15 @@ parameter
     for (int i = 0; i < BANK_NUM; i++) begin
       for (int j = 0; j < BANK_SIZE; j++) begin
         for (int k = 0; k < `COMMIT_WIDTH; k++) begin
-          if (rs_mem[i][j].base.valid &&
+          if (cmt_pdest_valid_i[k]) begin
+            if (rs_mem[i][j].base.valid &&
               rs_mem[i][j].base.psrc0 == cmt_pdest_i[k]) begin
-            rs_mem_n[i][j].base.psrc0_ready = '1;
-          end
-          if (rs_mem[i][j].base.valid &&
-              rs_mem[i][j].base.psrc1 == cmt_pdest_i[k]) begin
-            rs_mem_n[i][j].base.psrc1_ready = '1;
+              rs_mem_n[i][j].base.psrc0_ready = '1;
+            end
+            if (rs_mem[i][j].base.valid &&
+                rs_mem[i][j].base.psrc1 == cmt_pdest_i[k]) begin
+              rs_mem_n[i][j].base.psrc1_ready = '1;
+            end
           end
         end
       end
