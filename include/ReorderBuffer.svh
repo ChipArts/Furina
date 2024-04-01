@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : ReorderBuffer.svh
 // Create  : 2024-03-13 21:02:26
-// Revise  : 2024-03-30 22:33:01
+// Revise  : 2024-04-01 17:35:53
 // Description :
 //   ...
 //   ...
@@ -28,19 +28,24 @@
 
 typedef struct packed {
   logic complete;
+  logic [`PROC_VALEN - 1:0] pc;
+  InstType inst_type;
   logic [4:0] arch_reg;
   logic phy_reg_valid;
   logic [$clog2(`PHY_REG_NUM) - 1:0] phy_reg;
   logic [$clog2(`PHY_REG_NUM) - 1:0] old_phy_reg;
-  logic [`PROC_VALEN - 1:0] pc;
-  logic [`PROC_VALEN - 1:0] error_vaddr;
+  // 分支预测失败处理
   logic redirect;
   logic [`PROC_VALEN - 1:0] br_target;
+  // 异常/例外处理
   logic exception;
   ExcCodeType ecode;
   SubEcodeType sub_ecode;
-  InstType inst_type;
-  MemType mem_type;
+  logic [`PROC_VALEN - 1:0] error_vaddr;
+`ifdef DEBUG
+  logic [31:0] inst;
+  logic [31:0] rf_wdata;
+`endif
 } RobEntrySt;
 
 typedef struct packed {
@@ -57,8 +62,12 @@ typedef struct packed {
 typedef struct packed {
   logic valid;
   logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
+  logic redirect;
+  logic [`PROC_VALEN - 1:0] br_target;
   logic exception;
   ExcCodeType ecode;
+  SubEcodeType sub_ecode;
+  logic [`PROC_VALEN - 1:0] error_vaddr;
 } RobCmtReqSt;
 
 typedef struct packed {
@@ -68,7 +77,7 @@ typedef struct packed {
 typedef struct packed {
   logic [`RETIRE_WIDTH - 1:0] valid;
   RobEntrySt [`RETIRE_WIDTH - 1:0] rob_entry;
-} RobRetireBcstSt;
+} RobRetireSt;
 
 
 `endif  // _REORDER_BUFFER_SVH_

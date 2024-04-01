@@ -7,11 +7,11 @@
 // Revise  : 2024-02-16 22:38:29
 // Description :
 //   指令位宽: 32bit
-//   替换算法: 随机替换(时钟替换)
+//   替换算法: PLRU
 // Parameter   :
 //   CACHE_SIZE: cache大小，单位(Byte)，必须是2的幂
 //   BLOCK_SIZE: 一个cache块的大小(Byte)，必须是(2/4/8/16)Byte
-//   ASSOCIATIVITY: cache的相联度，必须是2的幂
+//   WAY_NUM   : cache的相联度，必须是2的幂
 // IO Port     :
 //   ...
 //   ...
@@ -44,31 +44,31 @@ module ICache (
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);
 
-  logic s0_ready, s1_ready, s2_ready, s3_ready;
+  logic s0_ready, s1_ready;
   // memory ctrl
-  logic [`ICACHE_WAY_NUM - 1:0] data_ram_we;  // 控制写入哪个way，目前的架构按行写入，无需分bank
+  logic [`ICACHE_WAY_NUM - 1:0] data_ram_we;  // 控制写入哪个way
   logic [`ICACHE_IDX_WIDTH - 1:0] data_ram_waddr;  // 写入每个way的cache行地址(idx)相同
-  logic [`ICACHE_BLOCK_SIZE - 1:0] data_ram_raddr;  // 分bank读取每个way的数据
-  logic [`ICACHE_BLOCK_SIZE - 1:0][7:0] data_ram_wdata;  // 要写入的cache行的数据
-  logic [`ICACHE_WAY_NUM - 1:0][(`ICACHE_BLOCK_SIZE / 4) - 1:0][31:0] data_ram_rdata;
+  logic [1:0][`ICACHE_BLOCK_SIZE / 2 - 1:0][7:0] data_ram_wdata;  // 要写入的cache行的数据
+  logic [1:0][`ICACHE_IDX_WIDTH - 1:0] data_ram_raddr;
+  logic [1:0][`ICACHE_WAY_NUM - 1:0][(`ICACHE_BLOCK_SIZE / 8) - 1:0][31:0] data_ram_rdata;
 
   logic [`ICACHE_WAY_NUM - 1:0] tag_ram_we;
   logic [`ICACHE_IDX_WIDTH - 1:0] tag_ram_waddr;
-  logic [`ICACHE_IDX_WIDTH - 1:0] tag_ram_raddr;
   logic [`ICACHE_TAG_WIDTH - 1:0] tag_ram_wdata;
-  logic [`ICACHE_WAY_NUM - 1:0][`ICACHE_TAG_WIDTH - 1:0] tag_ram_rdata;
+  logic [1:0][`ICACHE_IDX_WIDTH - 1:0] tag_ram_raddr;
+  logic [1:0][`ICACHE_WAY_NUM - 1:0][`ICACHE_TAG_WIDTH - 1:0] tag_ram_rdata;
 
   logic [`ICACHE_WAY_NUM - 1:0] valid_ram_we;
   logic [`ICACHE_IDX_WIDTH - 1:0] valid_ram_waddr;
-  logic [`ICACHE_IDX_WIDTH - 1:0] valid_ram_raddr;
   logic valid_ram_wdata;
-  logic [`ICACHE_WAY_NUM - 1:0] valid_ram_rdata;
+  logic [1:0][`ICACHE_IDX_WIDTH - 1:0] valid_ram_raddr;
+  logic [1:0][`ICACHE_WAY_NUM - 1:0] valid_ram_rdata;
 
   logic  plru_ram_we;
   logic [`ICACHE_IDX_WIDTH - 1:0] plru_ram_waddr;
-  logic [`ICACHE_IDX_WIDTH - 1:0] plru_ram_raddr;
-  logic [`ICACHE_WAY_NUM - 2:0] plru_ram_rdata;
   logic [`ICACHE_WAY_NUM - 2:0] plru_ram_wdata;
+  logic [1:0][`ICACHE_IDX_WIDTH - 1:0] plru_ram_raddr;
+  logic [1:0][`ICACHE_WAY_NUM - 2:0] plru_ram_rdata;
 
   typedef enum logic [1:0] {
     IDEL,  // ICache正常工作
@@ -79,6 +79,12 @@ module ICache (
   AxiState axi_state;
   logic [(`ICACHE_BLOCK_SIZE / 4) - 1:0][31:0] axi_rdata_buffer;
   logic [$clog2(`ICACHE_BLOCK_SIZE) - 1:0] axi_rdata_ofs;
+
+  /* stage 0 */
+  logic line_break;
+
+  /* stage 1 */
+  logic [(`ICACHE_BLOCK_SIZE / 4) - 1:0][31:0] cache_line;
 
 /*=================================== Stage0 ==================================*/
   // 接收 取指令 虚拟地址
@@ -91,21 +97,25 @@ module ICache (
     s0_ready = s1_ready & addr_trans_rsp.ready & ~icacop_req.valid;
     icache_rsp.ready = s0_ready;
     addr_trans_req.valid = icache_req.valid & s1_ready;
-    addr_trans_req.vaddr = icache_req.vaddr;
     addr_trans_req.ready = '1;
+    addr_trans_req.vaddr = icache_req.vaddr;
+    line_break = `ICACHE_OFS_OF(icache_req.vaddr) > `ICACHE_BLOCK_SIZE - `FETCH_WIDTH * 4;
   end
 
 /*=================================== Stage1 ==================================*/
   logic [`FETCH_WIDTH - 1:0] s1_valid;
   logic [`PROC_VALEN - 1:0] s1_vaddr;
+  logic s1_line_break;
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n || flush_i) begin
       s1_valid <= '0;
-      s1_vaddr <= 0;
+      s1_vaddr <= '0;
+      s1_line_break <= '0;
     end else begin
       if (s1_ready) begin
         s1_valid <= icache_req.valid;
         s1_vaddr <= icache_req.vaddr;
+        s1_line_break <= line_break;
       end
     end
   end
@@ -116,39 +126,42 @@ module ICache (
   // 5 获得 plru 信息, 选出替换 way
   // 6 生成新的plru信息
   // 7 生成 inst 输出
-  logic miss;
+  logic [1:0] miss;
   logic [`PROC_PALEN - 1:0] paddr;
-  logic [$clog2(`ICACHE_WAY_NUM) - 1:0] replaced_way;
-  logic [$clog2(`ICACHE_WAY_NUM) - 1:0] matched_way;
-  logic [`ICACHE_WAY_NUM - 1:0] matched_way_oh;  // one hot
+  logic [1:0][$clog2(`ICACHE_WAY_NUM) - 1:0] replaced_way;
+  logic [1:0][$clog2(`ICACHE_WAY_NUM) - 1:0] matched_way;
+  logic [1:0][`ICACHE_WAY_NUM - 1:0] matched_way_oh;  // one hot
 
   always_comb begin
+    s1_ready = ~(s1_valid & miss) & icache_rsp.ready;
     paddr = addr_trans_rsp.paddr;
 
     // 进行 tag 匹配
     matched_way_oh = '0;
     for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
-      matched_way_oh[i] = `DCACHE_TAG_OF(paddr) == tag_ram_rdata[i];
-      if (matched_way_oh[i]) begin
-        matched_way = i;
-      end
+      matched_way_oh[0][i] = `DCACHE_TAG_OF(paddr) == tag_ram_rdata[0][i] & valid_ram_rdata[0];
+      matched_way_oh[1][i] = `DCACHE_TAG_OF(paddr) == tag_ram_rdata[1][i] & valid_ram_rdata[1];
+      matched_way[0] = matched_way_oh[0][i] ? i : '0;
+      matched_way[1] = matched_way_oh[1][i] ? i : '0;
     end
 
-    // 判断 dcache 访问是否命中
+    // 判断 cache 访问是否命中
     miss = '1;
     for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
-      miss &= ~(matched_way_oh[i] & valid_ram_rdata[i]);
+      miss[0] &= ~matched_way_oh[0][i];
+      miss[1] &= ~matched_way_oh[1][i];
     end
 
     // 获得 plru 信息, 选出替换 way
-    replaced_way = plru_ram_rdata;  // TODO: 真正实现PLRU
+    replaced_way[0] = plru_ram_rdata[0];  // TODO: 真正实现PLRU
+    replaced_way[1] = plru_ram_rdata[1];  // TODO: 真正实现PLRU
     // 生成新的plru信息
-
     // 生成 inst 输出
-    icache_rsp.valid = s1_valid & ~{`FETCH_WIDTH{miss}};
+    cache_line = {data_ram_rdata[1][matched_way[1]], data_ram_rdata[0][matched_way[0]]};
+    icache_rsp.valid = s1_valid & ~{`FETCH_WIDTH{|miss}};
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
-      icache_rsp.vaddr[i] = s1_vaddr + 4;
-      icache_rsp.instructions[i] = data_ram_rdata[matched_way][paddr[`ICACHE_IDX_OFFSET - 1:2] + i];
+      icache_rsp.vaddr[i] = s1_vaddr + (i << 2);
+      icache_rsp.instr[i] = cache_line[s1_vaddr[`ICACHE_IDX_OFFSET - 1:2] + i];
     end
   end
 
@@ -160,7 +173,7 @@ module ICache (
       axi_rdata_buffer <= '0;
     end else begin
       case (axi_state)
-        IDEL : if (miss) axi_state <= MISS;
+        IDEL : if (|miss && |s1_valid) axi_state <= MISS;
         MISS : if (axi4_mst.rd_ready) axi_state <= REFILL;
         REFILL : if (axi4_mst.r_last) axi_state <= IDEL;
         default : /* default */;
@@ -207,7 +220,7 @@ module ICache (
     axi4_mst.b_ready = '0;
 
     axi4_mst.ar_id = '0;
-    axi4_mst.ar_addr = paddr;
+    axi4_mst.ar_addr = miss[0] & s1_line_break ? paddr + `ICACHE_BLOCK_SIZE / 4 : paddr;
     axi4_mst.ar_len = `ICACHE_BLOCK_SIZE / 4;
     axi4_mst.ar_size = 3'b010;  // 4 bytes;
     axi4_mst.ar_burst = 2'b01;  // Incrementing-address burst
@@ -233,113 +246,145 @@ module ICache (
   always_comb begin
     // data ram
     for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
-      data_ram_we[i] = axi_state == REFILL & replaced_way == i & axi4_mst.r_last & ~addr_trans_rsp.uncache;
+      data_ram_we[i] = axi_state == REFILL & 
+                      (miss[0] ? replaced_way[0] == i : replaced_way[1] == i) & 
+                       axi4_mst.r_last & 
+                      ~addr_trans_rsp.uncache;
     end
     data_ram_waddr = `ICACHE_IDX_OF(s1_vaddr);
-    data_ram_wdata = {axi_rdata_buffer[axi_rdata_buffer], axi4_mst.r_data};
-    data_ram_raddr = `ICACHE_IDX_OF(icache_req.vaddr);
+    data_ram_wdata = {axi_rdata_buffer[(`ICACHE_BLOCK_SIZE / 4) - 1:1], axi4_mst.r_data};
+    if (miss) begin
+      data_ram_raddr[0] = `ICACHE_IDX_OF(s1_vaddr) + s1_line_break;
+      data_ram_raddr[1] = `ICACHE_IDX_OF(s1_vaddr);
+    end else begin
+      data_ram_raddr[0] = `ICACHE_IDX_OF(icache_req.vaddr) + line_break;
+      data_ram_raddr[1] = `ICACHE_IDX_OF(icache_req.vaddr);
+    end
     // tag ram
     for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
       tag_ram_we[i] = axi_state == REFILL & replaced_way == i & axi4_mst.r_last;
     end
     tag_ram_waddr = `ICACHE_IDX_OF(s1_vaddr);
     tag_ram_wdata = `ICACHE_TAG_OF(paddr);
-    tag_ram_raddr = `ICACHE_IDX_OF(icache_req.vaddr);
+    if (miss) begin
+      tag_ram_raddr[0] = `ICACHE_IDX_OF(s1_vaddr) + s1_line_break;
+      tag_ram_raddr[1] = `ICACHE_IDX_OF(s1_vaddr);
+    end else begin
+      tag_ram_raddr[0] = `ICACHE_IDX_OF(icache_req.vaddr) + line_break;
+      tag_ram_raddr[1] = `ICACHE_IDX_OF(icache_req.vaddr);
+    end
     // valid ram
     for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
       valid_ram_we[i] = axi_state == REFILL & replaced_way == i & axi4_mst.r_last;
     end
     valid_ram_waddr = `ICACHE_IDX_OF(s1_vaddr);
     valid_ram_wdata = '1;
-    valid_ram_raddr = `ICACHE_IDX_OF(icache_req.vaddr);
+    if (miss) begin
+      valid_ram_raddr[0] = `ICACHE_IDX_OF(s1_vaddr) + s1_line_break;
+      valid_ram_raddr[1] = `ICACHE_IDX_OF(s1_vaddr);
+    end else begin
+      valid_ram_raddr[0] = `ICACHE_IDX_OF(icache_req.vaddr) + line_break;
+      valid_ram_raddr[1] = `ICACHE_IDX_OF(icache_req.vaddr);
+    end
     // plru ram
-    plru_ram_we = s1_valid;
+    plru_ram_we = |s1_valid & ~|miss;
     plru_ram_waddr = `ICACHE_IDX_OF(s1_vaddr);
     plru_ram_wdata = plru_ram_rdata == matched_way ? ~plru_ram_rdata : plru_ram_rdata;
-    plru_ram_raddr = `ICACHE_IDX_OF(icache_req.vaddr);
+    if (miss) begin
+      plru_ram_raddr[0] = `ICACHE_IDX_OF(s1_vaddr) + s1_line_break;
+      plru_ram_raddr[1] = `ICACHE_IDX_OF(s1_vaddr);
+    end else begin
+      plru_ram_raddr[0] = `ICACHE_IDX_OF(icache_req.vaddr) + line_break;
+      plru_ram_raddr[1] = `ICACHE_IDX_OF(icache_req.vaddr);
+    end
   end
 
 
 /*================================ ICache Memory ===============================*/
-  for (genvar i = 0; i < `ICACHE_WAY_NUM; i++) begin
-    SimpleDualPortRAM #(
-      .DATA_DEPTH(2 ** `ICACHE_IDX_WIDTH),
-      .DATA_WIDTH(`ICACHE_BLOCK_SIZE * 8),
-      .BYTE_WRITE_WIDTH(`ICACHE_BLOCK_SIZE * 8),
-      .CLOCKING_MODE("common_clock"),
-      .WRITE_MODE("write_first")
-    ) U_ICacheDataRAM (
-      .clk_a    (clk),
-      .en_a_i   ('1),
-      .we_a_i   (data_ram_we[i]),
-      .addr_a_i (data_ram_waddr),
-      .data_a_i (data_ram_wdata),
-      .clk_b    (clk),
-      .rstb_n   (rst_n),
-      .en_b_i   ('1),
-      .addr_b_i (data_ram_raddr),
-      .data_b_o (data_ram_rdata[i])
-    );
-  end
-  // Tag Memory:
-  for (genvar i = 0; i < `ICACHE_WAY_NUM; i++) begin
-    SimpleDualPortRAM #(
-      .DATA_DEPTH(2 ** `ICACHE_IDX_WIDTH),
-      .DATA_WIDTH(`ICACHE_TAG_WIDTH),
-      .BYTE_WRITE_WIDTH(`ICACHE_TAG_WIDTH),
-      .CLOCKING_MODE("common_clock"),
-      .WRITE_MODE("write_first")
-    ) U_ICacheTagRAM (
-      .clk_a    (clk),
-      .en_a_i   ('1),
-      .we_a_i   (tag_ram_we[i]),
-      .addr_a_i (tag_ram_waddr),
-      .data_a_i (tag_ram_wdata),
-      .clk_b    (clk),
-      .rstb_n   (rst_n),
-      .en_b_i   ('1),
-      .addr_b_i (tag_ram_raddr),
-      .data_b_o (tag_ram_rdata[i])
-    );
-    SimpleDualPortRAM #(
-      .DATA_DEPTH(2 ** `ICACHE_IDX_WIDTH),
-      .DATA_WIDTH(1),
-      .BYTE_WRITE_WIDTH(1),
-      .CLOCKING_MODE("common_clock"),
-      .WRITE_MODE("write_first")
-    ) U_ICacheValidRAM (
-      .clk_a    (clk),
-      .en_a_i   ('1),
-      .we_a_i   (valid_ram_we[i]),
-      .addr_a_i (valid_ram_waddr),
-      .data_a_i (valid_ram_wdata),
-      .clk_b    (clk),
-      .rstb_n   (rst_n),
-      .en_b_i   ('1),
-      .addr_b_i (valid_ram_raddr),
-      .data_b_o (valid_ram_rdata[i])
-    );
-  end
+  // 存在换行的问题，需要分两个bank
+  for (genvar i = 0; i < 2; i++) begin
+    for (genvar j = 0; j < `ICACHE_WAY_NUM; j++) begin
+      SimpleDualPortRAM #(
+          .DATA_DEPTH(2 ** `ICACHE_IDX_WIDTH),
+          .DATA_WIDTH(`ICACHE_BLOCK_SIZE * 8),
+          .BYTE_WRITE_WIDTH(`ICACHE_BLOCK_SIZE * 8),
+          .CLOCKING_MODE("common_clock"),
+          .WRITE_MODE("write_first")
+        ) U_ICacheDataRAM (
+          .clk_a    (clk),
+          .en_a_i   ('1),
+          .we_a_i   (data_ram_we[j]),
+          .addr_a_i (data_ram_waddr),
+          .data_a_i (data_ram_wdata[i]),
+          .clk_b    (clk),
+          .rstb_n   (rst_n),
+          .en_b_i   ('1),
+          .addr_b_i (data_ram_raddr[i]),
+          .data_b_o (data_ram_rdata[i][j])
+        );
 
-  SimpleDualPortRAM #(
-    .DATA_DEPTH(2 ** `ICACHE_IDX_WIDTH),
-    .DATA_WIDTH(`ICACHE_WAY_NUM - 1),
-    .BYTE_WRITE_WIDTH(`ICACHE_WAY_NUM - 1),
-    .CLOCKING_MODE("common_clock"),
-    .WRITE_MODE("write_first"),
-    .MEMORY_PRIMITIVE("auto")
-  ) U_ICachePlruRAM (
-    .clk_a    (clk),
-    .en_a_i   ('1),
-    .we_a_i   (plru_ram_we),
-    .addr_a_i (plru_ram_waddr),
-    .data_a_i (plru_ram_wdata),
-    .clk_b    (clk),
-    .rstb_n   (rst_n),
-    .en_b_i   ('1),
-    .addr_b_i (plru_ram_raddr),
-    .data_b_o (plru_ram_rdata)
-  );
+        SimpleDualPortRAM #(
+          .DATA_DEPTH(2 ** `ICACHE_IDX_WIDTH),
+          .DATA_WIDTH(`ICACHE_TAG_WIDTH),
+          .BYTE_WRITE_WIDTH(`ICACHE_TAG_WIDTH),
+          .CLOCKING_MODE("common_clock"),
+          .WRITE_MODE("write_first")
+        ) U_ICacheTagRAM (
+          .clk_a    (clk),
+          .en_a_i   ('1),
+          .we_a_i   (tag_ram_we[j]),
+          .addr_a_i (tag_ram_waddr),
+          .data_a_i (tag_ram_wdata),
+          .clk_b    (clk),
+          .rstb_n   (rst_n),
+          .en_b_i   ('1),
+          .addr_b_i (tag_ram_raddr[i]),
+          .data_b_o (tag_ram_rdata[i][j])
+        );
+        
+        SimpleDualPortRAM #(
+          .DATA_DEPTH(2 ** `ICACHE_IDX_WIDTH),
+          .DATA_WIDTH(1),
+          .BYTE_WRITE_WIDTH(1),
+          .CLOCKING_MODE("common_clock"),
+          .WRITE_MODE("write_first")
+        ) U_ICacheValidRAM (
+          .clk_a    (clk),
+          .en_a_i   ('1),
+          .we_a_i   (valid_ram_we[j]),
+          .addr_a_i (valid_ram_waddr),
+          .data_a_i (valid_ram_wdata),
+          .clk_b    (clk),
+          .rstb_n   (rst_n),
+          .en_b_i   ('1),
+          .addr_b_i (valid_ram_raddr[i]),
+          .data_b_o (valid_ram_rdata[i][j])
+        );
+    end
+  end
+  
+
+  for (genvar i = 0; i < 2; i++) begin
+    SimpleDualPortRAM #(
+      .DATA_DEPTH(2 ** `ICACHE_IDX_WIDTH),
+      .DATA_WIDTH(`ICACHE_WAY_NUM - 1),
+      .BYTE_WRITE_WIDTH(`ICACHE_WAY_NUM - 1),
+      .CLOCKING_MODE("common_clock"),
+      .WRITE_MODE("write_first"),
+      .MEMORY_PRIMITIVE("auto")
+    ) U_ICachePlruRAM (
+      .clk_a    (clk),
+      .en_a_i   ('1),
+      .we_a_i   (plru_ram_we),
+      .addr_a_i (plru_ram_waddr),
+      .data_a_i (plru_ram_wdata),
+      .clk_b    (clk),
+      .rstb_n   (rst_n),
+      .en_b_i   ('1),
+      .addr_b_i (plru_ram_raddr[i]),
+      .data_b_o (plru_ram_rdata[i])
+    );
+  end
 
 
   

@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Scheduler.svh
 // Create  : 2024-03-12 23:17:37
-// Revise  : 2024-03-27 22:02:51
+// Revise  : 2024-04-01 15:18:09
 // Description :
 //   ...
 //   ...
@@ -121,7 +121,5 @@ typedef struct packed {
   IssueBaseInfoSt base_info;
   MemOpCodeSt mem_oc;
 } MemIssueSt;
-
-
 
 `endif // __SCHEDULER_SVH__

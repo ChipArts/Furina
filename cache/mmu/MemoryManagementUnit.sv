@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : MemoryManagementUnit.sv
 // Create  : 2024-03-11 19:19:09
-// Revise  : 2024-03-30 20:31:00
+// Revise  : 2024-03-31 19:07:47
 // Description :
 //   ...
 //   ...
@@ -246,19 +246,20 @@ module MemoryManagementUnit (
     tlbsrch_idx_o = tlb_search_rsp[2].idx;
   end
 
-  TranslationLookasideBuffer #(
-    .TLB_PORT_NUM(3)
-  ) inst_TranslationLookasideBuffer (
-    .clk            (clk),
-    .a_rst_n        (a_rst_n),
-    .tlb_search_req (tlb_search_req),
-    .tlb_search_rsp (tlb_search_rsp),
-    .tlb_read_req   (tlb_read_req),
-    .tlb_read_rsp   (tlb_read_rsp),
-    .tlb_write_req  (tlb_write_req),
-    .tlb_write_rsp  (tlb_write_rsp),
-    .tlb_iv_req    (tlb_inv_req),
-    .tlb_iv_rsp    (tlb_inv_rsp)
-  );
+  for (genvar i = 0; i < 3; i++) begin
+    TranslationLookasideBuffer U_TranslationLookasideBuffer (
+      .clk            (clk),
+      .a_rst_n        (rst_n),
+      .tlb_search_req (tlb_search_req[i]),
+      .tlb_search_rsp (tlb_search_rsp[i]),
+      .tlb_read_req   (tlb_read_req),
+      .tlb_read_rsp   (tlb_read_rsp),
+      .tlb_write_req  (tlb_write_req),
+      .tlb_write_rsp  (tlb_write_rsp),
+      .tlb_iv_req     (tlb_inv_req),
+      .tlb_iv_rsp     (tlb_inv_rsp)
+    );
+  end
+  
 endmodule : MemoryManagementUnit
 

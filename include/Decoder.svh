@@ -30,6 +30,39 @@
 
 `include "config.svh"
 
+/*================================ Pre Decoder ================================*/
+
+typedef logic [2:0] ImmType;
+`define IMM_NONE  (3'd0)
+`define IMM_I8    (3'd1)
+`define IMM_I12   (3'd2)
+`define IMM_I14   (3'd3)
+`define IMM_I16   (3'd4)
+`define IMM_I21   (3'd5)
+`define IMM_I26   (3'd6)
+`define IMM_PC    (3'd7)
+
+typedef logic [1:0] SrcType;
+`define SRC_RD  (2'd0)
+`define SRC_RJ  (2'd1)
+`define SRC_RK  (2'd2)
+`define SRC_RA  (2'd3)  // 三寄存器指令的第三个源操作数
+
+typedef logic DestType;
+`define DEST_RD  (1'd0)
+`define DEST_RA  (1'd1)  // 返回地址寄存器
+
+typedef struct packed {
+  ImmType imm_type;
+  SrcType src0_type;
+  SrcType src1_type;
+  DestType dest_type;
+} PreOptionCodeSt;
+
+
+
+/*================================== Decoder ==================================*/
+
 typedef logic [1:0] InstType;
 `define ALU_INST    (3'd0)  // ALU指令
 `define MDU_INST    (3'd1)  // MDU指令

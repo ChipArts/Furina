@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : ReorderBuffer.sv
 // Create  : 2024-03-13 20:18:54
-// Revise  : 2024-03-26 21:50:01
+// Revise  : 2024-03-31 15:18:34
 // Description :
 //   ...
 //   ...
@@ -33,7 +33,7 @@ module ReorderBuffer (
   output RobAllocRspSt alloc_rsp,
   input RobCmtReqSt [`COMMIT_WIDTH - 1:0] cmt_req,
   output RobCmtRspSt [`COMMIT_WIDTH - 1:0] cmt_rsp,
-  output RobRetireBcstSt retire_bcst,
+  output RobRetireSt retire_o,
   /* other exe io */
   output logic [$clog2(`ROB_DEPTH) - 1:0] oldest_rob_idx_o
 );
@@ -88,6 +88,10 @@ module ReorderBuffer (
         rob_n[cmt_req[i].rob_idx].complete = 1'b1;
         rob_n[cmt_req[i].rob_idx].exception = cmt_req[i].exception;
         rob_n[cmt_req[i].rob_idx].ecode = cmt_req[i].ecode;
+        rob_n[cmt_req[i].rob_idx].sub_ecode = cmt_req[i].sub_ecode;
+        rob_n[cmt_req[i].rob_idx].redirect = cmt_req[i].redirect;
+        rob_n[cmt_req[i].rob_idx].br_target = cmt_req[i].br_target;
+        rob_n[cmt_req[i].rob_idx].error_vaddr = cmt_req[i].error_vaddr;
       end
       cmt_rsp[i].ready = '1;
     end
@@ -121,9 +125,9 @@ module ReorderBuffer (
     retire_cnt = $countones(retire_valid);
     head_ptr_n = head_ptr + retire_cnt;
 
-    retire_bcst.valid = retire_valid;
+    retire_o.valid = retire_valid;
     for (int i = 0; i < `RETIRE_WIDTH; i++) begin
-      retire_bcst.rob_entry[i] = rob[head_idx + i];
+      retire_o.rob_entry[i] = rob[head_idx + i];
     end
 
     /* other logic */

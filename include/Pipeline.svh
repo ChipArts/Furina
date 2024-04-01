@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Pipeline.svh
 // Create  : 2024-03-13 22:53:51
-// Revise  : 2024-03-30 21:28:19
+// Revise  : 2024-04-01 15:47:53
 // Description :
 //   ...
 //   ...
@@ -29,7 +29,8 @@
 
 typedef struct packed {
   logic valid;
-  logic [31:0] instruction;
+  logic [31:0] instr;
+  PreOptionCodeSt pre_oc;
   logic [`PROC_VALEN - 1:0] pc;
   logic [`PROC_VALEN - 1:0] npc;
 } IbufDataSt;
@@ -75,6 +76,8 @@ typedef struct packed {
   logic [$clog2(`PHY_REG_NUM) - 1:0] pdest;
   logic exception;
   ExcCodeType ecode;
+  SubEcodeType sub_ecode;
+  logic [`PROC_VALEN - 1:0] error_vaddr;
 } CmtBaseSt;
 
 typedef struct packed {

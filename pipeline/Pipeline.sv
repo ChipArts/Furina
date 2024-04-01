@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Pipeline.sv
 // Create  : 2024-03-11 14:53:30
-// Revise  : 2024-03-30 21:35:03
+// Revise  : 2024-04-01 17:37:48
 // Description :
 //   ...
 //   ...
@@ -39,7 +39,7 @@ module Pipeline (
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);
 /*=============================== Signal Define ===============================*/
-  logic flush;  // 由退休的异常指令产生
+  logic glo_flush;  // 由退休的异常指令产生
   /* Branch Prediction Unit */
   BPU_ReqSt bpu_req_st;
   BPU_RspSt bpu_rsp_st;
@@ -74,6 +74,10 @@ module Pipeline (
 
   /* Decoder */
   OptionCodeSt [`DECODE_WIDTH - 1:0] decoder_option_code;
+  logic [`DECODE_WIDTH - 1:0][31:0] decoder_imm;
+  logic [`DECODE_WIDTH - 1:0][4:0] decoder_src0;
+  logic [`DECODE_WIDTH - 1:0][4:0] decoder_src1;
+  logic [`DECODE_WIDTH - 1:0][4:0] decoder_dest;
 
   /* Scheduler */
   logic sche_flush;
@@ -142,7 +146,7 @@ module Pipeline (
   RobAllocRspSt rob_alloc_rsp;
   RobCmtReqSt [`COMMIT_WIDTH - 1:0] rob_cmt_req;
   RobCmtRspSt [`COMMIT_WIDTH - 1:0] rob_cmt_rsp;
-  RobRetireBcstSt rob_retire_bcst;
+  RobRetireSt rob_retire_o;
   logic [$clog2(`ROB_DEPTH) - 1:0] rob_oldest_rob_idx_o;
 
   /* retire */
@@ -270,8 +274,8 @@ module Pipeline (
 /*=========================== Branch Prediction Unit ==========================*/
   always_comb begin
     bpu_req_st.next = faq_push_rsp_st.ready;
-    bpu_req_st.redirect = flush;
-    bpu_req_st.target = rob_retire_bcst.rob_entry[0].br_target;
+    bpu_req_st.redirect = glo_flush;
+    bpu_req_st.target = rob_retire_o.rob_entry[0].br_target;
   end
 
   BranchPredictionUnit U_BranchPredictionUnit (
@@ -283,7 +287,7 @@ module Pipeline (
 
 /*============================ Fetch Address Queue ============================*/
   always_comb begin
-    faq_flush = flush;
+    faq_flush = glo_flush;
 
     faq_push_req_st.valid = bpu_rsp_st.valid;
     faq_push_req_st.vaddr = bpu_rsp_st.pc;
@@ -304,7 +308,7 @@ module Pipeline (
 
 /*========================== Instruction Fetch Unit ===========================*/
   always_comb begin
-    icache_flush_i = flush;
+    icache_flush_i = glo_flush;
 
     icache_req.valid = faq_pop_rsp_st.valid;
     icache_req.vaddr = faq_pop_rsp_st.vaddr;
@@ -327,21 +331,28 @@ module Pipeline (
     .axi4_mst       (icache_axi4_mst)
   );
 
+/*================================ Pre Decoder ================================*/
+  
+  // TODO: 实现分支预测的pre检查
+  // 对操作数相关信息解码
+  for (genvar i = 0; i < `FETCH_WIDTH; i++) begin
+    PreDecoder inst_PreDecoder (.instr(instr), .pre_oc(pre_oc));
+  end
+
+
 /*============================ Instruction Buffer =============================*/
   always_comb begin
-    ibuf_flush = flush;
+    ibuf_flush = glo_flush;
 
     ibuf_write_valid = |icache_fetch_rsp_st.valid;
-    ibuf_write_num = '0;
+    ibuf_write_num = $countones(icache_rsp.valid);
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
-      ibuf_write_num += icache_fetch_rsp_st.valid[i];
-
-      ibuf_write_data[i].valid = icache_fetch_rsp_st.valid[i];
-      ibuf_write_data[i].vaddr = icache_fetch_rsp_st.vaddr[i];
-      ibuf_write_data[i].instruction = icache_fetch_rsp_st.instruction[i];
+      ibuf_write_data[i].valid = icache_rsp.valid[i];
+      ibuf_write_data[i].vaddr = icache_rsp.vaddr[i];
+      ibuf_write_data[i].instr = icache_rsp.instr[i];
     end
 
-    ibuf_read_ready = schedule_rsp_st.ready;
+    ibuf_read_ready = sche_schedule_rsp.ready;
     ibuf_read_num = `DECODE_WIDTH;
   end
 
@@ -366,7 +377,7 @@ module Pipeline (
   );
 
 /*================================== Decoder ==================================*/
-
+  // 对控制相关信息解码
   for (genvar i = 0; i < `DECODE_WIDTH; i++) begin
     Decoder inst_Decoder (
       .instruction(ibuf_read_data[i].instruction), 
@@ -374,24 +385,35 @@ module Pipeline (
     );
   end
 
+  // 准备寄存器编号、扩展imm
+  always_comb begin
+    for (int i = 0; i < `DECODE_WIDTH; i++) begin
+      case (ibuf_read_data[i].pre_oc.imm_type)
+        `IMM_NONE : decoder_imm[i] = 0;
+        `IMM_I8   : decoder_imm[i] = ibuf_read_data[i].instruction[31:20];
+        default : /* default */;
+      endcase
+    end
+  end
+
 /*================================= Scheduler ================================*/
   /* Dispatch/Wake up/Select */
   always_comb begin
-    sche_flush = flush;
+    sche_flush = glo_flush;
 
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       sche_schedule_req.valid[i] = ibuf_read_valid[i];
       sche_schedule_req.pc[i] = ibuf_read_data[i].pc;
       sche_schedule_req.npc[i] = ibuf_read_data[i].npc;
-      sche_schedule_req.imm[i] = ibuf_read_data[i].imm;
+      sche_schedule_req.imm[i] = ;
       sche_schedule_req.option_code[i] = decoder_option_code[i];
     end
 
     sche_arch_rat_i = arch_rat_o;
     sche_rob_alloc_rsp = rob_alloc_rsp;
-    sche_fl_free_valid_i = rob_retire_bcst.valid;
+    sche_fl_free_valid_i = rob_retire_o.valid;
     for (int i = 0; i < `RETIRE_WIDTH; i++) begin
-      sche_fl_free_preg_i[i] = rob_retire_bcst.rob_entry[i].old_phy_reg;
+      sche_fl_free_preg_i[i] = rob_retire_o.rob_entry[i].old_phy_reg;
     end
 
     sche_cmt_pdest_i[0] = int_blk_misc_cmt.base.pdest;
@@ -505,7 +527,7 @@ module Pipeline (
 
 /*=============================== Integer Block ===============================*/
   always_comb begin
-    int_blk_flush = flush;
+    int_blk_flush = glo_flush;
     int_blk_misc_exe.base = '{valid: sche_misc_issue.valid, 
                               imm: sche_misc_issue.base_info.imm, 
                               src0: rf_rdata[4],
@@ -582,7 +604,7 @@ module Pipeline (
 
 /*=============================== Memory Block ================================*/
   always_comb begin
-    mem_blk_flush = flush;
+    mem_blk_flush = glo_flush;
 
     mem_blk_exe.base = '{valid: sche_mem_issue.base_info.valid, 
                          imm: sche_mem_issue.base_info.imm, 
@@ -617,29 +639,57 @@ module Pipeline (
 
 /*============================== Reorder Buffer ===============================*/
   always_comb begin
-    rob_flush = flush;
+    rob_flush = glo_flush;
 
     rob_alloc_req = sche_rob_alloc_req;
+    // misc
     rob_cmt_req[0] = '{valid: int_blk_misc_cmt.base.valid,
                        rob_idx: int_blk_misc_cmt.base.rob_idx,
                        exception: int_blk_misc_cmt.base.exception,
-                       ecode: int_blk_misc_cmt.base.ecode};
+                       ecode: int_blk_misc_cmt.base.ecode, 
+                       sub_ecode: int_blk_misc_cmt.base.sub_ecode, 
+                       error_vaddr: int_blk_misc_cmt.base.error_vaddr, 
+                       redirect: int_blk_misc_cmt.br_redirect,
+                       br_target: int_blk_misc_cmt.br_target};
+    // alu 0
     rob_cmt_req[1] = '{valid: int_blk_alu_cmt[0].base.valid,
                        rob_idx: int_blk_alu_cmt[0].base.rob_idx,
                        exception: int_blk_alu_cmt[0].base.exception,
-                       ecode: int_blk_alu_cmt[0].base.ecode};
+                       ecode: int_blk_alu_cmt[0].base.ecode,
+                       sub_ecode: int_blk_alu_cmt[0].base.sub_ecode,
+                       error_vaddr: int_blk_alu_cmt[0].base.error_vaddr,
+                       redirect: '0,
+                       br_target: '0};
+
+    // alu 1
     rob_cmt_req[2] = '{valid: int_blk_alu_cmt[1].base.valid,
                        rob_idx: int_blk_alu_cmt[1].base.rob_idx,
                        exception: int_blk_alu_cmt[1].base.exception,
-                       ecode: int_blk_alu_cmt[1].base.ecode};
+                       ecode: int_blk_alu_cmt[1].base.ecode,
+                       sub_ecode: int_blk_alu_cmt[1].base.sub_ecode,
+                       error_vaddr: int_blk_alu_cmt[1].base.error_vaddr,
+                       redirect: '0,
+                       br_target: '0};
+
+    // mdu
     rob_cmt_req[3] = '{valid: int_blk_mdu_cmt.base.valid,
                        rob_idx: int_blk_mdu_cmt.base.rob_idx,
                        exception: int_blk_mdu_cmt.base.exception,
-                       ecode: int_blk_mdu_cmt.base.ecode};
-    rob_cmt_rsp[4] = '{valid: mem_blk_cmt.base.valid,
+                       ecode: int_blk_mdu_cmt.base.ecode,
+                       sub_ecode: int_blk_mdu_cmt.base.sub_ecode,
+                       error_vaddr: int_blk_mdu_cmt.base.error_vaddr,
+                       redirect: '0,
+                       br_target: '0};
+    // mem
+    rob_cmt_req[4] = '{valid: mem_blk_cmt.base.valid,
                        rob_idx: mem_blk_cmt.base.rob_idx,
                        exception: mem_blk_cmt.base.exception,
-                       ecode: mem_blk_cmt.base.ecode};
+                       ecode: mem_blk_cmt.base.ecode,
+                       sub_ecode: mem_blk_cmt.base.sub_ecode,
+                       error_vaddr: mem_blk_cmt.base.error_vaddr,
+                       redirect: '0,
+                       br_target: '0};
+
   end
 
   ReorderBuffer inst_ReorderBuffer
@@ -651,17 +701,17 @@ module Pipeline (
     .alloc_rsp        (rob_alloc_rsp),
     .cmt_req          (rob_cmt_req),
     .cmt_rsp          (rob_cmt_rsp),
-    .retire_bcst      (rob_retire_bcst),
+    .retire_o         (rob_retire_o),
     .oldest_rob_idx_o (rob_oldest_rob_idx_o)
   );
 /*================================== Retire ===================================*/
-  assign flush = rob_retire_bcst.valid[0] & (rob_retire_bcst.rob_entry[0].exception | rob_retire_bcst.rob_entry[0].redirect);
+  assign glo_flush = rob_retire_o.valid[0] & (rob_retire_o.rob_entry[0].exception | rob_retire_o.rob_entry[0].redirect);
 
   always_comb begin
     for (int i = 0; i < `RETIRE_WIDTH; i++) begin
-      arch_rat_dest_valid_i[i] = rob_retire_bcst.valid[i] & rob_retire_bcst.rob_entry[i].phy_reg_valid;
-      arch_rat_dest_i[i] = rob_retire_bcst.rob_entry[i].arch_reg;
-      arch_rat_preg_i[i] = rob_retire_bcst.rob_entry[i].phy_reg;
+      arch_rat_dest_valid_i[i] = rob_retire_o.valid[i] & rob_retire_o.rob_entry[i].phy_reg_valid;
+      arch_rat_dest_i[i] = rob_retire_o.rob_entry[i].arch_reg;
+      arch_rat_preg_i[i] = rob_retire_o.rob_entry[i].phy_reg;
     end
   end
 
@@ -676,6 +726,24 @@ module Pipeline (
     .dest_i       (arch_rat_dest_i),
     .preg_i       (arch_rat_preg_i)
   );
+
+`ifdef DEBUG
+  logic [31:0][31:0] arch_regfile;
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if(~rst_n) begin
+      arch_regfile <= 0;
+    end else begin
+      for (int i = 0; i < `RETIRE_WIDTH; i++) begin
+        if (rob_retire_o.valid[i] && 
+            rob_retire_o.rob_entry[i].phy_reg_valid && 
+            rob_retire_o.rob_entry[i].arch_reg != 0) begin
+          arch_regfile[rob_retire_o.rob_entry[i].arch_reg] <= rob_retire_o.rob_entry[i].rf_wdata;
+        end
+      end
+    end
+  end
+`endif
 
 /*========================== Memory Management Unit ===========================*/
 
@@ -773,20 +841,20 @@ module Pipeline (
 
     csr_interrupt = interrupt;
 
-    csr_excp_flush = rob_retire_bcst.valid[0] & rob_retire_bcst.rob_entry.exception;
+    csr_excp_flush = rob_retire_o.valid[0] & rob_retire_o.rob_entry.exception;
     csr_ertn_flush = int_blk_misc_cmt.base.valid &
                      int_blk_misc_cmt_ready &
                      int_blk_misc_cmt.priv_inst &
                      int_blk_misc_cmt.priv_op == `PRIV_ERTN;
-    csr_era_in = rob_retire_bcst.rob_entry.pc;
-    csr_esubcode_in = rob_retire_bcst.rob_entry.sub_ecode;
-    csr_ecode_in = rob_retire_bcst.rob_entry.ecode;
-    csr_va_error_in = rob_retire_bcst.valid[0] & 
-                      rob_retire_bcst.rob_entry.exception &
-                      rob_retire_bcst.rob_entry.ecode inside 
+    csr_era_in = rob_retire_o.rob_entry.pc;
+    csr_esubcode_in = rob_retire_o.rob_entry.sub_ecode;
+    csr_ecode_in = rob_retire_o.rob_entry.ecode;
+    csr_va_error_in = rob_retire_o.valid[0] & 
+                      rob_retire_o.rob_entry.exception &
+                      rob_retire_o.rob_entry.ecode inside 
                       {`ECODE_ADE, `ECODE_TLBR, `ECODE_PIF, `ECODE_PPI,
                        `ECODE_ALE, `ECODE_PME,  `ECODE_PIS, `ECODE_PIL};
-    csr_bad_va_in = rob_retire_bcst.rob_entry[0].error_vaddr;
+    csr_bad_va_in = rob_retire_o.rob_entry[0].error_vaddr;
 
     csr_tlbsrch_en = int_blk_misc_cmt.base.valid &
                      int_blk_misc_cmt_ready &
@@ -795,15 +863,15 @@ module Pipeline (
     csr_tlbsrch_found = int_blk_misc_cmt.tlbsrch_found;
     csr_tlbsrch_index = int_blk_misc_cmt.tlbsrch_idx;
 
-    csr_excp_tlbrefill = rob_retire_bcst.valid[0] & 
-                         rob_retire_bcst.rob_entry.exception &
-                         rob_retire_bcst.rob_entry.ecode == `ECODE_TLBR;
-    csr_excp_tlb = rob_retire_bcst.valid[0] & 
-                   rob_retire_bcst.rob_entry.exception &
-                   rob_retire_bcst.rob_entry.ecode inside
+    csr_excp_tlbrefill = rob_retire_o.valid[0] & 
+                         rob_retire_o.rob_entry.exception &
+                         rob_retire_o.rob_entry.ecode == `ECODE_TLBR;
+    csr_excp_tlb = rob_retire_o.valid[0] & 
+                   rob_retire_o.rob_entry.exception &
+                   rob_retire_o.rob_entry.ecode inside
                    {`ECODE_TLBR, `ECODE_PIF, `ECODE_PPI,
                     `ECODE_PME,  `ECODE_PIS, `ECODE_PIL};
-    csr_excp_tlb_vppn = rob_retire_bcst.rob_entry[0].error_vaddr;
+    csr_excp_tlb_vppn = rob_retire_o.rob_entry[0].error_vaddr;
 
     csr_llbit_in = '0;
     csr_llbit_set_in = '0;

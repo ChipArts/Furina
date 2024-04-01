@@ -8,6 +8,7 @@
 // Description :
 //   数据缓存
 //   对核内访存组件暴露两个位宽为32的读端口和一个与一级数据缓存行宽度相同的写端口
+//   virtual index/physical tag
 // Parameter   :
 //   ...
 //   ...
@@ -55,13 +56,15 @@ module DCache (
     assert (`DCACHE_BLOCK_SIZE == 1 << $clog2(`DCACHE_BLOCK_SIZE)) else $error("DCache: BLOCK_SIZE is not power of 2");
   end
 
+/*=============================== Signal Define ===============================*/
   logic s0_ready, s1_ready, s2_ready;
 
+  /* Memory Ctrl */
   logic [`DCACHE_WAY_NUM - 1:0][`DCACHE_BLOCK_SIZE - 1:0] data_ram_we;
   logic [`DCACHE_IDX_WIDTH - 1:0] data_ram_waddr;
-  logic [`DCACHE_BLOCK_SIZE - 1:0][7:0] data_ram_wdata;
+  logic [`DCACHE_BLOCK_SIZE / 4 - 1:0][31:0] data_ram_wdata;
   logic [`DCACHE_IDX_WIDTH - 1:0] data_ram_raddr;
-  logic [`DCACHE_WAY_NUM - 1:0][`DCACHE_BLOCK_SIZE - 1:0][7:0] data_ram_rdata;
+  logic [`DCACHE_WAY_NUM - 1:0][`DCACHE_BLOCK_SIZE / 4 - 1:0][31:0] data_ram_rdata;
 
   logic [`DCACHE_WAY_NUM - 1:0] tag_ram_we;
   logic [`DCACHE_IDX_WIDTH - 1:0] tag_ram_waddr;
@@ -77,10 +80,39 @@ module DCache (
 
   logic plru_ram_we;
   logic [`DCACHE_IDX_WIDTH - 1:0] plru_ram_waddr;
-  logic [`DCACHE_WAY_NUM - 1:0] plru_ram_wdata;
+  logic [`DCACHE_WAY_NUM - 2:0] plru_ram_wdata;
   logic [`DCACHE_IDX_WIDTH - 1:0] plru_ram_raddr;
-  logic [`DCACHE_WAY_NUM - 1:0] plru_ram_rdata;
+  logic [`DCACHE_WAY_NUM - 2:0] plru_ram_rdata;
 
+  /* AXI FSM */
+  typedef enum logic [1:0] {
+    IDEL,
+    MISS,
+    REPLACE,
+    REFILL
+  } AxiState;
+
+  AxiState axi_state;
+  logic [$clog2(`DCACHE_BLOCK_SIZE / 4) - 1:0] axi_rdata_ofs;
+  logic [`DCACHE_BLOCK_SIZE / 4 - 1:0][31:0] axi_rdata_buffer;
+
+  /* stage 1 logic */
+  logic miss;
+  logic [`PROC_PALEN - 1:0] paddr;
+  logic [$clog2(`DCACHE_WAY_NUM) - 1:0] matched_way;
+  logic [`DCACHE_WAY_NUM - 1:0] matched_way_oh;
+  logic [$clog2(`DCACHE_WAY_NUM) - 1:0] repl_way;
+  logic [`PROC_PALEN - 1:0] repl_paddr;
+
+  /* stage 2 logic */
+  logic [31:0] matched_word;
+  typedef struct packed {
+    logic valid;
+    logic [`PROC_PALEN - 1:0] paddr;
+    AlignOpType align_op;
+    logic [31:0] wdata;
+  } StoreBuffer;
+  StoreBuffer store_buffer;
 
 
 /*================================ Cache Stage0 ================================*/
@@ -92,19 +124,16 @@ module DCache (
     s0_ready = s1_ready;
     rsp.ready = s0_ready;
     if (req.valid) begin
-      mmu_req.valid = 1'b1;
+      mmu_req.valid = s1_ready;
       mmu_req.ready = 1'b1;
       mmu_req.vaddr = req.vaddr;
     end
-
-    tag_ram_raddr = `DCACHE_IDX_OF(req.vaddr);
-    meta_ram_raddr = `DCACHE_IDX_OF(req.vaddr);
-    plru_ram_raddr = `DCACHE_IDX_OF(req.vaddr);
   end
 
 
 /*================================ Cache Stage1 ================================*/
   logic s1_valid;
+  logic [`PROC_VALEN - 1:0] s1_vaddr;
   MemType s1_mem_type;
   logic [3:0][7:0] s1_wdata;
   AlignOpType s1_align_op;
@@ -114,6 +143,7 @@ module DCache (
   always_ff @(posedge clk or negedge rst_n) begin
     if (~rst_n || flush_i) begin
       s1_valid <= '0;
+      s1_vaddr <= '0;
       s1_mem_type <= '0;
       s1_wdata <= '0;
       s1_align_op <= '0;
@@ -122,6 +152,7 @@ module DCache (
     end else begin
       if (s1_ready) begin
         s1_valid <= req.valid;
+        s1_vaddr <= req.vaddr;
         s1_mem_type <= req.mem_type;
         s1_wdata <= req.wdata;
         s1_align_op <= req.align_op;
@@ -138,45 +169,14 @@ module DCache (
   // 5. 如果miss，选择替换的cache way
   // 6. 更新plru RAM
   // 7. 生成写入数据
-  // 8. 如果miss，启动AXI状态机, 并阻塞流水线
-
-  logic miss;
-  logic [`PROC_PALEN - 1:0] paddr;
-  logic [$clog2(`DCACHE_WAY_NUM) - 1:0] matched_way;
-  logic [`DCACHE_WAY_NUM - 1:0] matched_way_oh;
-  logic [$clog2(`DCACHE_WAY_NUM) - 1:0] repl_way;
-  logic [`PROC_PALEN - 1:0] repl_paddr;
-
-  typedef enum logic [1:0] {
-    IDEL,
-    MISS,
-    REPLACE,
-    REFILL
-  } AxiState;
-
-  AxiState axi_state;
-  logic [$clog2(`DCACHE_BLOCK_SIZE / 4) - 1:0] axi_rdata_ofs;
-  logic [`DCACHE_BLOCK_SIZE / 4 - 1:0][31:0] axi_rdata_buffer;
+  // 8. 如果miss，启动AXI/Cache状态机, 并阻塞流水线
 
   always_comb begin
-    if (s1_valid) begin
-      if (miss) begin
-        s1_ready = '0;
-      end else begin
-        if (s1_mem_type == `MEM_LOAD) begin
-          s1_ready = s1_rob_idx == oldest_rob_idx_i;
-        end else begin
-          s1_ready = '1;
-        end
-      end
-    end else begin
-      s1_ready = '1;
-    end
+    s1_ready = ~(s1_valid & miss);
 
     // 1. 获得MMU读取响应
     paddr = mmu_rsp.paddr;
     // 2. 访问Data RAM
-    data_ram_raddr = `DCACHE_IDX_OF(paddr);
     // 3. 判断Cache的命中情况
     for (int i = 0; i < `DCACHE_WAY_NUM; i++) begin
       matched_way_oh[i] = (tag_ram_rdata[i] == `DCACHE_TAG_OF(paddr)) & meta_ram_rdata[i].valid;
@@ -193,52 +193,7 @@ module DCache (
     repl_way = plru_ram_rdata;
     repl_paddr = {tag_ram_rdata[repl_way], paddr[`DCACHE_TAG_OFFSET - 1:0]};
     // 6. 更新plru RAM
-    plru_ram_we = s1_valid & ~miss;
-    plru_ram_waddr = `DCACHE_IDX_OF(paddr);
-    plru_ram_wdata = matched_way == plru_ram_rdata ? ~plru_ram_rdata : plru_ram_rdata;
     // 7. 生成写入数据(正常写入/refill)
-    tag_ram_we = '0;
-    tag_ram_waddr = `DCACHE_IDX_OF(paddr);
-    tag_ram_wdata = `DCACHE_TAG_OF(paddr);
-    meta_ram_we = '0;
-    meta_ram_waddr = `DCACHE_IDX_OF(paddr);
-    data_ram_we = '0;
-    data_ram_waddr = `DCACHE_IDX_OF(paddr);
-    if (axi_state == REFILL) begin
-      if (axi4_mst.r_last) begin
-        tag_ram_we[repl_way] = '1;
-        meta_ram_we[repl_way] = '1;
-        data_ram_we[repl_way] = '1;
-      end
-      meta_ram_wdata = '{valid: 1'b1, dirty: 1'b0};
-      data_ram_wdata = {axi_rdata_buffer[`DCACHE_BLOCK_SIZE / 4 - 1:1], axi4_mst.r_data};
-    end else begin
-      // 写入条件：有效 store hit 是rob最后一条指令
-      if (s1_valid && s1_mem_type == `MEM_STORE && ~miss && s1_rob_idx == oldest_rob_idx_i) begin
-        meta_ram_we[matched_way] = '1;
-        case (s1_align_op)
-          `ALIGN_B : data_ram_we[matched_way][`DCACHE_OFS_OF(paddr)] = '1;
-          `ALIGN_H : begin 
-            data_ram_we[matched_way][`DCACHE_OFS_OF(paddr) + 0] = '1;
-            data_ram_we[matched_way][`DCACHE_OFS_OF(paddr) + 1] = '1;
-          end
-          `ALIGN_W : begin
-            data_ram_we[matched_way][`DCACHE_OFS_OF(paddr) + 0] = '1;
-            data_ram_we[matched_way][`DCACHE_OFS_OF(paddr) + 1] = '1;
-            data_ram_we[matched_way][`DCACHE_OFS_OF(paddr) + 2] = '1;
-            data_ram_we[matched_way][`DCACHE_OFS_OF(paddr) + 3] = '1;
-          end
-          default : data_ram_we[matched_way] = '0;
-        endcase
-      end
-
-      data_ram_wdata = '0;
-      for (int i = 0; i < 4; i++) begin
-        data_ram_wdata[`DCACHE_OFS_OF(paddr) + i] = s1_wdata[i];
-      end
-
-      meta_ram_wdata = '{valid: 1'b1, dirty: 1'b1};
-    end
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -328,7 +283,9 @@ module DCache (
 /*================================ Cache Stage2 ================================*/
   logic s2_valid;
   logic s2_miss;
+  logic [`PROC_VALEN - 1:0] s2_vaddr;
   logic [`PROC_PALEN - 1:0] s2_paddr;
+  logic [31:0] s2_wdata;
   logic [$clog2(`DCACHE_WAY_NUM) - 1:0] s2_matched_way;
   MemType s2_mem_type;
   AlignOpType s2_align_op;
@@ -339,17 +296,22 @@ module DCache (
     if (~rst_n || flush_i) begin
       s2_valid <= '0;
       s2_miss <= '0;
+      s2_vaddr <= '0;
       s2_paddr <= '0;
+      s2_wdata <= '0;
       s2_matched_way <= '0;
       s2_mem_type <= '0;
       s2_align_op <= '0;
       s2_pdest <= '0;
       s2_rob_idx <= '0;
+      store_buffer <= '0;
     end else begin
       if (s2_ready) begin
         s2_valid <= s1_valid;
         s2_miss <= miss;
+        s2_vaddr <= s1_vaddr;
         s2_paddr <= paddr;
+        s2_wdata <= s1_wdata;
         s2_matched_way <= matched_way;
         s2_mem_type <= s1_mem_type;
         s2_align_op <= s1_align_op;
@@ -360,26 +322,21 @@ module DCache (
   end
 
   // 1. 生成CPU响应
-
-  logic [31:0] matched_word;
-  // 重新按照word切分data
-  logic [`DCACHE_WAY_NUM - 1:0][`DCACHE_BLOCK_SIZE / 4 - 1:0][31:0] data_ram_rdata_wapper;
+  // 2. 处理store写入
 
   always_comb begin
-    // s2无阻塞条件
-    s2_ready = '1;
+    s2_ready = req.ready;
     // 1. 生成CPU响应
     rsp.valid = s2_valid & ~s2_miss;
     rsp.mem_type = s2_mem_type;
     rsp.pdest = s2_pdest;
     rsp.rob_idx = s2_rob_idx;
-    data_ram_rdata_wapper = data_ram_rdata;
-    matched_word = data_ram_rdata[s2_matched_way][s2_paddr[`DCACHE_IDX_OFFSET - 1:2]];
 
+    matched_word = data_ram_rdata[s2_matched_way][s2_vaddr[`DCACHE_IDX_OFFSET - 1:2]];
     case (s2_align_op)
       `ALIGN_B: begin
-        case (s2_paddr[1:0])
-          2'b00: rsp.rdata = {{24{matched_word[7]}}, matched_word[7:0]};
+        case (s2_vaddr[1:0])
+          2'b00: rsp.rdata = {{24{matched_word[7]}},  matched_word[7:0]};
           2'b01: rsp.rdata = {{24{matched_word[15]}}, matched_word[15:8]};
           2'b10: rsp.rdata = {{24{matched_word[23]}}, matched_word[23:16]};
           2'b11: rsp.rdata = {{24{matched_word[31]}}, matched_word[31:24]};
@@ -387,7 +344,7 @@ module DCache (
         endcase
       end
       `ALIGN_H: begin
-        case (s2_paddr[1:0])
+        case (s2_vaddr[1:0])
           2'b00: rsp.rdata = {{16{matched_word[15]}}, matched_word[15:0]};
           2'b10: rsp.rdata = {{16{matched_word[31]}}, matched_word[31:16]};
           default : /* default */;
@@ -395,7 +352,7 @@ module DCache (
       end
       `ALIGN_W: stage2_output_st_o.data = matched_word;
       `ALIGN_BU: begin
-        case (s2_paddr[1:0])
+        case (s2_vaddr[1:0])
           2'b00: rsp.rdata = {{24{1'b0}}, matched_word[7:0]};
           2'b01: rsp.rdata = {{24{1'b0}}, matched_word[15:8]};
           2'b10: rsp.rdata = {{24{1'b0}}, matched_word[23:16]};
@@ -404,7 +361,7 @@ module DCache (
         endcase
       end
       `ALIGN_HU: begin
-        case (s2_paddr[1:0])
+        case (s2_vaddr[1:0])
           2'b00: rsp.rdata = {{16{1'b0}}, matched_word[15:0]};
           2'b10: rsp.rdata = {{16{1'b0}}, matched_word[31:16]};
           default : /* default */;
@@ -417,6 +374,59 @@ module DCache (
 
 
 /*=============================== Cache Memory ================================*/
+
+  /* mem ctrl */
+  always_comb begin
+    // data ram
+    data_ram_we = '0;
+    if (axi_state == REFILL) begin
+      data_ram_waddr = `DCACHE_IDX_OF(s1_vaddr);
+      data_ram_we[repl_way] = axi4_mst.r_last;
+      data_ram_wdata = {axi_rdata_buffer[`DCACHE_BLOCK_SIZE / 4 - 1:1], axi4_mst.r_data};
+    end else begin
+      // 写入条件（stage2）：有效 store hit store可以提交(是rob最后一条指令)
+      if (s2_valid && s2_mem_type == `MEM_STORE && ~s2_miss && s2_ready) begin
+        case (s2_align_op)
+          `ALIGN_B : 
+            data_ram_we[matched_way][`DCACHE_OFS_OF(s2_vaddr) + 0] = '1;
+          `ALIGN_H : begin 
+            data_ram_we[matched_way][`DCACHE_OFS_OF(s2_vaddr) + 0] = '1;
+            data_ram_we[matched_way][`DCACHE_OFS_OF(s2_vaddr) + 1] = '1;
+          end
+          `ALIGN_W : begin
+            data_ram_we[matched_way][`DCACHE_OFS_OF(s2_vaddr) + 0] = '1;
+            data_ram_we[matched_way][`DCACHE_OFS_OF(s2_vaddr) + 1] = '1;
+            data_ram_we[matched_way][`DCACHE_OFS_OF(s2_vaddr) + 2] = '1;
+            data_ram_we[matched_way][`DCACHE_OFS_OF(s2_vaddr) + 3] = '1;
+          end
+          default : data_ram_we[matched_way] = '0;
+        endcase
+      end
+
+      data_ram_wdata = '0;
+      data_ram_wdata[s2_vaddr[`DCACHE_IDX_OFFSET - 1:2]] |= s2_wdata;
+    end
+    data_ram_raddr = `ICACHE_IDX_OF(s1_vaddr);
+    // tag ram
+    tag_ram_we = '0;
+    tag_ram_we[repl_way] = axi_state == REFILL & axi4_mst.r_last;
+    tag_ram_waddr = `DCACHE_IDX_OF(s1_vaddr);
+    tag_ram_wdata = `DCACHE_TAG_OF(paddr);
+    tag_ram_raddr = miss ? `ICACHE_IDX_OF(s1_vaddr) : `ICACHE_IDX_OF(icache_req.vaddr);
+    // meta ram
+    meta_ram_we = '0;
+    meta_ram_we[repl_way] = axi_state == REFILL & axi4_mst.r_last;
+    meta_ram_we[matched_way] = s2_valid & (s2_mem_type == `MEM_STORE) & ~s2_miss & s2_ready;
+    meta_ram_waddr = axi_state == REFILL ? `DCACHE_IDX_OF(s1_vaddr) : `ICACHE_IDX_OF(s2_vaddr);
+    meta_ram_wdata = axi_state == REFILL ? '{valid: 1'b1, dirty: 1'b0} : '{valid: 1'b1, dirty: 1'b1};
+    meta_ram_raddr = miss ? `DCACHE_IDX_OF(s1_vaddr) : `ICACHE_IDX_OF(icache_req.vaddr);
+    // plru ram
+    plru_ram_we = s1_valid;
+    plru_ram_waddr = `DCACHE_IDX_OF(s1_vaddr);
+    plru_ram_wdata = plru_ram_rdata == matched_way ? ~plru_ram_rdata : plru_ram_rdata;
+    plru_ram_raddr = miss ? `DCACHE_IDX_OF(s1_vaddr) : `DCACHE_IDX_OF(icache_req.vaddr);
+  end
+
   // Data Memory: 每路 1 个单端口RAM
   for (genvar i = 0; i < `DCACHE_WAY_NUM; i++) begin
     SimpleDualPortRAM #(
@@ -483,7 +493,7 @@ module DCache (
 
   // PLRU RAM
   SimpleDualPortRAM #(
-    .DATA_DEPTH(2 ** `ICACHE_INDEX_WIDTH),
+    .DATA_DEPTH(2 ** `DCACHE_IDX_WIDTH),
     .DATA_WIDTH(`DCACHE_WAY_NUM - 1),
     .BYTE_WRITE_WIDTH(`DCACHE_WAY_NUM - 1),
     .CLOCKING_MODE("common_clock"),

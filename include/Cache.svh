@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Cache.svh
 // Create  : 2024-03-01 21:28:47
-// Revise  : 2024-03-29 16:23:51
+// Revise  : 2024-04-01 15:09:20
 // Description :
 //   ...
 //   ...
@@ -60,7 +60,7 @@ typedef struct packed {
   logic ready;  // 接收fetch请求
 
   logic [`FETCH_WIDTH - 1:0][`PROC_VALEN - 1:0] vaddr;
-  logic [`FETCH_WIDTH - 1:0][31:0] instructions;  // 指令
+  logic [`FETCH_WIDTH - 1:0][31:0] instr;  // 指令
 } ICacheRspSt;
 
 typedef struct packed {
@@ -102,21 +102,24 @@ typedef struct packed {
 } DCacheMetaSt;
 
 typedef struct packed {
+  // stage 0;
   logic                     valid;
-  logic                     ready;
   MemType                   mem_type;
   logic [`PROC_VALEN - 1:0] vaddr;
   AlignOpType               align_op;
   logic [31:0]              wdata;
-
   logic [$clog2(`PHY_REG_NUM) - 1:0] pdest;
   logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
+
+  // stage 2
+  logic                     ready;  // 请求方可接收响应
 } DCacheReqSt;
 
 typedef struct packed {
+  // stage 0
+  logic ready;   // cache接收请求
+  // stage 2
   logic valid;
-  logic ready;
-
   logic [31:0] rdata;
   MemType mem_type;
   logic [$clog2(`PHY_REG_NUM) - 1:0] pdest;

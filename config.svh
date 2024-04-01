@@ -47,11 +47,11 @@
 `define TLB_ENTRY_NUM 32
 // Cache
 `define ICACHE_SIZE (1024 * 4)  // ICache大小(Byte)
-`define ICACHE_BLOCK_SIZE (4 * 16)  // ICache块大小(Byte)
+`define ICACHE_BLOCK_SIZE (4 * 8)  // ICache块大小(Byte)
 `define ICACHE_WAY_NUM 2  // ICache相联度(简化实现 不要更改)
 
 `define DCACHE_SIZE (1024 * 4)  // DCache大小(Byte)
-`define DCACHE_BLOCK_SIZE (4 * 16)  // DCache块大小(Byte)
+`define DCACHE_BLOCK_SIZE (4 * 8)  // DCache块大小(Byte)
 `define DCACHE_WAY_NUM 2  // DCache相联度(简化实现 不要更改)
 
 // Fetch Address Queue

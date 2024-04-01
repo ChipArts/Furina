@@ -20,4 +20,12 @@
 // ...
 // ==============================================================================
 
+`include "config.svh"
+`include "Decoder.svh"
 
+module PreDecoder (
+  input logic [31:0] instr,
+  output PreOptionCodeSt pre_option_code
+);
+
+endmodule : PreDecoder

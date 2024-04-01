@@ -22,7 +22,7 @@
 `include "Decoder.svh"
 
 module Decoder (
-  input logic [31:0] instruction,
+  input logic [31:0] instr,
   output OptionCodeSt option_code
 );
 
