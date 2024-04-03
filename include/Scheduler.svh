@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Scheduler.svh
 // Create  : 2024-03-12 23:17:37
-// Revise  : 2024-04-01 15:18:09
+// Revise  : 2024-04-02 16:07:16
 // Description :
 //   ...
 //   ...
@@ -27,15 +27,31 @@
 `include "config.svh"
 `include "Decoder.svh"
 
-typedef struct packed {
-  logic [`DECODE_WIDTH - 1:0] valid;
-  logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] pc;
-  logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] npc;
-  logic [`DECODE_WIDTH - 1:0][31:0] imm;
-  logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] psrc0, psrc1, pdest;
-  OptionCodeSt [`DECODE_WIDTH - 1:0] option_code;
-  logic [`DECODE_WIDTH - 1:0] src0_valid, src1_valid, dest_valid;
-} ScheduleReqSt;
+`ifdef DEBUG
+  typedef struct packed {
+    logic [`DECODE_WIDTH - 1:0] valid;
+    logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] pc;
+    logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] npc;
+    logic [`DECODE_WIDTH - 1:0][31:0] imm;
+    logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] src0, src1, dest;
+    OptionCodeSt [`DECODE_WIDTH - 1:0] option_code;
+    logic [`DECODE_WIDTH - 1:0] src0_valid, src1_valid, dest_valid;
+    // DEBUG
+    logic [`PROC_VALEN - 1:0] instr;
+  } ScheduleReqSt;
+`else 
+  typedef struct packed {
+    logic [`DECODE_WIDTH - 1:0] valid;
+    logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] pc;
+    logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] npc;
+    logic [`DECODE_WIDTH - 1:0][31:0] imm;
+    logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] src0, src1, dest;
+    OptionCodeSt [`DECODE_WIDTH - 1:0] option_code;
+    logic [`DECODE_WIDTH - 1:0] src0_valid, src1_valid, dest_valid;
+  } ScheduleReqSt;
+`endif
+
+
 
 typedef struct packed {
   logic ready;  // 接收req请求
@@ -55,6 +71,9 @@ typedef struct packed {
   OptionCodeSt oc;
   logic position_bit;
   logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
+`ifdef DEBUG
+  logic [`PROC_VALEN - 1:0] instr;
+`endif
 } DqEntrySt;
 
 typedef struct packed {
@@ -92,6 +111,9 @@ typedef struct packed {
   logic [31:0] imm;
   logic [`PROC_VALEN - 1:0] pc;
   logic [`PROC_VALEN - 1:0] npc;
+  logic psrc0_valid;
+  logic psrc1_valid;
+  logic pdest_valid;
   logic [$clog2(`PHY_REG_NUM) - 1:0] psrc0;
   logic [$clog2(`PHY_REG_NUM) - 1:0] psrc1;
   logic [$clog2(`PHY_REG_NUM) - 1:0] pdest;

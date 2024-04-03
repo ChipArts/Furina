@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : Scheduler.sv
 // Create  : 2024-03-12 23:16:08
-// Revise  : 2024-03-30 16:55:36
+// Revise  : 2024-04-02 16:33:50
 // Description :
 //   ...
 //   ...
@@ -116,6 +116,10 @@ module Scheduler (
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] s1_fl_alloc_preg;
   OptionCodeSt [`DECODE_WIDTH - 1:0] s1_option_code;
 
+`ifdef DEBUG
+  logic [`DECODE_WIDTH - 1:0][`PROC_VALEN - 1:0] s1_instr;
+`endif
+
   logic dq_write_ready;
 
   assign s1_ready = (rob_allocate_rsp.ready & dq_write_ready) | ~(|s1_valid);
@@ -133,6 +137,9 @@ module Scheduler (
       s1_src1_valid <= '0;
       s1_dest_valid <= '0;
       s1_fl_alloc_preg <= '0;
+`ifdef DEBUG
+      s1_instr <= '0;
+`endif
     end else begin
       if (s1_ready) begin
         s1_valid <= schedule_req.valid;
@@ -146,6 +153,9 @@ module Scheduler (
         s1_dest_valid <= schedule_req.dest_valid;
         s1_fl_alloc_preg <= fl_alloc_preg;
         s1_option_code <= schedule_req.option_code;
+`ifdef DEBUG
+        s1_instr <= schedule_req.instr;
+`endif
       end
     end
   end
@@ -160,7 +170,7 @@ module Scheduler (
   always_comb begin
     // RAT 控制逻辑
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      rat_dest_valid[i] = s1_valid[i] & s1_dest[i];
+      rat_dest_valid[i] = s1_valid[i] & s1_dest_valid[i];
     end
   end
 
@@ -198,6 +208,9 @@ module Scheduler (
       rob_alloc_req.rob_entry[i].exception = '0;
       rob_alloc_req.rob_entry[i].ecode = '0;
       rob_alloc_req.rob_entry[i].inst_type = s1_general_ctrl_signal[i].inst_type;
+`ifdef DEBUG
+      rob_alloc_req.rob_entry[i].inst = s1_instr[i];
+`endif
     end
   end
 
@@ -247,7 +260,11 @@ module Scheduler (
 
 /*================================== stage2 ===================================*/
   // 写入发射队列
-  logic [3:0][1:0] alu_cnt, mdu_cnt, misc_cnt, mem_cnt;  // 记录[i]之前某类型指令的数量
+  // 记录[i]之前对应类型指令的数量
+  logic [`DISPATCH_WIDTH - 1:0][$clog2(`DISPATCH_WIDTH) - 1:0] alu_cnt;
+  logic [`DISPATCH_WIDTH - 1:0][$clog2(`DISPATCH_WIDTH) - 1:0] mdu_cnt;
+  logic [`DISPATCH_WIDTH - 1:0][$clog2(`DISPATCH_WIDTH) - 1:0] misc_cnt;
+  logic [`DISPATCH_WIDTH - 1:0][$clog2(`DISPATCH_WIDTH) - 1:0] mem_cnt;  
   logic [1:0] alu_rs_wr_ready;
   logic mdu_rs_wr_ready;
   logic mem_rs_wr_ready;
@@ -290,9 +307,9 @@ module Scheduler (
   MiscOpCodeSt misc_issue_oc;
 
   always_comb begin
-    alu_cnt = 0;
-    misc_cnt = 0;
-    mem_cnt = 0;
+    alu_cnt = '0;
+    misc_cnt = '0;
+    mem_cnt = '0;
 
     for (int i = 1; i < `DISPATCH_WIDTH; i++) begin
       if (dq_rdata[i - 1].oc.inst_type == `ALU_INST) begin
@@ -304,8 +321,7 @@ module Scheduler (
       if (dq_rdata[i - 1].oc.inst_type == `MEM_INST) begin
         mem_cnt[i] = mem_cnt[i - 1] + 1;
       end
-      if (dq_rdata[i - 1].oc.inst_type == `PRIV_INST ||
-          dq_rdata[i - 1].oc.inst_type == `BR_INST) begin
+      if (dq_rdata[i - 1].oc.inst_type inside {`PRIV_INST, `BR_INST}) begin
         misc_cnt[i] = misc_cnt[i - 1] + 1;
       end
     end

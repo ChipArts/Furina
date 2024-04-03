@@ -4,7 +4,7 @@
 // Author  : SuYang 2506806016@qq.com
 // File    : OrderReservationStation.sv
 // Create  : 2024-03-21 20:23:24
-// Revise  : 2024-03-29 20:58:51
+// Revise  : 2024-04-02 16:10:20
 // Description :
 //   ...
 //   ...
@@ -84,9 +84,14 @@ parameter
       gate_clock      = 1'b1;
 
       issue_base_o.imm = mem_q[read_pointer_q].base.imm;
-      issue_base_o.src0 = mem_q[read_pointer_q].base.src0;
-      issue_base_o.src1 = mem_q[read_pointer_q].base.src1;
-      issue_base_o.dest = mem_q[read_pointer_q].base.dest;
+      issue_base_o.pc = mem_q[read_pointer_q].base.pc;
+      issue_base_o.npc = mem_q[read_pointer_q].base.npc;
+      issue_base_o.psrc0_valid = mem_q[read_pointer_q].base.psrc0_valid;
+      issue_base_o.psrc1_valid = mem_q[read_pointer_q].base.psrc1_valid;
+      issue_base_o.pdest_valid = mem_q[read_pointer_q].base.pdest_valid;
+      issue_base_o.psrc0 = mem_q[read_pointer_q].base.psrc0;
+      issue_base_o.psrc1 = mem_q[read_pointer_q].base.psrc1;
+      issue_base_o.pdest = mem_q[read_pointer_q].base.pdest;
       issue_oc_o = mem_q[read_pointer_q].oc;
 
       // push a new element to the queue

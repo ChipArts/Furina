@@ -139,14 +139,19 @@ parameter
               (rs_mem[i][j].position_bit != position_bit[i] &&
                rs_mem[i][j].rob_idx < rob_idx[i])) begin
             issue_valid_o[i] = '1;
+            issue_base_o[i].imm = rs_mem[i][j].base.imm;
+            issue_base_o[i].pc = rs_mem[i][j].base.pc;
+            issue_base_o[i].npc = rs_mem[i][j].base.npc;
+            issue_base_o[i].psrc0_valid = rs_mem[i][j].base.psrc0_valid;
+            issue_base_o[i].psrc1_valid = rs_mem[i][j].base.psrc1_valid;
+            issue_base_o[i].pdest_valid = rs_mem[i][j].base.pdest_valid;
             issue_base_o[i].psrc0 = rs_mem[i][j].base.psrc0;
             issue_base_o[i].psrc1 = rs_mem[i][j].base.psrc1;
             issue_base_o[i].pdest = rs_mem[i][j].base.pdest;
-            issue_base_o[i].imm = rs_mem[i][j].base.imm;
             issue_oc_o[i] = rs_mem[i][j].oc;
 
 
-            // 更新最老的misc指令
+            // 更新最老的指令idx
             position_bit[i] = rs_mem[i][j].base.position_bit;
             rob_idx[i] = rs_mem[i][j].base.rob_idx;
             issue_idx[i] = j;

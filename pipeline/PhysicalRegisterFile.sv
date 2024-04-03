@@ -54,7 +54,7 @@ module PhysicalRegisterFile #(
 
   always_comb begin
     foreach (raddr_i[i]) begin
-      data_o[i] <= waddr_i[i] == raddr_i[i] && we_i[i] ? data_i[i] : reg_file[raddr_i[i]];
+      data_o[i] = waddr_i[i] == raddr_i[i] && we_i[i] ? data_i[i] : reg_file[raddr_i[i]];
     end
   end
 
