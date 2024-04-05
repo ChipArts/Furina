@@ -115,6 +115,10 @@ typedef struct packed {
   logic [ 9:0] tlbrd_asid;
   // tlb or cacop
   logic [`PROC_VALEN - 1:0] vaddr;
+
+  // diff
+  logic [31:0] csr_rdata_diff;
+  logic [63:0] timer_64_value_diff;
 } MiscCmtSt;
 
 typedef struct packed {

@@ -22,6 +22,10 @@
 
 `include "config.svh"
 
+`ifdef DEBUG
+  `include "Decoder.svh"
+`endif
+
 module Furina (
   input clk,    // Clock
   input a_rst_n,  // Asynchronous reset active low
@@ -39,7 +43,7 @@ module Furina (
   axi4.Master icache_axi4_mst;
   axi4.Master dcache_axi4_mst;
 
-  Pipeline inst_Pipeline
+  Pipeline U_Pipeline
   (
     .clk             (clk),
     .a_rst_n         (a_rst_n),
@@ -204,44 +208,53 @@ module Furina (
   );
 
 `ifdef DEBUG
+for (genvar i = 0; i < `RETIRE_WIDTH; i++) begin
   DifftestInstrCommit DifftestInstrCommit(
-      .clock              (aclk           ),
+      .clock              (clk            ),
       .coreid             (0              ),
-      .index              (0              ),
-      .valid              (cmt_valid      ),
-      .pc                 (cmt_pc         ),
-      .instr              (cmt_inst       ),
+      .index              (i              ),
+      .valid              (U_Pipeline.rob_retire_o.valid[i]),
+      .pc                 (U_Pipeline.rob_retire_o.rob_entry[i].pc),
+      .instr              (U_Pipeline.rob_retire_o.rob_entry[i].instr       ),
       .skip               (0              ),
-      .is_TLBFILL         (cmt_tlbfill_en ),
-      .TLBFILL_index      (cmt_rand_index ),
-      .is_CNTinst         (cmt_cnt_inst   ),
-      .timer_64_value     (cmt_timer_64   ),
-      .wen                (cmt_wen        ),
-      .wdest              (cmt_wdest      ),
-      .wdata              (cmt_wdata      ),
-      .csr_rstat          (cmt_csr_rstat_en),
-      .csr_data           (cmt_csr_data   )
+      .is_TLBFILL         (U_Pipeline.int_blk_misc_cmt.priv_op == `PRIV_TLBFILL & 
+                           U_Pipeline.int_blk_misc_cmt.base.rob_idx == U_Pipeline.rob_oldest_rob_idx_o),
+      .TLBFILL_index      (U_Pipeline.csr_rand_index ),
+      .is_CNTinst         (U_Pipeline.int_blk_misc_cmt.priv_op inside {`PRIV_RDCNTVL, `PRIV_RDCNTVH, `PRIV_RDCNTID} & 
+                           U_Pipeline.int_blk_misc_cmt.base.rob_idx == U_Pipeline.rob_oldest_rob_idx_o),
+      .timer_64_value     (U_Pipeline.int_blk_misc_cmt.timer_64_value_diff),
+      .wen                (U_Pipeline.rob_retire_o.rob_entry[i].arch_reg != 0),
+      .wdest              (U_Pipeline.rob_retire_o.rob_entry[i].arch_reg      ),
+      .wdata              (U_Pipeline.rob_retire_o.rob_entry[i].rf_wdata      ),
+      .csr_rstat          (U_Pipeline.int_blk_misc_cmt.priv_op inside {`PRIV_CSR_READ, `PRIV_CSR_WRITE, `PRIV_CSR_XCHG} & 
+                           U_Pipeline.int_blk_misc_cmt.base.rob_idx == U_Pipeline.rob_oldest_rob_idx_o &
+                           U_Pipeline.rob_retire_o.rob_entry[i].instr[23:10] == 14'h5),
+      .csr_data           (U_Pipeline.int_blk_misc_cmt.csr_rdata_diff)
   );
+end
 
   DifftestExcpEvent DifftestExcpEvent(
-      .clock              (aclk           ),
+      .clock              (clk           ),
       .coreid             (0              ),
-      .excp_valid         (cmt_excp_flush ),
-      .eret               (cmt_ertn       ),
-      .intrNo             (csr_estat_diff_0[12:2]),
-      .cause              (cmt_csr_ecode  ),
-      .exceptionPC        (cmt_pc         ),
-      .exceptionInst      (cmt_inst       )
+      .excp_valid         (U_Pipeline.rob_retire_o.valid[0] & U_Pipeline.rob_retire_o.rob_entry[0].exception),
+      .eret               (U_Pipeline.int_blk_misc_cmt.base.valid &
+                           U_Pipeline.int_blk_misc_cmt.priv_op == `PRIV_ERTN & 
+                           U_Pipeline.int_blk_misc_cmt.base.rob_idx == U_Pipeline.rob_oldest_rob_idx_o & 
+                           U_Pipeline.rob_retire_o.valid[0]),
+      .intrNo             (U_Pipeline.csr_estat_diff[12:2]),
+      .cause              (U_Pipeline.rob_retire_o.rob_entry[0].ecode),
+      .exceptionPC        (U_Pipeline.rob_retire_o.rob_entry[0].pc),
+      .exceptionInst      (U_Pipeline.rob_retire_o.rob_entry[0].instr)
   );
 
   DifftestTrapEvent DifftestTrapEvent(
-      .clock              (aclk           ),
+      .clock              (clk           ),
       .coreid             (0              ),
-      .valid              (trap           ),
-      .code               (trap_code      ),
-      .pc                 (cmt_pc         ),
-      .cycleCnt           (cycleCnt       ),
-      .instrCnt           (instrCnt       )
+      .valid              (0           ),
+      .code               ('0       ),
+      .pc                 ('0       ),
+      .cycleCnt           ('0       ),
+      .instrCnt           ('0       )
   );
 
   DifftestStoreEvent DifftestStoreEvent(
@@ -266,33 +279,33 @@ module Furina (
   DifftestCSRRegState DifftestCSRRegState(
       .clock              (aclk               ),
       .coreid             (0                  ),
-      .crmd               (csr_crmd_diff_0    ),
-      .prmd               (csr_prmd_diff_0    ),
+      .crmd               (U_Pipeline.csr_crmd_diff    ),
+      .prmd               (U_Pipeline.csr_prmd_diff    ),
       .euen               (0                  ),
-      .ecfg               (csr_ectl_diff_0    ),
-      .estat              (csr_estat_diff_0   ),
-      .era                (csr_era_diff_0     ),
-      .badv               (csr_badv_diff_0    ),
-      .eentry             (csr_eentry_diff_0  ),
-      .tlbidx             (csr_tlbidx_diff_0  ),
-      .tlbehi             (csr_tlbehi_diff_0  ),
-      .tlbelo0            (csr_tlbelo0_diff_0 ),
-      .tlbelo1            (csr_tlbelo1_diff_0 ),
-      .asid               (csr_asid_diff_0    ),
-      .pgdl               (csr_pgdl_diff_0    ),
-      .pgdh               (csr_pgdh_diff_0    ),
-      .save0              (csr_save0_diff_0   ),
-      .save1              (csr_save1_diff_0   ),
-      .save2              (csr_save2_diff_0   ),
-      .save3              (csr_save3_diff_0   ),
-      .tid                (csr_tid_diff_0     ),
-      .tcfg               (csr_tcfg_diff_0    ),
-      .tval               (csr_tval_diff_0    ),
-      .ticlr              (csr_ticlr_diff_0   ),
-      .llbctl             (csr_llbctl_diff_0  ),
-      .tlbrentry          (csr_tlbrentry_diff_0),
-      .dmw0               (csr_dmw0_diff_0    ),
-      .dmw1               (csr_dmw1_diff_0    )
+      .ecfg               (U_Pipeline.csr_ectl_diff    ),
+      .estat              (U_Pipeline.csr_estat_diff   ),
+      .era                (U_Pipeline.csr_era_diff     ),
+      .badv               (U_Pipeline.csr_badv_diff    ),
+      .eentry             (U_Pipeline.csr_eentry_diff  ),
+      .tlbidx             (U_Pipeline.csr_tlbidx_diff  ),
+      .tlbehi             (U_Pipeline.csr_tlbehi_diff  ),
+      .tlbelo0            (U_Pipeline.csr_tlbelo0_diff ),
+      .tlbelo1            (U_Pipeline.csr_tlbelo1_diff ),
+      .asid               (U_Pipeline.csr_asid_diff    ),
+      .pgdl               (U_Pipeline.csr_pgdl_diff    ),
+      .pgdh               (U_Pipeline.csr_pgdh_diff    ),
+      .save0              (U_Pipeline.csr_save0_diff   ),
+      .save1              (U_Pipeline.csr_save1_diff   ),
+      .save2              (U_Pipeline.csr_save2_diff   ),
+      .save3              (U_Pipeline.csr_save3_diff   ),
+      .tid                (U_Pipeline.csr_tid_diff     ),
+      .tcfg               (U_Pipeline.csr_tcfg_diff    ),
+      .tval               (U_Pipeline.csr_tval_diff    ),
+      .ticlr              (U_Pipeline.csr_ticlr_diff   ),
+      .llbctl             (U_Pipeline.csr_llbctl_diff  ),
+      .tlbrentry          (U_Pipeline.csr_tlbrentry_diff),
+      .dmw0               (U_Pipeline.csr_dmw0_diff    ),
+      .dmw1               (U_Pipeline.csr_dmw1_diff    )
   );
 
   DifftestGRegState DifftestGRegState(

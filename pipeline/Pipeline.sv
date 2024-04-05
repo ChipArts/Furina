@@ -59,6 +59,9 @@ module Pipeline (
   MmuAddrTransReqSt icache_addr_trans_req;
   IcacopReqSt icacop_req;
   IcacopRspSt icacop_rsp;
+
+  /* Pre Decoder */
+  PreOptionCodeSt [`FETCH_WIDTH - 1:0] pre_oc;
   
 
   /* Instruction Buffer */
@@ -74,7 +77,6 @@ module Pipeline (
 
   /* Decoder */
   OptionCodeSt [`DECODE_WIDTH - 1:0] decoder_option_code;
-  logic [`DECODE_WIDTH - 1:0][31:0] decoder_imm;
   logic [`DECODE_WIDTH - 1:0][4:0] decoder_src0;
   logic [`DECODE_WIDTH - 1:0][4:0] decoder_src1;
   logic [`DECODE_WIDTH - 1:0][4:0] decoder_dest;
@@ -244,6 +246,7 @@ module Pipeline (
   logic [31:0]  csr_tlbidx_in    ;
   logic [ 9:0]  csr_asid_in      ;
   logic [ 1:0]  csr_plv_out      ;
+  
   logic [31:0]  csr_crmd_diff;
   logic [31:0]  csr_prmd_diff;
   logic [31:0]  csr_ectl_diff;
@@ -334,7 +337,6 @@ module Pipeline (
 /*================================ Pre Decoder ================================*/
   
   // TODO: 实现分支预测的pre检查
-  // 对操作数相关信息解码
   for (genvar i = 0; i < `FETCH_WIDTH; i++) begin
     PreDecoder inst_PreDecoder (.instr(instr), .pre_oc(pre_oc));
   end
@@ -385,25 +387,28 @@ module Pipeline (
     );
   end
 
-  // 准备寄存器编号、扩展imm
+  // 处理特殊的解码（三个CSR特权指令）
+  // TODO: 优化这个处理
   always_comb begin
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      case (ibuf_read_data[i].pre_oc.imm_type)
-        `IMM_UI5  : decoder_imm[i] = {27'b0 ,ibuf_read_data[i].instr[14:10]};
-        `IMM_UI12 : decoder_imm[i] = {20'b0, ibuf_read_data[i].instr[21:10]};
-        `IMM_SI12 : decoder_imm[i] = {{20{ibuf_read_data[i].instr[21]}}, ibuf_read_data[i].instr[21:10]};
-        `IMM_SI14 : decoder_imm[i] = {{18{ibuf_read_data[i].instr[23]}}, ibuf_read_data[i].instr[23:10]};
-        `IMM_SI16 : decoder_imm[i] = {{16{ibuf_read_data[i].instr[25]}}, ibuf_read_data[i].instr[25:10]};
-        `IMM_SI20 : decoder_imm[i] = {{12{ibuf_read_data[i].instr[24]}}, ibuf_read_data[i].instr[24: 5]};
-        `IMM_SI26 : decoder_imm[i] = {{ 6{ibuf_read_data[i].instr[9]}} , ibuf_read_data[i].instr[9: 0], ibuf_read_data[i].instr[25:10]};
-        `IMM_PC   : decoder_imm[i] = ibuf_read_data[i].pc + {{12{ibuf_read_data[i].instr[24]}}, ibuf_read_data[i].instr[24: 5]};
-        default : /* default */;
-      endcase
+      if (decoder_option_code[i].priv_op == `PRIV_CSR_XCHG) begin
+        case (ibuf_read_data[i].instr[9:5])
+          5'b0 : decoder_option_code[i].priv_op = `PRIV_CSR_READ;
+          5'b1 : decoder_option_code[i].priv_op = `PRIV_CSR_WRITE;
+          default : decoder_option_code[i].priv_op = `PRIV_CSR_XCHG;
+        endcase
+      end
+    end
+  end
+
+  // 准备寄存器编号
+  always_comb begin
+    for (int i = 0; i < `DECODE_WIDTH; i++) begin
       case (ibuf_read_data[i].pre_oc.src0_type)
+        `SRC_R0 : decoder_src0[i] = 5'd0;
         `SRC_RD : decoder_src0[i] = ibuf_read_data[i].instr[4:0];
         `SRC_RJ : decoder_src0[i] = ibuf_read_data[i].instr[9:5];
         `SRC_RK : decoder_src0[i] = ibuf_read_data[i].instr[14:10];
-        `SRC_R0 : decoder_src0[i] = 5'd0;
         default : /* default */;
       endcase
       case (ibuf_read_data[i].pre_oc.src1_type)
@@ -414,7 +419,9 @@ module Pipeline (
         default : /* default */;
       endcase
       case (ibuf_read_data[i].pre_oc.dest_type)
+        `DEST_R0 : decoder_dest[i] = 5'd0;
         `DEST_RD : decoder_dest[i] = ibuf_read_data[i].instr[4:0];
+        `DEST_JD : decoder_dest[i] = ibuf_read_data[i].instr[9:5] | ibuf_read_data[i].instr[4:0];
         `DEST_RA : decoder_dest[i] = 5'd1;
         default : /* default */;
       endcase
@@ -430,18 +437,10 @@ module Pipeline (
       sche_schedule_req.valid[i] = ibuf_read_valid[i];
       sche_schedule_req.pc[i] = ibuf_read_data[i].pc;
       sche_schedule_req.npc[i] = ibuf_read_data[i].npc;
-      sche_schedule_req.imm[i] = decoder_imm[i];
-      sche_schedule_req.src0[i] = decoder_src0[i];
-      sche_schedule_req.src1[i] = decoder_src1[i];
-      sche_schedule_req.dest[i] = decoder_dest[i];
-      sche_schedule_req.src0_valid[i] = decoder_src0[i] != 5'd0;
-      sche_schedule_req.src1_valid[i] = decoder_src1[i] != 5'd0;
-      sche_schedule_req.dest_valid[i] = decoder_dest[i] != 5'd0;
+      sche_schedule_req.arch_src0[i] = decoder_src0[i];
+      sche_schedule_req.arch_src1[i] = decoder_src1[i];
+      sche_schedule_req.arch_dest[i] = decoder_dest[i];
       sche_schedule_req.option_code[i] = decoder_option_code[i];
-
-`ifdef DEBUG
-      sche_schedule_req.instr[i] = ibuf_read_data[i].instr;
-`endif
     end
 
     sche_arch_rat_i = arch_rat_o;

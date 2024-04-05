@@ -24,8 +24,11 @@
 `include "Decoder.svh"
 
 module PreDecoder (
-  input logic [31:0] instr,
-  output PreOptionCodeSt pre_option_code
+  input logic [31:0] instr_i,
+  output PreOptionCodeSt pre_option_code_o
 );
+  
+  // TODO
+  assign pre_option_code_o = '0;
 
 endmodule : PreDecoder

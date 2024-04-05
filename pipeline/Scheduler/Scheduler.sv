@@ -81,9 +81,9 @@ module Scheduler (
     schedule_rsp.ready = s0_ready;
 
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      fl_alloc_valid[i] = schedule_req.valid[i] &
-                          schedule_req.dest_valid[i] &
-                          s1_ready;
+      fl_alloc_valid[i] =  schedule_req.valid[i] &
+                          |schedule_req.arch_dest[i] &
+                           s1_ready;
     end
   end
 
@@ -104,73 +104,75 @@ module Scheduler (
 
 /*================================== stage1 ===================================*/
   // 缓存指令和解码信息
-  logic [`DECODE_WIDTH - 1:0] s1_valid;
-  logic [`DECODE_WIDTH - 1:0][31:0] s1_imm;
-  logic [`DECODE_WIDTH - 1:0][`PROC_VALEN - 1:0] s1_vaddr;
-  logic [`DECODE_WIDTH - 1:0] s1_src0_valid;
-  logic [`DECODE_WIDTH - 1:0] s1_src1_valid;
-  logic [`DECODE_WIDTH - 1:0] s1_dest_valid;
-  logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] s1_src0;
-  logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] s1_src1;
-  logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] s1_dest;
+  ScheduleReqSt s1_sche_req;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] s1_fl_alloc_preg;
-  OptionCodeSt [`DECODE_WIDTH - 1:0] s1_option_code;
-
-`ifdef DEBUG
-  logic [`DECODE_WIDTH - 1:0][`PROC_VALEN - 1:0] s1_instr;
-`endif
-
-  logic dq_write_ready;
-
-  assign s1_ready = (rob_allocate_rsp.ready & dq_write_ready) | ~(|s1_valid);
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n || flush_i) begin
-      s1_valid <= '0;
-      s1_option_code <= '0;
-      s1_vaddr <= '0;
-      s1_imm <= '0;
-      s1_src0 <= '0;
-      s1_src1 <= '0;
-      s1_dest <= '0;
-      s1_src0_valid <= '0;
-      s1_src1_valid <= '0;
-      s1_dest_valid <= '0;
+      s1_sche_req <= '0;
       s1_fl_alloc_preg <= '0;
-`ifdef DEBUG
-      s1_instr <= '0;
-`endif
     end else begin
       if (s1_ready) begin
-        s1_valid <= schedule_req.valid;
-        s1_vaddr <= schedule_req.vaddr;
-        s1_imm <= schedule_req.imm;
-        s1_src0 <= schedule_req.src0;
-        s1_src1 <= schedule_req.src1;
-        s1_dest <= schedule_req.dest;
-        s1_src0_valid <= schedule_req.src0_valid;
-        s1_src1_valid <= schedule_req.src1_valid;
-        s1_dest_valid <= schedule_req.dest_valid;
+        s1_sche_req <= schedule_req;
         s1_fl_alloc_preg <= fl_alloc_preg;
-        s1_option_code <= schedule_req.option_code;
-`ifdef DEBUG
-        s1_instr <= schedule_req.instr;
-`endif
       end
     end
   end
 
 
   // 重命名
+  logic dq_write_ready;
   logic [`DECODE_WIDTH - 1:0] rat_dest_valid;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_psrc0;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_psrc1;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_ppdst;
 
+  logic [`DECODE_WIDTH - 1:0] dq_write_valid;
+  DqEntrySt [`DECODE_WIDTH - 1:0] dq_wdata;
+
+  logic [`DECODE_WIDTH - 1:0] dq_read_valid;
+  logic [`DECODE_WIDTH - 1:0] dq_read_ready;
+  DqEntrySt [`DECODE_WIDTH - 1:0] dq_rdata;
+
   always_comb begin
+    s1_ready = (rob_alloc_rsp.ready & dq_write_ready) | ~(|s1_valid);
     // RAT 控制逻辑
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       rat_dest_valid[i] = s1_valid[i] & s1_dest_valid[i];
+    end
+
+    // 写入ROB
+    rob_alloc_req.valid = s1_valid;
+    rob_alloc_req.ready = s1_ready;
+    for (int i = 0; i < `DECODE_WIDTH; i++) begin
+      rob_alloc_req.valid[i] = s1_sche_req.valid[i];
+      rob_alloc_req.pc[i] = s1_sche_req.pc[i];
+      rob_alloc_req.instr_type[i] = s1_sche_req.instr_type[i];
+      rob_alloc_req.arch_reg[i] = s1_sche_req.arch_dest[i];
+`ifdef DEBUG
+      rob_alloc_req.rob_entry[i].instr = s1_sche_req.option_code[i].debug_inst;
+`endif
+    end
+
+    // 写入分发队列
+    dq_write_valid = s1_valid;
+    for (int i = 0; i < `DECODE_WIDTH; i++) begin
+      dq_wdata[i].valid = s1_valid[i];
+      dq_wdata[i].pc = s1_sche_req.pc[i];
+      dq_wdata[i].npc = s1_sche_req.npc[i];
+      dq_wdata[i].src = s1_sche_req.src[i];
+      dq_wdata[i].src0_valid = s1_sche_req.arch_src0[i] != 5'b0;
+      dq_wdata[i].src1_valid = s1_sche_req.arch_src1[i] != 5'b0;
+      dq_wdata[i].dest_valid = s1_sche_req.arch_dest[i] != 5'b0;
+      dq_wdata[i].src0 = rat_psrc0[i];
+      dq_wdata[i].src1 = rat_psrc1[i];
+      dq_wdata[i].dest = s1_fl_alloc_preg[i];
+      dq_wdata[i].oc = s1_sche_req.option_code[i];
+      dq_wdata[i].position_bit = rob_alloc_rsp.position_bit[i];
+      dq_wdata[i].rob_idx = rob_alloc_rsp.rob_idx[i];
+`ifdef DEBUG
+      dq_wdata[i].instr = s1_sche_req.option_code[i].debug_inst;
+`endif
     end
   end
 
@@ -185,60 +187,15 @@ module Scheduler (
     .arch_rat    (arch_rat_i),
     // 查询
     .dest_valid_i(rat_dest_valid),
-    .src0_i      (s1_src0),
-    .src1_i      (s1_src1),
-    .dest_i      (s1_dest),
-    .preg_i      (s1_allocated_preg),
-    // 输出
+    .src0_i      (s1_sche_req.arch_src0[i]),
+    .src1_i      (s1_sche_req.arch_src1[i]),
+    .dest_i      (s1_sche_req.arch_dest[i]),
+    .preg_i      (s1_fl_alloc_preg),
+    // 输出(comb)
     .psrc0_o     (rat_psrc0),
     .psrc1_o     (rat_psrc1),
     .ppdst_o     (rat_ppdst)
   );
-
-  // 写入ROB
-  always_comb begin
-    rob_alloc_req.valid = s1_valid;
-    rob_alloc_req.ready = s1_ready;
-    for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      rob_alloc_req.rob_entry[i].complete = '0;
-      rob_alloc_req.rob_entry[i].arch_reg = s1_dest[i];
-      rob_alloc_req.rob_entry[i].phy_reg = s1_fl_alloc_preg[i];
-      rob_alloc_req.rob_entry[i].old_phy_reg = rat_ppdst[i];
-      rob_alloc_req.rob_entry[i].pc = s1_vaddr[i];
-      rob_alloc_req.rob_entry[i].exception = '0;
-      rob_alloc_req.rob_entry[i].ecode = '0;
-      rob_alloc_req.rob_entry[i].inst_type = s1_general_ctrl_signal[i].inst_type;
-`ifdef DEBUG
-      rob_alloc_req.rob_entry[i].inst = s1_instr[i];
-`endif
-    end
-  end
-
-  // 写入分发队列
-  logic [`DECODE_WIDTH - 1:0] dq_write_valid;
-  DqEntrySt [`DECODE_WIDTH - 1:0] dq_wdata;
-
-  logic [`DECODE_WIDTH - 1:0] dq_read_valid;
-  logic [`DECODE_WIDTH - 1:0] dq_read_ready;
-  DqEntrySt [`DECODE_WIDTH - 1:0] dq_rdata;
-
-  always_comb begin
-    dq_write_valid = s1_valid;
-    for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      dq_wdata[i].valid = s1_valid[i];
-      dq_wdata[i].pc = s1_vaddr[i];
-      dq_wdata[i].imm = s1_imm[i];
-      dq_wdata[i].src0_valid = s1_src0_valid[i];
-      dq_wdata[i].src1_valid = s1_src1_valid[i];
-      dq_wdata[i].dest_valid = s1_dest_valid[i];
-      dq_wdata[i].src0 = s1_src0[i];
-      dq_wdata[i].src1 = s1_src1[i];
-      dq_wdata[i].dest = s1_dest[i];
-      dq_wdata[i].option_code = s1_option_code[i];
-      dq_wdata[i].position_bit = rob_alloc_rsp.position_bit[i];
-      dq_wdata[i].rob_idx = rob_alloc_rsp.rob_idx[i];
-    end
-  end
 
   SyncMultiChannelFIFO #(
     .FIFO_DEPTH(16),
@@ -312,23 +269,23 @@ module Scheduler (
     mem_cnt = '0;
 
     for (int i = 1; i < `DISPATCH_WIDTH; i++) begin
-      if (dq_rdata[i - 1].oc.inst_type == `ALU_INST) begin
+      if (dq_rdata[i - 1].oc.instr_type == `ALU_INST) begin
         alu_cnt[i] = alu_cnt[i - 1] + 1;
       end
-      if (dq_rdata[i - 1].oc.inst_type == `MDU_INST) begin
+      if (dq_rdata[i - 1].oc.instr_type == `MDU_INST) begin
         mdu_cnt[i] = mdu_cnt[i - 1] + 1;
       end
-      if (dq_rdata[i - 1].oc.inst_type == `MEM_INST) begin
+      if (dq_rdata[i - 1].oc.instr_type == `MEM_INST) begin
         mem_cnt[i] = mem_cnt[i - 1] + 1;
       end
-      if (dq_rdata[i - 1].oc.inst_type inside {`PRIV_INST, `BR_INST}) begin
+      if (dq_rdata[i - 1].oc.instr_type inside {`PRIV_INST, `BR_INST}) begin
         misc_cnt[i] = misc_cnt[i - 1] + 1;
       end
     end
 
     // 判断是否可以分发
     if (dq_rdata[0].valid) begin
-        case (dq_rdata[0].oc.inst_type)
+        case (dq_rdata[0].oc.instr_type)
           `ALU_INST : dq_read_ready[0] = alu_cnt[0] < $countones(alu_rs_wr_ready);
           `MDU_INST : dq_read_ready[0] = mdu_cnt[0] < $countones(mdu_rs_wr_ready);
           `MEM_INST : dq_read_ready[0] = mem_cnt[0] < $countones(mem_rs_wr_ready);
@@ -338,7 +295,7 @@ module Scheduler (
     end
     for (int i = 1; i < `DISPATCH_WIDTH; i++) begin
       if (dq_rdata[i].valid) begin
-        case (dq_rdata[i].oc.inst_type)
+        case (dq_rdata[i].oc.instr_type)
           `ALU_INST : dq_read_ready[i] = alu_cnt[i] < $countones(alu_rs_wr_ready) & dq_read_ready[i - 1];
           `MDU_INST : dq_read_ready[i] = mdu_cnt[i] < $countones(mdu_rs_wr_ready) & dq_read_ready[i - 1];
           `MEM_INST : dq_read_ready[i] = mem_cnt[i] < $countones(mem_rs_wr_ready) & dq_read_ready[i - 1];
@@ -351,7 +308,7 @@ module Scheduler (
     // 写入发射队列
     dispatched = '0;
     for (int i = 0; i < `DISPATCH_WIDTH; i++) begin
-      if (dq_rdata[i].oc.inst_type == `ALU_INST && alu_cnt[i] == 0) begin
+      if (dq_rdata[i].oc.instr_type == `ALU_INST && alu_cnt[i] == 0) begin
         if (alu_rs_wr_ready[0]) begin
           alu_rs_wr_valid[0] = dq_read_ready[i];
           alu_rs_base[0] = dq2rs(dq_rdata[i]);
@@ -362,23 +319,23 @@ module Scheduler (
           alu_rs_oc[1] = gen2alu(dq_rdata[i].oc);
         end
       end
-      if (dq_rdata[i].oc.inst_type == `ALU_INST && alu_cnt[i] == 1) begin
+      if (dq_rdata[i].oc.instr_type == `ALU_INST && alu_cnt[i] == 1) begin
         alu_rs_wr_valid[1] = dq_read_ready[i];
         alu_rs_base[1] = dq2rs(dq_rdata[i]);
         alu_rs_oc[1] = gen2alu(dq_rdata[i].oc);
       end
-      if (dq_rdata[i].oc.inst_type == `MEM_INST && mem_cnt[i] == 0) begin
+      if (dq_rdata[i].oc.instr_type == `MEM_INST && mem_cnt[i] == 0) begin
         mem_rs_wr_valid = dq_read_ready[i];
         mem_rs_base = dq2rs(dq_rdata[i]);
         mem_rs_oc = gen2mem(dq_rdata[i].oc);
       end
-      if (dq_rdata[i].oc.inst_type == `MDU_INST && mdu_cnt[i] == 0) begin
+      if (dq_rdata[i].oc.instr_type == `MDU_INST && mdu_cnt[i] == 0) begin
         mdu_rs_wr_valid = dq_read_ready[i];
         mdu_rs_base = dq2rs(dq_rdata[i]);
         mdu_rs_oc = gen2mdu(dq_rdata[i].oc);
       end
-      if ((dq_rdata[i].oc.inst_type == `PRIV_INST || 
-           dq_rdata[i].oc.inst_type == `BR_INST) &&
+      if ((dq_rdata[i].oc.instr_type == `PRIV_INST || 
+           dq_rdata[i].oc.instr_type == `BR_INST) &&
            misc_cnt == 0) begin
         misc_rs_wr_valid = dq_read_ready[i];
         misc_rs_base = dq2rs(dq_rdata[i]);

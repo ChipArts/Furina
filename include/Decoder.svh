@@ -32,6 +32,27 @@
 
 /*================================ Pre Decoder ================================*/
 
+typedef logic [1:0] SrcType;
+`define SRC_R0  (2'd0)  // 0寄存器（src无效的默认值）
+`define SRC_RD  (2'd1)
+`define SRC_RJ  (2'd2)
+`define SRC_RK  (2'd3)
+
+
+typedef logic [1:0] DestType;
+`define DEST_R0  (2'd0)
+`define DEST_RD  (2'd0)
+`define DEST_JD  (2'd1)  // 处理rdtime[l/h]指令
+`define DEST_RA  (2'd2)  // 返回地址寄存器
+
+typedef struct packed {
+  SrcType src0_type;
+  SrcType src1_type;
+  DestType dest_type;
+} PreOptionCodeSt;
+
+/*================================== Decoder ==================================*/
+
 typedef logic [2:0] ImmType;
 `define IMM_UI5    (3'd0)
 `define IMM_UI12   (3'd1)
@@ -40,37 +61,16 @@ typedef logic [2:0] ImmType;
 `define IMM_SI16   (3'd4)
 `define IMM_SI20   (3'd5)
 `define IMM_SI26   (3'd6)
-`define IMM_PC     (3'd7)
+`define IMM_PC     (3'd7)  // 特殊处理PCADDR指令
 
-typedef logic [1:0] SrcType;
-`define SRC_RD  (2'd0)
-`define SRC_RJ  (2'd1)
-`define SRC_RK  (2'd2)
-`define SRC_R0  (2'd3)  // 0寄存器（src无效的默认值）
+typedef logic [2:0] InstrType;
+`define ALU_INSTR    (3'd0)  // ALU指令
+`define MDU_INSTR    (3'd1)  // MDU指令
+`define BR_INSTR     (3'd2)  // 控制流指令
+`define PRIV_INSTR   (3'd3)  // 特权指令
+`define MEM_INSTR    (3'd4)  // 访存指令
 
-typedef logic DestType;
-`define DEST_RD  (1'd0)
-`define DEST_RA  (1'd1)  // 返回地址寄存器
-
-typedef struct packed {
-  ImmType imm_type;
-  SrcType src0_type;
-  SrcType src1_type;
-  DestType dest_type;
-} PreOptionCodeSt;
-
-
-
-/*================================== Decoder ==================================*/
-
-typedef logic [1:0] InstType;
-`define ALU_INST    (3'd0)  // ALU指令
-`define MDU_INST    (3'd1)  // MDU指令
-`define BR_INST     (3'd2)  // 控制流指令
-`define PRIV_INST   (3'd3)  // 特权指令
-`define MEM_INST    (3'd4)  // 访存指令
-
-typedef logic MemType;
+typedef logic MemOpType;
 `define MEM_LOAD (1'd0)
 `define MEM_STORE (1'd1)
 
@@ -124,36 +124,51 @@ typedef logic[3:0] PrivOpType;
 `define PRIV_RDCNTVH   (4'd14)
 `define PRIV_RDCNTID   (4'd15)
 
-typedef logic[4:0] CacheOpType;
+typedef logic SignedOpType;
+typedef logic ImmOpType;
+typedef logic WriteBackOpType;
+typedef logic IndirectBrOpType;
+
+typedef logic [31:0] DebugInstrType;
+typedef logic InvalidInstType;
 
 typedef struct packed {
-  MemType mem_type;
+  MemOpType mem_op;
   AlignOpType align_op;
 } MemOpCodeSt;
 
 typedef struct packed {
   AluOpType alu_op;
-  logic signed_op;
-  logic imm_valid;
+  SignedOpType signed_op;
+  ImmOpType imm_op;
 } AluOpCodeSt;
 
 typedef struct packed {
   MduOpType mdu_op;
-  logic signed_op;
+  SignedOpType signed_op;
 } MduOpCodeSt;
 
 typedef struct packed {
-  InstType inst_type;
+  InstType instr_type;
   BranchOpType branch_op;
   PrivOpType priv_op;
-  CacheOpType cache_op;
-  logic signed_op;
-  logic br_indirect;
-  logic br_link;
+  SignedOpType signed_op;
+  IndirectBrOpType indirect_br_op;  // 特殊处理JILR指令
 } MiscOpCodeSt;
 
 typedef struct packed {
-  InstType inst_type;
+    DebugInstrType debug_inst;
+    ImmValidType imm_valid;
+    SignedOpType signed_op;
+    BranchOpType branch_op;
+    MduOpType mdu_op;
+    AluOpType alu_op;
+    PrivOpType priv_op;
+    AlignOpType align_op;
+    MemTypeType mem_type;
+    InstrTypeType instr_type;
+    InvalidInstType invalid_inst;
+    WriteBackOpType wb_op;
 } OptionCodeSt;
 
 function MiscOpCodeSt gen2misc(OptionCodeSt option_code);

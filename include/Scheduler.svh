@@ -27,31 +27,16 @@
 `include "config.svh"
 `include "Decoder.svh"
 
-`ifdef DEBUG
-  typedef struct packed {
-    logic [`DECODE_WIDTH - 1:0] valid;
-    logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] pc;
-    logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] npc;
-    logic [`DECODE_WIDTH - 1:0][31:0] imm;
-    logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] src0, src1, dest;
-    OptionCodeSt [`DECODE_WIDTH - 1:0] option_code;
-    logic [`DECODE_WIDTH - 1:0] src0_valid, src1_valid, dest_valid;
-    // DEBUG
-    logic [`PROC_VALEN - 1:0] instr;
-  } ScheduleReqSt;
-`else 
-  typedef struct packed {
-    logic [`DECODE_WIDTH - 1:0] valid;
-    logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] pc;
-    logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] npc;
-    logic [`DECODE_WIDTH - 1:0][31:0] imm;
-    logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] src0, src1, dest;
-    OptionCodeSt [`DECODE_WIDTH - 1:0] option_code;
-    logic [`DECODE_WIDTH - 1:0] src0_valid, src1_valid, dest_valid;
-  } ScheduleReqSt;
-`endif
-
-
+typedef struct packed {
+  logic [`DECODE_WIDTH - 1:0] valid;
+  logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] pc;
+  logic [`DECODE_WIDTH - 1:0][`PROC_VALEN:0] npc;
+  logic [`DECODE_WIDTH - 1:0][25:0] src;  // imm和reg的压缩信息
+  logic [`DECODE_WIDTH - 1:0][4:0] arch_src0;
+  logic [`DECODE_WIDTH - 1:0][4:0] arch_src1;
+  logic [`DECODE_WIDTH - 1:0][4:0] arch_dest;
+  OptionCodeSt [`DECODE_WIDTH - 1:0] option_code;
+} ScheduleReqSt;
 
 typedef struct packed {
   logic ready;  // 接收req请求
@@ -61,7 +46,7 @@ typedef struct packed {
   logic valid;
   logic [`PROC_VALEN - 1:0] pc;
   logic [`PROC_VALEN - 1:0] npc;
-  logic [31:0] imm;
+  logic [25:0] src;
   logic src0_valid;
   logic src1_valid;
   logic dest_valid;

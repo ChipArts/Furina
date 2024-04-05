@@ -60,8 +60,8 @@ module MiscPipe (
   always_comb begin
     s0_ready = s1_ready;
     ready_o = s0_ready;
-    tlbsrch_valid_o = exe_i.base.valid & exe_i.misc_oc.inst_type == `PRIV_INST & exe_i.misc_oc.priv_op == `PRIV_TLBSRCH;
-    tlbrd_valid_o = exe_i.base.valid & exe_i.misc_oc.inst_type == `PRIV_INST & exe_i.misc_oc.priv_op == `PRIV_TLBRD;
+    tlbsrch_valid_o = exe_i.base.valid & exe_i.misc_oc.instr_type == `PRIV_INST & exe_i.misc_oc.priv_op == `PRIV_TLBSRCH;
+    tlbrd_valid_o = exe_i.base.valid & exe_i.misc_oc.instr_type == `PRIV_INST & exe_i.misc_oc.priv_op == `PRIV_TLBRD;
   end
 
 /*================================== stage1 ===================================*/
@@ -85,7 +85,7 @@ module MiscPipe (
 
   // 处理分支或特权指令
   // 缩短一点代码长度
-  InstType inst_type;
+  InstType instr_type;
   PrivOpType priv_op;
   logic [31:0] src0, src1;
   logic [31:0] imm;
@@ -106,7 +106,7 @@ module MiscPipe (
   logic [31:0] cmt_wdata;
 
   always_comb begin
-    inst_type = s1_exe.misc_oc.inst_type;
+    instr_type = s1_exe.misc_oc.instr_type;
     priv_op = s1_exe.misc_oc.priv_op;
     src0 = s1_exe.base.src0;
     src1 = s1_exe.base.src1;
@@ -122,12 +122,12 @@ module MiscPipe (
 
     vaddr = priv_op == `PRIV_CACOP ? src0 + imm : src1;
 
-    cmt_we = (inst_type == `BR_INST & s1_exe.misc_oc.br_link) | 
-             (inst_type == `PRIV_INST & (priv_op == `PRIV_CSR_READ | 
+    cmt_we = (instr_type == `BR_INST & s1_exe.misc_oc.br_link) | 
+             (instr_type == `PRIV_INST & (priv_op == `PRIV_CSR_READ | 
                                          priv_op == `PRIV_CSR_XCHG |
                                          priv_op == `PRIV_CSR_WRITE));
-    cmt_wdata = inst_type == `BR_INST ? s1_exe.pc + 4 :
-                inst_type == `PRIV_INST ? csr_rdata_i : '0;
+    cmt_wdata = instr_type == `BR_INST ? s1_exe.pc + 4 :
+                instr_type == `PRIV_INST ? csr_rdata_i : '0;
   end
   
   BranchUnit U_BranchUnit
@@ -157,8 +157,8 @@ module MiscPipe (
       cmt_o <= 0;
     end else begin
       if (s2_ready) begin
-        cmt_o.priv_inst <= s1_exe.misc_oc.inst_type == `PRIV_INST;
-        cmt_o.br_inst <= s1_exe.misc_oc.inst_type == `BR_INST;
+        cmt_o.priv_inst <= s1_exe.misc_oc.instr_type == `PRIV_INST;
+        cmt_o.br_inst <= s1_exe.misc_oc.instr_type == `BR_INST;
 
         cmt_o.base.valid <= s1_exe.base.valid;
         cmt_o.base.we <= cmt_we;

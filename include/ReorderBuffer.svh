@@ -25,14 +25,14 @@
 `define _REORDER_BUFFER_SVH_
 
 `include "config.svh"
+`include "Decoder.svh"
 
 `ifdef DEBUG
   typedef struct packed {
     logic complete;
     logic [`PROC_VALEN - 1:0] pc;
-    InstType inst_type;
+    InstType instr_type;
     logic [4:0] arch_reg;
-    logic phy_reg_valid;
     logic [$clog2(`PHY_REG_NUM) - 1:0] phy_reg;
     logic [$clog2(`PHY_REG_NUM) - 1:0] old_phy_reg;
     // 分支预测失败处理
@@ -44,14 +44,14 @@
     SubEcodeType sub_ecode;
     logic [`PROC_VALEN - 1:0] error_vaddr;
     // DEBUG
-    logic [31:0] inst;
+    logic [31:0] instr;
     logic [31:0] rf_wdata;
   } RobEntrySt;
 `else 
   typedef struct packed {
     logic complete;
     logic [`PROC_VALEN - 1:0] pc;
-    InstType inst_type;
+    InstType instr_type;
     logic [4:0] arch_reg;
     logic phy_reg_valid;
     logic [$clog2(`PHY_REG_NUM) - 1:0] phy_reg;
@@ -69,7 +69,11 @@
 
 typedef struct packed {
   logic [`DECODE_WIDTH - 1:0] valid;
-  RobEntrySt [`DECODE_WIDTH - 1:0] rob_entry;
+  logic [`DECODE_WIDTH - 1:0][`PROC_VALEN - 1:0] pc;
+  InstType [`DECODE_WIDTH - 1:0]instr_type;
+  logic [`DECODE_WIDTH - 1:0][4:0] arch_reg;
+  logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] phy_reg;
+  logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] old_phy_reg;
 } RobAllocReqSt;
 
 typedef struct packed {

@@ -74,7 +74,7 @@ module ArithmeticLogicUnit (
             end
         end
         `ALU_LUI  : begin
-            alu_res = src1_i;
+            alu_res = src1_i << 12;
         end
         default : begin
             alu_res = 0;

@@ -100,7 +100,7 @@ module ReorderBuffer (
     retire_cnt = '0;
     pre_exist_br[0] = '0;
     for (int i = 1; i < `RETIRE_WIDTH; i++) begin
-      pre_exist_br[i] = pre_exist_br[i - 1] | (rob[i - 1].inst_type == `BR_INST);
+      pre_exist_br[i] = pre_exist_br[i - 1] | (rob[i - 1].instr_type == `BR_INST);
     end
     redirect_mask[0] = '1;
     exc_mask[0] = '1;
@@ -110,9 +110,9 @@ module ReorderBuffer (
       redirect_mask[i] = redirect_mask[i - 1] & ~rob[head_idx + i].redirect;
       exc_mask[i] = exc_mask[i - 1] & ~rob[head_idx + i].exception;
       br_mask[i] = br_mask[i - 1] & (~pre_exist_br[i] |
-                  (pre_exist_br[i] & rob[head_idx + i].inst_type != `BR_INST));
+                  (pre_exist_br[i] & rob[head_idx + i].instr_type != `BR_INST));
       st_mask[i] = st_mask[i - 1] &
-                 ~(rob[head_idx + i].inst_type == `MEM_INST &
+                 ~(rob[head_idx + i].instr_type == `MEM_INST &
                    rob[head_idx + i].mem_type == `MEM_STORE);
     end
     retire_mask = br_mask & redirect_mask & exc_mask;
