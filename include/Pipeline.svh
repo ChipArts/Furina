@@ -90,7 +90,7 @@ typedef struct packed {
 
 typedef struct packed {
   CmtBaseSt base;
-  logic priv_inst;
+  logic PRIV_INSTR;
   logic br_inst;
   PrivOpType priv_op;
   CacheOpType cache_op;
@@ -118,7 +118,7 @@ typedef struct packed {
 
   // diff
   logic [31:0] csr_rdata_diff;
-  logic [63:0] timer_64_value_diff;
+  logic [63:0] timer_64_diff;
 } MiscCmtSt;
 
 typedef struct packed {

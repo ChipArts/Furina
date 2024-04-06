@@ -44,8 +44,20 @@
     SubEcodeType sub_ecode;
     logic [`PROC_VALEN - 1:0] error_vaddr;
     // DEBUG
+    logic is_tibfill;
+    logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbfill_idx;
+    logic csr_rstat;
+    logic csr_rdata;
+    logic is_cnt_instr;
+    logic [63:0] timer_64;
     logic [31:0] instr;
     logic [31:0] rf_wdata;
+    logic eret;
+    logic store_valid;
+    logic load_valid;
+    logic [31:0] store_data;
+    logic [31:0] mem_paddr;
+    logic [31:0] mem_vaddr;
   } RobEntrySt;
 `else 
   typedef struct packed {
@@ -82,6 +94,35 @@ typedef struct packed {
   logic [`DECODE_WIDTH - 1:0][$clog2(`ROB_DEPTH) - 1:0] rob_idx;
 } RobAllocRspSt;
 
+
+`ifdef DEBUG
+typedef struct packed {
+  logic valid;
+  logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
+  logic redirect;
+  logic [`PROC_VALEN - 1:0] br_target;
+  logic exception;
+  ExcCodeType ecode;
+  SubEcodeType sub_ecode;
+  logic [`PROC_VALEN - 1:0] error_vaddr;
+
+  // debug
+  logic is_tibfill;
+  logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbfill_idx;
+  logic csr_rstat;
+  logic csr_rdata;
+  logic is_cnt_instr;
+  logic [63:0] timer_64;
+  logic [31:0] instr;
+  logic [31:0] rf_wdata;
+  logic eret;
+  logic store_valid;
+  logic load_valid;
+  logic [31:0] store_data;
+  logic [31:0] mem_paddr;
+  logic [31:0] mem_vaddr;
+} RobCmtReqSt;
+`else
 typedef struct packed {
   logic valid;
   logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
@@ -92,6 +133,8 @@ typedef struct packed {
   SubEcodeType sub_ecode;
   logic [`PROC_VALEN - 1:0] error_vaddr;
 } RobCmtReqSt;
+`endif
+
 
 typedef struct packed {
   logic ready;

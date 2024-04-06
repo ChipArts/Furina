@@ -23,6 +23,12 @@
 `include "config.svh"
 `include "Decoder.svh"
 
+// Generator : SpinalHDL v1.10.1    git head : 2527c7c6b0fb0f95e5e1a5722a0be732b364ce43
+// Component : Decoder
+// Git hash  : d174bcf88ffe8bc86a1212f21a64337548cbeb1c
+
+`timescale 1ns/1ps
+
 module PreDecoder (
   input  wire [31:0]   instr_i,
   output wire [5:0]    pre_option_code_o
@@ -146,4 +152,5 @@ module PreDecoder (
   assign pre_option_code_o = fixInvalidInst;
 
 endmodule
+
 

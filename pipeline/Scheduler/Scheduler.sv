@@ -269,16 +269,16 @@ module Scheduler (
     mem_cnt = '0;
 
     for (int i = 1; i < `DISPATCH_WIDTH; i++) begin
-      if (dq_rdata[i - 1].oc.instr_type == `ALU_INST) begin
+      if (dq_rdata[i - 1].oc.instr_type == `ALU_INSTR) begin
         alu_cnt[i] = alu_cnt[i - 1] + 1;
       end
-      if (dq_rdata[i - 1].oc.instr_type == `MDU_INST) begin
+      if (dq_rdata[i - 1].oc.instr_type == `MDU_INSTR) begin
         mdu_cnt[i] = mdu_cnt[i - 1] + 1;
       end
-      if (dq_rdata[i - 1].oc.instr_type == `MEM_INST) begin
+      if (dq_rdata[i - 1].oc.instr_type == `MEM_INSTR) begin
         mem_cnt[i] = mem_cnt[i - 1] + 1;
       end
-      if (dq_rdata[i - 1].oc.instr_type inside {`PRIV_INST, `BR_INST}) begin
+      if (dq_rdata[i - 1].oc.instr_type inside {`PRIV_INSTR, `BR_INSTR}) begin
         misc_cnt[i] = misc_cnt[i - 1] + 1;
       end
     end
@@ -286,20 +286,20 @@ module Scheduler (
     // 判断是否可以分发
     if (dq_rdata[0].valid) begin
         case (dq_rdata[0].oc.instr_type)
-          `ALU_INST : dq_read_ready[0] = alu_cnt[0] < $countones(alu_rs_wr_ready);
-          `MDU_INST : dq_read_ready[0] = mdu_cnt[0] < $countones(mdu_rs_wr_ready);
-          `MEM_INST : dq_read_ready[0] = mem_cnt[0] < $countones(mem_rs_wr_ready);
-          `PRIV_INST, `BR_INST : dq_read_ready[0] = misc_cnt[0] < $countones(misc_rs_wr_ready);
+          `ALU_INSTR : dq_read_ready[0] = alu_cnt[0] < $countones(alu_rs_wr_ready);
+          `MDU_INSTR : dq_read_ready[0] = mdu_cnt[0] < $countones(mdu_rs_wr_ready);
+          `MEM_INSTR : dq_read_ready[0] = mem_cnt[0] < $countones(mem_rs_wr_ready);
+          `PRIV_INSTR, `BR_INSTR : dq_read_ready[0] = misc_cnt[0] < $countones(misc_rs_wr_ready);
           default : dq_read_ready[0] = '0;
         endcase
     end
     for (int i = 1; i < `DISPATCH_WIDTH; i++) begin
       if (dq_rdata[i].valid) begin
         case (dq_rdata[i].oc.instr_type)
-          `ALU_INST : dq_read_ready[i] = alu_cnt[i] < $countones(alu_rs_wr_ready) & dq_read_ready[i - 1];
-          `MDU_INST : dq_read_ready[i] = mdu_cnt[i] < $countones(mdu_rs_wr_ready) & dq_read_ready[i - 1];
-          `MEM_INST : dq_read_ready[i] = mem_cnt[i] < $countones(mem_rs_wr_ready) & dq_read_ready[i - 1];
-          `PRIV_INST, `BR_INST : dq_read_ready[i] = misc_cnt[i] < $countones(misc_rs_wr_ready) & dq_read_ready[i - 1];
+          `ALU_INSTR : dq_read_ready[i] = alu_cnt[i] < $countones(alu_rs_wr_ready) & dq_read_ready[i - 1];
+          `MDU_INSTR : dq_read_ready[i] = mdu_cnt[i] < $countones(mdu_rs_wr_ready) & dq_read_ready[i - 1];
+          `MEM_INSTR : dq_read_ready[i] = mem_cnt[i] < $countones(mem_rs_wr_ready) & dq_read_ready[i - 1];
+          `PRIV_INSTR, `BR_INSTR : dq_read_ready[i] = misc_cnt[i] < $countones(misc_rs_wr_ready) & dq_read_ready[i - 1];
           default : dq_read_ready[i] = '0;
         endcase
       end
@@ -308,7 +308,7 @@ module Scheduler (
     // 写入发射队列
     dispatched = '0;
     for (int i = 0; i < `DISPATCH_WIDTH; i++) begin
-      if (dq_rdata[i].oc.instr_type == `ALU_INST && alu_cnt[i] == 0) begin
+      if (dq_rdata[i].oc.instr_type == `ALU_INSTR && alu_cnt[i] == 0) begin
         if (alu_rs_wr_ready[0]) begin
           alu_rs_wr_valid[0] = dq_read_ready[i];
           alu_rs_base[0] = dq2rs(dq_rdata[i]);
@@ -319,23 +319,23 @@ module Scheduler (
           alu_rs_oc[1] = gen2alu(dq_rdata[i].oc);
         end
       end
-      if (dq_rdata[i].oc.instr_type == `ALU_INST && alu_cnt[i] == 1) begin
+      if (dq_rdata[i].oc.instr_type == `ALU_INSTR && alu_cnt[i] == 1) begin
         alu_rs_wr_valid[1] = dq_read_ready[i];
         alu_rs_base[1] = dq2rs(dq_rdata[i]);
         alu_rs_oc[1] = gen2alu(dq_rdata[i].oc);
       end
-      if (dq_rdata[i].oc.instr_type == `MEM_INST && mem_cnt[i] == 0) begin
+      if (dq_rdata[i].oc.instr_type == `MEM_INSTR && mem_cnt[i] == 0) begin
         mem_rs_wr_valid = dq_read_ready[i];
         mem_rs_base = dq2rs(dq_rdata[i]);
         mem_rs_oc = gen2mem(dq_rdata[i].oc);
       end
-      if (dq_rdata[i].oc.instr_type == `MDU_INST && mdu_cnt[i] == 0) begin
+      if (dq_rdata[i].oc.instr_type == `MDU_INSTR && mdu_cnt[i] == 0) begin
         mdu_rs_wr_valid = dq_read_ready[i];
         mdu_rs_base = dq2rs(dq_rdata[i]);
         mdu_rs_oc = gen2mdu(dq_rdata[i].oc);
       end
-      if ((dq_rdata[i].oc.instr_type == `PRIV_INST || 
-           dq_rdata[i].oc.instr_type == `BR_INST) &&
+      if ((dq_rdata[i].oc.instr_type == `PRIV_INSTR || 
+           dq_rdata[i].oc.instr_type == `BR_INSTR) &&
            misc_cnt == 0) begin
         misc_rs_wr_valid = dq_read_ready[i];
         misc_rs_base = dq2rs(dq_rdata[i]);

@@ -109,6 +109,11 @@ module Pipeline (
   logic [4:0][31:0] rf_wdata;
   logic [9:0][31:0] rf_rdata;
 
+  logic [31:0] misc_exe_imm;
+  logic [1:0][31:0] alu_exe_imm;
+  logic [31:0] mdu_exe_imm;
+  logic [31:0] mem_exe_imm;
+
   /* Integer Block */
   logic int_blk_flush;
   MiscExeSt int_blk_misc_exe;
@@ -384,9 +389,10 @@ module Pipeline (
     Decoder inst_Decoder (.instr_i(ibuf_read_data[i].instr), .option_code_o(decoder_option_code[i]));
   end
 
-  // 处理特殊的解码（三个CSR特权指令）
+  // 处理特殊的解码
   // TODO: 优化这个处理
   always_comb begin
+    // 三个CSR特权指令
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       if (decoder_option_code[i].priv_op == `PRIV_CSR_XCHG) begin
         case (ibuf_read_data[i].instr[9:5])
@@ -394,6 +400,14 @@ module Pipeline (
           5'b1 : decoder_option_code[i].priv_op = `PRIV_CSR_WRITE;
           default : decoder_option_code[i].priv_op = `PRIV_CSR_XCHG;
         endcase
+      end
+    end
+    // 两个rdtimel指令
+    for (int i = 0; i < `DECODE_WIDTH; i++) begin
+      if (decoder_option_code[i].priv_op == `PRIV_RDCNTVL) begin
+        if (ibuf_read_data[i].instr[9:5] != 0) begin
+          decoder_option_code[i].priv_op = `PRIV_RDCNTID;
+        end
       end
     end
   end
@@ -493,35 +507,37 @@ module Pipeline (
   );
 
 /*================================= RegFile ===================================*/
-  always_comb begin
-    rf_raddr[0] = sche_alu_issue[0].base_info.psrc0;
-    rf_raddr[1] = sche_alu_issue[0].base_info.psrc1;
-    rf_raddr[2] = sche_alu_issue[1].base_info.psrc0;
-    rf_raddr[3] = sche_alu_issue[1].base_info.psrc1;
-    rf_raddr[4] = sche_misc_issue.base_info.psrc0;
-    rf_raddr[5] = sche_misc_issue.base_info.psrc1;
+  // 读取phy regfile
+  // 默认顺序为misc、alu、mdu、mem / {mem, mdu, alu[1], alu[0], misc}
+  always_comb begin : proc_read_rf
+    rf_raddr[0] = sche_misc_issue.base_info.psrc0;
+    rf_raddr[1] = sche_misc_issue.base_info.psrc1;
+    rf_raddr[2] = sche_alu_issue[0].base_info.psrc0;
+    rf_raddr[3] = sche_alu_issue[0].base_info.psrc1;
+    rf_raddr[4] = sche_alu_issue[1].base_info.psrc0;
+    rf_raddr[5] = sche_alu_issue[1].base_info.psrc1;
     rf_raddr[6] = sche_mdu_issue.base_info.psrc0;
     rf_raddr[7] = sche_mdu_issue.base_info.psrc1;
     rf_raddr[8] = sche_mem_issue.base_info.psrc0;
     rf_raddr[9] = sche_mem_issue.base_info.psrc1;
 
-    rf_we[0] = int_blk_alu_cmt[0].base.valid & int_blk_alu_cmt[0].base.we;
-    rf_we[1] = int_blk_alu_cmt[1].base.valid & int_blk_alu_cmt[1].base.we;
-    rf_we[2] = int_blk_mdu_cmt.base.valid & int_blk_mdu_cmt.base.we;
-    rf_we[3] = mem_blk_cmt.base.valid & mem_blk_cmt.base.we;
-    rf_we[4] = int_blk_misc_cmt.base.valid & int_blk_misc_cmt.base.we;
+    rf_we[0] = int_blk_misc_cmt.base.valid & int_blk_misc_cmt.base.we;
+    rf_we[1] = int_blk_alu_cmt[0].base.valid & int_blk_alu_cmt[0].base.we;
+    rf_we[2] = int_blk_alu_cmt[1].base.valid & int_blk_alu_cmt[1].base.we;
+    rf_we[3] = int_blk_mdu_cmt.base.valid & int_blk_mdu_cmt.base.we;
+    rf_we[4] = mem_blk_cmt.base.valid & mem_blk_cmt.base.we;
 
-    rf_waddr[0] = int_blk_alu_cmt[0].base.pdest;
-    rf_waddr[1] = int_blk_alu_cmt[1].base.pdest;
-    rf_waddr[2] = int_blk_mdu_cmt.base.pdest;
-    rf_waddr[3] = int_blk_mem_cmt.base.pdest;
-    rf_waddr[4] = int_blk_misc_cmt.base.pdest;
+    rf_waddr[0] = int_blk_misc_cmt.base.pdest;
+    rf_waddr[1] = int_blk_alu_cmt[0].base.pdest;
+    rf_waddr[2] = int_blk_alu_cmt[1].base.pdest;
+    rf_waddr[3] = int_blk_mdu_cmt.base.pdest;
+    rf_waddr[4] = mem_blk_cmt.base.pdest;
 
-    rf_wdata[0] = int_blk_alu_cmt[0].base.wdata;
-    rf_wdata[1] = int_blk_alu_cmt[1].base.wdata;
-    rf_wdata[2] = int_blk_mdu_cmt.base.wdata;
-    rf_wdata[3] = int_blk_mem_cmt.base.wdata;
-    rf_wdata[4] = int_blk_misc_cmt.base.wdata;
+    rf_wdata[0] = int_blk_misc_cmt.base.wdata;
+    rf_wdata[1] = int_blk_alu_cmt[0].base.wdata;
+    rf_wdata[2] = int_blk_alu_cmt[1].base.wdata;
+    rf_wdata[3] = int_blk_mdu_cmt.base.wdata;
+    rf_wdata[4] = mem_blk_cmt.base.wdata;
   end
 
   // comb输出，需用寄存器存一拍
@@ -555,38 +571,70 @@ module Pipeline (
     .data_o  (rf_rdata[9:5])
   );
 
+  // 读取CSR寄存器
+  always_comb begin : proc_read_csr
+    csr_rd_addr = sche_misc_issue.base_info.src[23:10];  // 读取CSR指令的csr地址
+  end
+
+  // imm ext
+  function logic[31:0] imm_ext(logic[25:0] src, ImmType imm_type, logic[31:0] pc);
+    logic [31:0] imm;
+    case (imm_type)
+      `IMM_UI5  : imm = {27'b0 ,src[14:10]};
+      `IMM_UI12 : imm = {20'b0, src[21:10]};
+      `IMM_SI12 : imm = {{20{src[21]}}, src[21:10]};
+      `IMM_SI14 : imm = {{18{src[23]}}, src[23:10]};
+      `IMM_SI16 : imm = {{16{src[25]}}, src[25:10]};
+      `IMM_SI20 : imm = {{12{src[24]}}, src[24: 5]};
+      `IMM_SI26 : imm = {{ 6{src[9]}} , src[9: 0], src[25:10]};
+      `IMM_PC   : imm = pc + {{12{src[24]}}, src[24: 5]};
+      default : imm = '0;
+    endcase
+  endfunction : imm_ext
 
 /*=============================== Integer Block ===============================*/
   always_comb begin
     int_blk_flush = glo_flush;
+    // 杂项指令在成为最旧指令时才执行
     int_blk_misc_exe.base = '{valid: sche_misc_issue.valid, 
-                              imm: sche_misc_issue.base_info.imm, 
-                              src0: rf_rdata[4],
-                              src1: rf_rdata[5],
+                              imm: imm_ext(sche_misc_issue.base_info.src,
+                                           sche_misc_issue.base_info.imm_type,
+                                           '0),  // 不能存在IMM_PC情况
+                              src0: rf_rdata[0],
+                              src1: rf_rdata[1],
                               pdest: sche_misc_issue.base_info.pdest, 
                               rob_idx: sche_misc_issue.base_info.rob_idx};
     int_blk_misc_exe.misc_oc = sche_misc_issue.misc_oc;
     int_blk_misc_exe.pc = sche_misc_issue.base_info.pc;
     int_blk_misc_exe.npc = sche_misc_issue.base_info.npc;
 
+    // 第一条ALU执行pipe
     int_blk_alu_exe[0].base = '{valid: sche_alu_issue[0].base_info.valid, 
-                                imm: sche_alu_issue[0].base_info.imm, 
-                                src0: rf_rdata[0],
-                                src1: rf_rdata[1],
+                                imm: imm_ext(sche_alu_issue[0].base_info.src,
+                                             sche_alu_issue[0].base_info.imm_type,
+                                             sche_alu_issue[0].base_info.pc),
+                                src0: rf_rdata[2],
+                                src1: rf_rdata[3],
                                 pdest: sche_alu_issue[0].base_info.pdest, 
                                 rob_idx: sche_alu_issue[0].base_info.rob_idx};
     int_blk_alu_exe[0].alu_oc = sche_alu_issue[0].alu_oc;
 
+    // 第二条ALU执行pipe
     int_blk_alu_exe[1].base = '{valid: sche_alu_issue[1].base_info.valid, 
-                                imm: sche_alu_issue[1].base_info.imm, 
-                                src0: rf_rdata[2],
-                                src1: rf_rdata[3],
+                                imm: imm_ext(sche_alu_issue[1].base_info.src,
+                                             sche_alu_issue[1].base_info.imm_type,
+                                             sche_alu_issue[1].base_info.pc),
+                                src0: rf_rdata[4],
+                                src1: rf_rdata[5],
                                 pdest: sche_alu_issue[1].base_info.pdest, 
                                 rob_idx: sche_alu_issue[1].base_info.rob_idx};
     int_blk_alu_exe[1].alu_oc = sche_alu_issue[1].alu_oc;
 
+    // 乘除法执行pipe   
     int_blk_mdu_exe.base = '{valid: sche_mdu_issue.base_info.valid, 
-                             imm: sche_mdu_issue.base_info.imm, 
+                             imm: imm_ext(sche_mdu_issue.base_info.src,
+                                          sche_mdu_issue.base_info.imm_type,
+                                          sche_mdu_issue.base_info.pc),
                              src0: rf_rdata[6],
                              src1: rf_rdata[7],
                              pdest: sche_mdu_issue.base_info.pdest, 
@@ -597,10 +645,10 @@ module Pipeline (
     int_blk_tlbsrch_found_i = mmu_tlbsrch_found_o;
     int_blk_tlbsrch_idx_i = mmu_tlbsrch_idx_o;
 
-    int_blk_alu_cmt_ready = '1;
     // 特权指令在成为最旧指令时才执行
-    int_blk_misc_cmt_ready = ~int_blk_misc_cmt.priv_inst | 
+    int_blk_misc_cmt_ready = ~int_blk_misc_cmt.PRIV_INSTR | 
                               int_blk_misc_cmt.base.rob_idx == rob_oldest_rob_idx_o;
+    int_blk_alu_cmt_ready = '1;
     int_blk_mdu_cmt_ready = '1;
   end
 
@@ -621,7 +669,13 @@ module Pipeline (
     .tlbsrch_valid_o  (int_blk_tlbsrch_valid_o),
     .tlbsrch_found_i  (int_blk_tlbsrch_found_i),
     .tlbsrch_idx_i    (int_blk_tlbsrch_idx_i),
-    .csr_raddr_o      (int_blk_csr_raddr),
+    .tlbehi_i         (int_blk_tlbehi_i),
+    .tlbidx_i         (int_blk_tlbidx_i),
+    .tlbelo0_i        (int_blk_tlbelo0_i),
+    .tlbelo1_i        (int_blk_tlbelo1_i),
+    .tlbasid_i        (int_blk_tlbasid_i),
+    .timer_64         (timer_64),
+    .timer_id         (timer_id),
     .csr_rdata_i      (int_blk_csr_rdata),
     /* commit */
     .misc_cmt_o       (int_blk_misc_cmt),
@@ -794,11 +848,11 @@ module Pipeline (
 
     mmu_tlbfill_en_i = int_blk_misc_cmt.base.valid &
                        int_blk_misc_cmt_ready &
-                       int_blk_misc_cmt.priv_inst  &
+                       int_blk_misc_cmt.PRIV_INSTR  &
                        int_blk_misc_cmt.priv_op == `PRIV_TLBFILL;
     mmu_tlbwr_en_i = int_blk_misc_cmt.base.valid &
                      int_blk_misc_cmt_ready &
-                     int_blk_misc_cmt.priv_inst &
+                     int_blk_misc_cmt.PRIV_INSTR &
                      int_blk_misc_cmt.priv_op == `PRIV_TLBWR;
     mmu_rand_index_i = csr_rand_index;
     mmu_tlbehi_i = csr_tlbehi_out;
@@ -809,7 +863,7 @@ module Pipeline (
 
     mmu_invtlb_en_i = int_blk_misc_cmt.base.valid &
                       int_blk_misc_cmt_ready &
-                      int_blk_misc_cmt.priv_inst &
+                      int_blk_misc_cmt.PRIV_INSTR &
                       int_blk_misc_cmt.priv_op == `PRIV_TLBINV;
     mmu_invtlb_asid_i = int_blk_misc_cmt.invtlb_asid;
     mmu_invtlb_vpn_i = int_blk_misc_cmt.vaddr[`PROC_VALEN - 1:13];
@@ -875,7 +929,7 @@ module Pipeline (
     csr_excp_flush = rob_retire_o.valid[0] & rob_retire_o.rob_entry.exception;
     csr_ertn_flush = int_blk_misc_cmt.base.valid &
                      int_blk_misc_cmt_ready &
-                     int_blk_misc_cmt.priv_inst &
+                     int_blk_misc_cmt.PRIV_INSTR &
                      int_blk_misc_cmt.priv_op == `PRIV_ERTN;
     csr_era_in = rob_retire_o.rob_entry.pc;
     csr_esubcode_in = rob_retire_o.rob_entry.sub_ecode;
@@ -889,7 +943,7 @@ module Pipeline (
 
     csr_tlbsrch_en = int_blk_misc_cmt.base.valid &
                      int_blk_misc_cmt_ready &
-                     int_blk_misc_cmt.priv_inst &
+                     int_blk_misc_cmt.PRIV_INSTR &
                      int_blk_misc_cmt.priv_op == `PRIV_TLBSRCH;
     csr_tlbsrch_found = int_blk_misc_cmt.tlbsrch_found;
     csr_tlbsrch_index = int_blk_misc_cmt.tlbsrch_idx;
@@ -909,7 +963,7 @@ module Pipeline (
 
     csr_tlbrd_en = int_blk_misc_cmt.base.valid &
                    int_blk_misc_cmt_ready &
-                   int_blk_misc_cmt.priv_inst &
+                   int_blk_misc_cmt.PRIV_INSTR &
                    int_blk_misc_cmt.priv_op == `PRIV_TLBRD;
     csr_tlbehi_in = int_blk_misc_cmt.tlbrd_ehi;
     csr_tlbelo0_in = int_blk_misc_cmt.tlbrd_elo0;

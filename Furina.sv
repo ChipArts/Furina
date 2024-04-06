@@ -208,39 +208,32 @@ module Furina (
   );
 
 `ifdef DEBUG
-for (genvar i = 0; i < `RETIRE_WIDTH; i++) begin
-  DifftestInstrCommit DifftestInstrCommit(
-      .clock              (clk            ),
-      .coreid             (0              ),
-      .index              (i              ),
-      .valid              (U_Pipeline.rob_retire_o.valid[i]),
-      .pc                 (U_Pipeline.rob_retire_o.rob_entry[i].pc),
-      .instr              (U_Pipeline.rob_retire_o.rob_entry[i].instr       ),
-      .skip               (0              ),
-      .is_TLBFILL         (U_Pipeline.int_blk_misc_cmt.priv_op == `PRIV_TLBFILL & 
-                           U_Pipeline.int_blk_misc_cmt.base.rob_idx == U_Pipeline.rob_oldest_rob_idx_o),
-      .TLBFILL_index      (U_Pipeline.csr_rand_index ),
-      .is_CNTinst         (U_Pipeline.int_blk_misc_cmt.priv_op inside {`PRIV_RDCNTVL, `PRIV_RDCNTVH, `PRIV_RDCNTID} & 
-                           U_Pipeline.int_blk_misc_cmt.base.rob_idx == U_Pipeline.rob_oldest_rob_idx_o),
-      .timer_64_value     (U_Pipeline.int_blk_misc_cmt.timer_64_value_diff),
-      .wen                (U_Pipeline.rob_retire_o.rob_entry[i].arch_reg != 0),
-      .wdest              (U_Pipeline.rob_retire_o.rob_entry[i].arch_reg      ),
-      .wdata              (U_Pipeline.rob_retire_o.rob_entry[i].rf_wdata      ),
-      .csr_rstat          (U_Pipeline.int_blk_misc_cmt.priv_op inside {`PRIV_CSR_READ, `PRIV_CSR_WRITE, `PRIV_CSR_XCHG} & 
-                           U_Pipeline.int_blk_misc_cmt.base.rob_idx == U_Pipeline.rob_oldest_rob_idx_o &
-                           U_Pipeline.rob_retire_o.rob_entry[i].instr[23:10] == 14'h5),
-      .csr_data           (U_Pipeline.int_blk_misc_cmt.csr_rdata_diff)
-  );
-end
+  for (genvar i = 0; i < `RETIRE_WIDTH; i++) begin
+    DifftestInstrCommit DifftestInstrCommit(
+        .clock              (clk            ),
+        .coreid             (0              ),
+        .index              (i              ),
+        .valid              (U_Pipeline.rob_retire_o.valid[i]),
+        .pc                 (U_Pipeline.rob_retire_o.rob_entry[i].pc),
+        .instr              (U_Pipeline.rob_retire_o.rob_entry[i].instr       ),
+        .skip               (0              ),
+        .is_TLBFILL         (U_Pipeline.rob_retire_o.rob_entry[i].is_tibfill),
+        .TLBFILL_index      (U_Pipeline.rob_retire_o.rob_entry[i].tlbfill_idx),
+        .is_CNTinst         (U_Pipeline.rob_retire_o.rob_entry[i].is_cnt_instr),
+        .timer_64_value     (U_Pipeline.rob_retire_o.rob_entry[i].timer_64),
+        .wen                (U_Pipeline.rob_retire_o.rob_entry[i].arch_reg != 0),
+        .wdest              (U_Pipeline.rob_retire_o.rob_entry[i].arch_reg),
+        .wdata              (U_Pipeline.rob_retire_o.rob_entry[i].rf_wdata),
+        .csr_rstat          (U_Pipeline.rob_retire_o.rob_entry[i].csr_rstat),
+        .csr_data           (U_Pipeline.rob_retire_o.rob_entry[i].csr_rdata)
+    );
+  end
 
   DifftestExcpEvent DifftestExcpEvent(
       .clock              (clk           ),
       .coreid             (0              ),
       .excp_valid         (U_Pipeline.rob_retire_o.valid[0] & U_Pipeline.rob_retire_o.rob_entry[0].exception),
-      .eret               (U_Pipeline.int_blk_misc_cmt.base.valid &
-                           U_Pipeline.int_blk_misc_cmt.priv_op == `PRIV_ERTN & 
-                           U_Pipeline.int_blk_misc_cmt.base.rob_idx == U_Pipeline.rob_oldest_rob_idx_o & 
-                           U_Pipeline.rob_retire_o.valid[0]),
+      .eret               (U_Pipeline.rob_retire_o.valid[0] & U_Pipeline.rob_retire_o.rob_entry[0].eret),
       .intrNo             (U_Pipeline.csr_estat_diff[12:2]),
       .cause              (U_Pipeline.rob_retire_o.rob_entry[0].ecode),
       .exceptionPC        (U_Pipeline.rob_retire_o.rob_entry[0].pc),
@@ -248,9 +241,9 @@ end
   );
 
   DifftestTrapEvent DifftestTrapEvent(
-      .clock              (clk           ),
-      .coreid             (0              ),
-      .valid              (0           ),
+      .clock              (clk      ),
+      .coreid             ('0       ),
+      .valid              ('0       ),
       .code               ('0       ),
       .pc                 ('0       ),
       .cycleCnt           ('0       ),
@@ -261,20 +254,24 @@ end
       .clock              (aclk           ),
       .coreid             (0              ),
       .index              (0              ),
-      .valid              (cmt_inst_st_en ),
-      .storePAddr         (cmt_st_paddr   ),
-      .storeVAddr         (cmt_st_vaddr   ),
-      .storeData          (cmt_st_data    )
+      .valid              (U_Pipeline.rob_retire_o.valid[0] & 
+                           U_Pipeline.rob_retire_o.rob_entry[0].store_valid),
+      .storePAddr         (U_Pipeline.rob_retire_o.rob_entry[0].mem_paddr),
+      .storeVAddr         (U_Pipeline.rob_retire_o.rob_entry[0].mem_vaddr),
+      .storeData          (U_Pipeline.rob_retire_o.rob_entry[0].store_data)
   );
 
-  DifftestLoadEvent DifftestLoadEvent(
-      .clock              (aclk           ),
-      .coreid             (0              ),
-      .index              (0              ),
-      .valid              (cmt_inst_ld_en ),
-      .paddr              (cmt_ld_paddr   ),
-      .vaddr              (cmt_ld_vaddr   )
-  );
+  for (genvar i = 0; i < `RETIRE_WIDTH; i++) begin
+    DifftestLoadEvent DifftestLoadEvent(
+        .clock              (aclk           ),
+        .coreid             (0              ),
+        .index              (i              ),
+        .valid              (U_Pipeline.rob_retire_o.valid[i] & 
+                             U_Pipeline.rob_retire_o.rob_entry[i].load_valid),
+        .paddr              (U_Pipeline.rob_retire_o.rob_entry[i].mem_paddr),
+        .vaddr              (U_Pipeline.rob_retire_o.rob_entry[i].mem_vaddr)
+    );
+  end
 
   DifftestCSRRegState DifftestCSRRegState(
       .clock              (aclk               ),
@@ -312,37 +309,37 @@ end
       .clock              (aclk       ),
       .coreid             (0          ),
       .gpr_0              (0          ),
-      .gpr_1              (regs[1]    ),
-      .gpr_2              (regs[2]    ),
-      .gpr_3              (regs[3]    ),
-      .gpr_4              (regs[4]    ),
-      .gpr_5              (regs[5]    ),
-      .gpr_6              (regs[6]    ),
-      .gpr_7              (regs[7]    ),
-      .gpr_8              (regs[8]    ),
-      .gpr_9              (regs[9]    ),
-      .gpr_10             (regs[10]   ),
-      .gpr_11             (regs[11]   ),
-      .gpr_12             (regs[12]   ),
-      .gpr_13             (regs[13]   ),
-      .gpr_14             (regs[14]   ),
-      .gpr_15             (regs[15]   ),
-      .gpr_16             (regs[16]   ),
-      .gpr_17             (regs[17]   ),
-      .gpr_18             (regs[18]   ),
-      .gpr_19             (regs[19]   ),
-      .gpr_20             (regs[20]   ),
-      .gpr_21             (regs[21]   ),
-      .gpr_22             (regs[22]   ),
-      .gpr_23             (regs[23]   ),
-      .gpr_24             (regs[24]   ),
-      .gpr_25             (regs[25]   ),
-      .gpr_26             (regs[26]   ),
-      .gpr_27             (regs[27]   ),
-      .gpr_28             (regs[28]   ),
-      .gpr_29             (regs[29]   ),
-      .gpr_30             (regs[30]   ),
-      .gpr_31             (regs[31]   )
+      .gpr_1              (U_Pipeline.arch_regfile[1]    ),
+      .gpr_2              (U_Pipeline.arch_regfile[2]    ),
+      .gpr_3              (U_Pipeline.arch_regfile[3]    ),
+      .gpr_4              (U_Pipeline.arch_regfile[4]    ),
+      .gpr_5              (U_Pipeline.arch_regfile[5]    ),
+      .gpr_6              (U_Pipeline.arch_regfile[6]    ),
+      .gpr_7              (U_Pipeline.arch_regfile[7]    ),
+      .gpr_8              (U_Pipeline.arch_regfile[8]    ),
+      .gpr_9              (U_Pipeline.arch_regfile[9]    ),
+      .gpr_10             (U_Pipeline.arch_regfile[10]   ),
+      .gpr_11             (U_Pipeline.arch_regfile[11]   ),
+      .gpr_12             (U_Pipeline.arch_regfile[12]   ),
+      .gpr_13             (U_Pipeline.arch_regfile[13]   ),
+      .gpr_14             (U_Pipeline.arch_regfile[14]   ),
+      .gpr_15             (U_Pipeline.arch_regfile[15]   ),
+      .gpr_16             (U_Pipeline.arch_regfile[16]   ),
+      .gpr_17             (U_Pipeline.arch_regfile[17]   ),
+      .gpr_18             (U_Pipeline.arch_regfile[18]   ),
+      .gpr_19             (U_Pipeline.arch_regfile[19]   ),
+      .gpr_20             (U_Pipeline.arch_regfile[20]   ),
+      .gpr_21             (U_Pipeline.arch_regfile[21]   ),
+      .gpr_22             (U_Pipeline.arch_regfile[22]   ),
+      .gpr_23             (U_Pipeline.arch_regfile[23]   ),
+      .gpr_24             (U_Pipeline.arch_regfile[24]   ),
+      .gpr_25             (U_Pipeline.arch_regfile[25]   ),
+      .gpr_26             (U_Pipeline.arch_regfile[26]   ),
+      .gpr_27             (U_Pipeline.arch_regfile[27]   ),
+      .gpr_28             (U_Pipeline.arch_regfile[28]   ),
+      .gpr_29             (U_Pipeline.arch_regfile[29]   ),
+      .gpr_30             (U_Pipeline.arch_regfile[30]   ),
+      .gpr_31             (U_Pipeline.arch_regfile[31]   )
   );
 `endif
 
