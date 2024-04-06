@@ -381,10 +381,7 @@ module Pipeline (
 /*================================== Decoder ==================================*/
   // 对控制相关信息解码
   for (genvar i = 0; i < `DECODE_WIDTH; i++) begin
-    Decoder inst_Decoder (
-      .instruction(ibuf_read_data[i].instruction), 
-      .option_code(decoder_option_code)
-    );
+    Decoder inst_Decoder (.instr_i(ibuf_read_data[i].instr), .option_code_o(decoder_option_code[i]));
   end
 
   // 处理特殊的解码（三个CSR特权指令）

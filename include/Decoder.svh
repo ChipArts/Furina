@@ -46,9 +46,9 @@ typedef logic [1:0] DestType;
 `define DEST_RA  (2'd2)  // 返回地址寄存器
 
 typedef struct packed {
-  SrcType src0_type;
-  SrcType src1_type;
-  DestType dest_type;
+    SrcType src1_type;
+    DestType dest_type;
+    SrcType src0_type;
 } PreOptionCodeSt;
 
 /*================================== Decoder ==================================*/
@@ -157,33 +157,53 @@ typedef struct packed {
 } MiscOpCodeSt;
 
 typedef struct packed {
-    DebugInstrType debug_inst;
-    ImmValidType imm_valid;
+    DebugInstrType debug_instr;
+    IndirectBrOpType indirect_br_op;
     SignedOpType signed_op;
     BranchOpType branch_op;
     MduOpType mdu_op;
     AluOpType alu_op;
+    ImmOpType imm_op;
+    ImmType imm_type;
     PrivOpType priv_op;
     AlignOpType align_op;
-    MemTypeType mem_type;
-    InstrTypeType instr_type;
+    MemOpType mem_op_type;
+    InstrType instr_type;
     InvalidInstType invalid_inst;
-    WriteBackOpType wb_op;
 } OptionCodeSt;
 
 function MiscOpCodeSt gen2misc(OptionCodeSt option_code);
-  
+  MiscOpCodeSt misc_op_code;
+  misc_op_code.signed_op = option_code.signed_op;
+  misc_op_code.branch_op = option_code.branch_op;
+  misc_op_code.priv_op = option_code.priv_op;
+  misc_op_code.instr_type = option_code.instr_type;
+  misc_op_code.indirect_br_op = option_code.indirect_br_op;
+  return misc_op_code;
 endfunction : gen2misc
 
 function AluOpCodeSt gen2alu(OptionCodeSt option_code);
-
+  AluOpCodeSt alu_op_code;
+  alu_op_code.alu_op = option_code.alu_op;
+  alu_op_code.signed_op = option_code.signed_op;
+  alu_op_code.imm_op = option_code.imm_op;
+  alu_op_code.imm_type = option_code.imm_type;
+  return alu_op_code;
 endfunction : gen2alu
 
 function MemOpCodeSt gen2mem(OptionCodeSt option_code);
+  MemOpCodeSt mem_op_code;
+  mem_op_code.mem_op = option_code.mem_op_type;
+  mem_op_code.align_op = option_code.align_op;
+  return mem_op_code;
 
 endfunction : gen2mem
 
 function MduOpCodeSt gen2mdu(OptionCodeSt option_code);
+  MduOpCodeSt mdu_op_code;
+  mdu_op_code.mdu_op = option_code.mdu_op;
+  mdu_op_code.signed_op = option_code.signed_op;
+  return mdu_op_code;
 
 endfunction : gen2mdu
 
