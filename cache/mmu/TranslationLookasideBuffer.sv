@@ -48,7 +48,7 @@ module TranslationLookasideBuffer (
 
   /** TLB Ctrl Logic **/
   logic parity;  // 奇偶标识
-  logic miss;
+  logic found;
   logic [`TLB_ENTRY_NUM - 1:0] match;
 
   TlbEntrySt matched_entry;  // 用于构造输出
@@ -73,7 +73,7 @@ module TranslationLookasideBuffer (
         matched_idx |= i;
       end
     end
-    miss = ~|match;
+    found = |match;
     parity = matched_entry.page_size == 6'd12 ? tlb_search_req.vpn[12] : tlb_search_req.vpn[21];
     // comb输出
     tlb_search_rsp.ready = '1;
@@ -84,8 +84,8 @@ module TranslationLookasideBuffer (
   end
 
   // tlb wr/inv指令有关操作
-  always_ff @(posedge clk or negedge s_rst_n) begin
-    if (~s_rst_n) begin
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
       tlb_entries = '0;
     end else begin
       if (tlb_write_req.valid) begin
@@ -143,7 +143,7 @@ module TranslationLookasideBuffer (
 
       tlb_read_rsp.tlb_entry_st <= '0;
     end else begin
-      tlb_search_rsp.miss <= miss;
+      tlb_search_rsp.found <= found;
       tlb_search_rsp.idx <= matched_idx;
       tlb_search_rsp.page_size <= matched_entry.page_size;
       tlb_search_rsp.valid <= matched_entry.valid[parity];

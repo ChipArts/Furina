@@ -169,6 +169,7 @@ module Scheduler (
       dq_wdata[i].dest = s1_fl_alloc_preg[i];
       dq_wdata[i].oc = s1_sche_req.option_code[i];
       dq_wdata[i].position_bit = rob_alloc_rsp.position_bit[i];
+      dq_wdata[i].excp = s1_sche_req.excp;
       dq_wdata[i].rob_idx = rob_alloc_rsp.rob_idx[i];
     end
   end

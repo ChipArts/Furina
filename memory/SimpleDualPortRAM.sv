@@ -46,7 +46,40 @@ localparam
 );
 
 `ifdef VERILATOR_SIM
-// TODO: tdpram verilator sim module
+  logic [DATA_DEPTH - 1:0][DATA_WIDTH - 1:0] ram;
+
+  logic [DATA_WIDTH - 1:0] rdata;
+
+  always_ff @(posedge clk_a or negedge rstb_n) begin
+    if(~rstb_n) begin
+       rdata <= '0;
+    end else begin
+      if (WRITE_MODE == "write_first") begin
+        if (en_a_i && we_a_i && addr_a_i == addr_b_i) begin
+           raddr <= ram[addr_a_i];
+        end else begin
+           raddr <= ram[addr_b_i];
+        end
+
+        if (en_a_i && we_a_i) begin
+           ram[addr_a_i] <= data_a_i;
+        end
+      end else if (WRITE_MODE == "read_first") begin
+        raddr <= ram[addr_b_i];
+        if (en_a_i && we_a_i) begin
+           ram[addr_a_i] <= data_a_i;
+        end
+      end else begin
+        raddr <= ram[addr_b_i];
+        if (en_a_i && we_a_i && !addr_a_i == addr_b_i) begin
+           ram[addr_a_i] <= data_a_i;
+        end
+      end
+    end
+  end
+
+  assign data_b_o = rdata;
+
 `elsif XILLINX_FPGA
   // xpm_memory_sdpram: Simple Dual Port RAM
   // Xilinx Parameterized Macro, version 2019.2

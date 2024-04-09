@@ -25,6 +25,7 @@
 `include "common.svh"
 `include "Cache.svh"
 `include "MemoryManagementUnit.svh"
+`include "ControlStatusRegister.svh"
 
 module ICache (
   input clk,    // Clock
@@ -88,13 +89,16 @@ module ICache (
 
 /*=================================== Stage0 ==================================*/
   // 接收 取指令 虚拟地址
+  // 检查地址是否对齐
   // 使用虚拟地址查询 tag
   // 使用虚拟地址查询 valid
   // 使用虚拟地址查询 plru
   // 使用虚拟地址查询 tlb
   // 使用虚拟地址查询 data
+  logic adef;  // fetch address error
   always_comb begin
     s0_ready = s1_ready & addr_trans_rsp.ready & ~icacop_req.valid;
+    adef = icache_req.vaddr[1:0] != 0;
     icache_rsp.ready = s0_ready;
     addr_trans_req.valid = icache_req.valid & s1_ready;
     addr_trans_req.ready = '1;
@@ -106,6 +110,7 @@ module ICache (
   logic [`FETCH_WIDTH - 1:0] s1_valid;
   logic [`PROC_VALEN - 1:0] s1_vaddr;
   logic s1_line_break;
+  logic s1_adef;
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n || flush_i) begin
       s1_valid <= '0;
@@ -163,6 +168,12 @@ module ICache (
       icache_rsp.vaddr[i] = s1_vaddr + (i << 2);
       icache_rsp.instr[i] = cache_line[s1_vaddr[`ICACHE_IDX_OFFSET - 1:2] + i];
     end
+    icache_rsp.excp.valid = s1_adef | addr_trans_rsp.tlbr | addr_trans_rsp.pif | addr_trans_rsp.ppi;
+    icache_rsp.excp.ecode =  s1_adef             ? `ECODE_ADE  :
+                             addr_trans_rsp.tlbr ? `ECODE_TLBR : 
+                             addr_trans_rsp.pif  ? `ECODE_PIF  :
+                             addr_trans_rsp.ppi  ? `ECODE_PPI  : '0;
+    icache_rsp.excp.sub_ecode = `ESUBCODE_ADEF;
   end
 
   // AXI FSM

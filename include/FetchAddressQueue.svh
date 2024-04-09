@@ -29,23 +29,23 @@
 
 typedef struct packed {
   logic [`FETCH_WIDTH - 1:0] valid;  // push请求有效
-  logic [`PROC_VALEN - 1:0] vaddr;
-} FAQ_PushReqSt;
+  logic [`PROC_VALEN - 1:0] vaddr; 
+} FaqPushReqSt;
 
 typedef struct packed {
   logic ready;  // faq可接收push请求
-} FAQ_PushRspSt;
+} FaqPushRspSt;
 
 typedef struct packed {
   logic valid;  // pop请求有效
   logic ready;  // 请求方可接收pop应答
-} FAQ_PopReqSt;
+} FaqPopReqSt;
 
 typedef struct packed {
   logic [`FETCH_WIDTH - 1:0] valid;
   logic ready;  // faq接收pop请求
   logic [`PROC_VALEN - 1:0] vaddr;
-} FAQ_PopRspSt;
+} FaqPopRspSt;
 
 
 `endif  // _FETCH_ADDRESS_QUEUE_SVH_

@@ -103,5 +103,29 @@ typedef logic[5:0] ExcCodeType;
 typedef logic[8:0] SubEcodeType;
 
 
+typedef struct packed {
+	// logic tlbrf;   // 取指TLB充填例外
+	// logic tlbrm;   // 访存TLB充填例外
+	// logic fpe;	   // 基础浮点指令例外
+	// logic fpd;	   // 浮点指令未使能例外
+	// logic ipe;     // 指令特权等级错例外
+	// logic ine;     // 指令不存在例外
+	// logic brk;	   // 断点例外
+	// logic sys;	   // 系统调用例外
+	// logic ale;     // 地址非对齐例外
+	// logic adem;    // 访存指令地址错例外
+	// logic adef;    // 取指地址错例外
+	// logic ppif;    // 取指页特权等级不合规例外
+	// logic ppim;    // 访存页特权等级不合规例外
+	// logic pme;     // 页修改例外
+	// logic pif;     // 取指操作页无效例外
+	// logic pis;     // store 操作页无效例外
+	// logic pil;     // load 操作页无效例外
+	// logic intrpt;  // 中断
+	logic valid;
+	ExcCodeType ecode;
+	SubEcodeType sub_ecode;
+} ExcpSt;
+
 
 `endif  // _CSR_SVH_

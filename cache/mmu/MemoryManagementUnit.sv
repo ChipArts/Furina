@@ -39,12 +39,14 @@ module MemoryManagementUnit (
   input logic [1:0]  csr_plv_i ,
   input logic        csr_da_i  ,
   input logic        csr_pg_i  ,
-  // inst addr trans
-  input MmuAddrTransReqSt inst_trans_req,
-  output MmuAddrTransRspSt inst_trans_rsp,
-  // data addr trans
-  input MmuAddrTransReqSt data_trans_req,
-  output MmuAddrTransRspSt data_trans_rsp,
+  // // inst addr trans
+  // input MmuAddrTransReqSt inst_trans_req,
+  // output MmuAddrTransRspSt inst_trans_rsp,
+  // // data addr trans
+  // input MmuAddrTransReqSt data_trans_req,
+  // output MmuAddrTransRspSt data_trans_rsp,
+  input  MmuAddrTransReqSt [1:0] addr_trans_req,
+  output MmuAddrTransRspSt [1:0] addr_trans_rsp,
   // tlb search
   input logic  tlbsrch_en_i,
   output logic tlbsrch_found_o,
@@ -76,10 +78,8 @@ module MemoryManagementUnit (
   logic        pg_mode;
   logic        da_mode;
 
-  logic inst_dmw0_en, inst_dmw1_en;
-  logic data_dmw0_en, data_dmw1_en;
-  logic inst_addr_trans_en;
-  logic data_addr_trans_en;
+  logic [1:0] dmw0_en, dmw1_en;
+  logic [1:0] addr_trans_en;
 
   TlbSearchReqSt [2:0] tlb_search_req;
   TlbSearchRspSt [2:0] tlb_search_rsp;
@@ -109,31 +109,26 @@ module MemoryManagementUnit (
   logic [ 1:0] r_plv1      ;
   logic [19:0] r_ppn1      ;
 
-  logic [31:0] inst_vaddr_buffer;
-  logic [31:0] data_vaddr_buffer;
-  logic        data_cacop_direct_buffer;
+  MmuAddrTransReqSt [1:0] addr_trans_req_buffer;
+
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
-      inst_vaddr_buffer <= 0;
-      data_vaddr_buffer <= 0;
-      data_cacop_direct_buffer <= '0;
+      addr_trans_req_buffer <= '0;
     end else begin
-      inst_vaddr_buffer <= inst_trans_req.vaddr;
-      data_vaddr_buffer <= data_trans_req.vaddr;
-      data_cacop_direct_buffer <= data_trans_req.cacop_direct;
+      addr_trans_req_buffer <= addr_trans_req;
     end
   end
 
   always_comb begin
     // search req
-    tlb_search_req[0].valid = inst_trans_req.valid;
+    tlb_search_req[0].valid = addr_trans_req[0].valid;
     tlb_search_req[0].asid  = csr_asid_i;
-    tlb_search_req[0].vpn   = inst_trans_req.vaddr[`PROC_VALEN:12];
+    tlb_search_req[0].vpn   = addr_trans_req[0].vaddr[`PROC_VALEN:12];
 
-    tlb_search_req[1].valid = data_trans_req.valid;
+    tlb_search_req[1].valid = addr_trans_req[1].valid;
     tlb_search_req[1].asid  = csr_asid_i;
-    tlb_search_req[1].vpn   = inst_trans_req.vaddr[`PROC_VALEN:12];
+    tlb_search_req[1].vpn   = addr_trans_req[1].vaddr[`PROC_VALEN:12];
 
     tlb_search_req[2].valid = tlbsrch_en_i;
     tlb_search_req[2].asid  = csr_asid_i;
@@ -188,59 +183,51 @@ module MemoryManagementUnit (
     pg_mode = !csr_da_i &&  csr_pg_i;
     da_mode =  csr_da_i && !csr_pg_i;
 
-    inst_dmw0_en = ((csr_dmw0_i[`PLV0] && csr_plv_i == 2'd0) || 
+    for (int i = 0; i < 2; i++) begin
+      dmw0_en[i] = ((csr_dmw0_i[`PLV0] && csr_plv_i == 2'd0) || 
                     (csr_dmw0_i[`PLV3] && csr_plv_i == 2'd3)) && 
-                   (inst_vaddr_buffer[31:29] == csr_dmw0_i[`VSEG]);
-    inst_dmw1_en = ((csr_dmw1_i[`PLV0] && csr_plv_i == 2'd0) || 
+                   (addr_trans_req_buffer[i].vaddr[31:29] == csr_dmw0_i[`VSEG]);
+      dmw1_en[i] = ((csr_dmw1_i[`PLV0] && csr_plv_i == 2'd0) || 
                     (csr_dmw1_i[`PLV3] && csr_plv_i == 2'd3)) && 
-                   (inst_vaddr_buffer[31:29] == csr_dmw1_i[`VSEG]);
+                   (addr_trans_req_buffer[i].vaddr[31:29] == csr_dmw1_i[`VSEG]);
 
-    data_dmw0_en = ((csr_dmw0_i[`PLV0] && csr_plv_i == 2'd0) || 
-                    (csr_dmw0_i[`PLV3] && csr_plv_i == 2'd3)) && 
-                   (data_vaddr_buffer[31:29] == csr_dmw0_i[`VSEG]);
-    data_dmw1_en = ((csr_dmw1_i[`PLV0] && csr_plv_i == 2'd0) || 
-                    (csr_dmw1_i[`PLV3] && csr_plv_i == 2'd3)) && 
-                   (data_vaddr_buffer[31:29] == csr_dmw1_i[`VSEG]);
 
-    inst_addr_trans_en = pg_mode && !inst_dmw0_en && !inst_dmw1_en;
-    data_addr_trans_en = pg_mode && !data_dmw0_en && !data_dmw1_en && !data_cacop_direct_buffer;
+      addr_trans_en[i] = pg_mode & ~dmw0_en[i] & ~dmw1_en[i] & ~addr_trans_req_buffer[i].cacop_direct;
 
-    inst_trans_rsp.valid = '1;
-    inst_trans_rsp.ready = '1;
-    inst_trans_rsp.miss  = tlb_search_rsp[0].miss;
-    inst_trans_rsp.paddr = (pg_mode && inst_dmw0_en) ? {csr_dmw0_i[`PSEG], inst_vaddr_buffer[28:0]} :
-                           (pg_mode && inst_dmw1_en) ? {csr_dmw1_i[`PSEG], inst_vaddr_buffer[28:0]} : 
-                            inst_addr_trans_en ? 
-                           ((tlb_search_rsp[0].page_size == 6'd12) ? {tlb_search_rsp[0].ppn, inst_vaddr_buffer[11:0]} : 
-                                                                     {tlb_search_rsp[0].ppn[`PROC_PALEN - 1:22], inst_vaddr_buffer[21:0]}) :
-                            inst_vaddr_buffer;
-    inst_trans_rsp.uncache = (da_mode && (csr_datm_i == 2'b0))                      ||
-                             (inst_dmw0_en && (csr_dmw0_i[`DMW_MAT] == 2'b0))       ||
-                             (inst_dmw1_en && (csr_dmw1_i[`DMW_MAT] == 2'b0))       ||
-                             (inst_addr_trans_en && (tlb_search_rsp[0].mat == 2'b0));
-    inst_trans_rsp.tlb_valid = tlb_search_rsp[0].valid;
-    inst_trans_rsp.tlb_dirty = tlb_search_rsp[0].dirty;
-    inst_trans_rsp.tlb_mat   = tlb_search_rsp[0].mat;
-    inst_trans_rsp.tlb_plv   = tlb_search_rsp[0].plv;
+      addr_trans_rsp[i].valid = addr_trans_req[i].valid;
+      addr_trans_rsp[i].ready = '1;
+      addr_trans_rsp[i].miss  = tlb_search_rsp[1].miss;
+      addr_trans_rsp[i].paddr = (pg_mode && dmw0_en[i] && !addr_trans_req_buffer[i].cacop_direct) ? {csr_dmw0_i[`PSEG], addr_trans_req_buffer[i].vaddr[28:0]} : 
+                                (pg_mode && dmw1_en[i] && !addr_trans_req_buffer[i].cacop_direct) ? {csr_dmw1_i[`PSEG], addr_trans_req_buffer[i].vaddr[28:0]} : 
+                                 addr_trans_en[i] ? 
+                                ((tlb_search_rsp[i].page_size == 6'd12) ? {tlb_search_rsp[i].ppn, addr_trans_req_buffer[i].vaddr[11:0]} : 
+                                                                          {tlb_search_rsp[i].ppn[`PROC_PALEN - 1:22], addr_trans_req_buffer[i].vaddr[21:0]}) :
+                                 addr_trans_req_buffer[i].vaddr;
 
-    data_trans_rsp.valid = '1;
-    data_trans_rsp.ready = '1;
-    data_trans_rsp.miss  = tlb_search_rsp[1].miss;
-    data_trans_rsp.paddr = (pg_mode && data_dmw0_en && !data_cacop_direct_buffer) ? {csr_dmw0_i[`PSEG], data_vaddr_buffer[28:0]} : 
-                           (pg_mode && data_dmw1_en && !data_cacop_direct_buffer) ? {csr_dmw1_i[`PSEG], data_vaddr_buffer[28:0]} : 
-                            data_addr_trans_en ? 
-                           ((tlb_search_rsp[1].page_size == 6'd12) ? {tlb_search_rsp[1].ppn, data_vaddr_buffer[11:0]} : 
-                                                                     {tlb_search_rsp[1].ppn[`PROC_PALEN - 1:22], data_vaddr_buffer[21:0]}) :
-                            data_vaddr_buffer;
+      addr_trans_rsp[i].uncache = (da_mode && (csr_datm_i == 2'b0))                    ||
+                                  (dmw0_en[i] && (csr_dmw0_i[`DMW_MAT] == 2'b0))       ||
+                                  (dmw1_en[i] && (csr_dmw1_i[`DMW_MAT] == 2'b0))       ||
+                                  (addr_trans_en[i] && (tlb_search_rsp[1].mat == 2'b0));
+      addr_trans_rsp[i].tlb_valid = tlb_search_rsp[i].valid;
+      addr_trans_rsp[i].tlb_dirty = tlb_search_rsp[i].dirty;
+      addr_trans_rsp[i].tlb_mat   = tlb_search_rsp[i].mat;
+      addr_trans_rsp[i].tlb_plv   = tlb_search_rsp[i].plv;
+      // 抛出异常
+      addr_trans_rsp[i].tlbr = ~tlb_search_rsp[i].found;
+      if (!tlb_search_rsp[i].valid) begin
+        case (addr_trans_req_buffer[i].mem_type)
+          MMU_FETCH : addr_trans_rsp[i].pif = '1;
+          MMU_LOAD  : aadr_trans_rsp[i].pil = '1;
+          MMU_STORE : addr_trans_rsp[i].pis = '1;
+          default : /* default */;
+        endcase
+      end else if (csr_plv_i > tlb_search_rsp[i].plv) begin
+        addr_trans_rsp[i].ppi = '1;
+      end else if (addr_trans_req_buffer[i].mem_type == MMU_STORE && tlb_search_rsp[i].dirty == 0) begin
+        addr_trans_rsp[i].pme = '1;
+      end
+    end
 
-    data_trans_rsp.uncache = (da_mode && (csr_datm_i == 2'b0))                      ||
-                             (data_dmw0_en && (csr_dmw0_i[`DMW_MAT] == 2'b0))       ||
-                             (data_dmw1_en && (csr_dmw1_i[`DMW_MAT] == 2'b0))       ||
-                             (data_addr_trans_en && (tlb_search_rsp[1].mat == 2'b0));
-    data_trans_rsp.tlb_valid = tlb_search_rsp[1].valid;
-    data_trans_rsp.tlb_dirty = tlb_search_rsp[1].dirty;
-    data_trans_rsp.tlb_mat   = tlb_search_rsp[1].mat;
-    data_trans_rsp.tlb_plv   = tlb_search_rsp[1].plv;
 
     tlbsrch_found_o = tlb_search_rsp[2].valid;
     tlbsrch_idx_o = tlb_search_rsp[2].idx;

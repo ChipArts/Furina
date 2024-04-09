@@ -147,8 +147,8 @@ module Pipeline (
   logic mblk_flush_i;
   MemExeSt mblk_exe_i;
   logic mblk_exe_ready_o;
-  MmuAddrTransReqSt mblk_mmu_req;
-  MmuAddrTransRspSt mblk_mmu_rsp;
+  MmuAddrTransReqSt mblk_addr_trans_req;
+  MmuAddrTransRspSt mblk_addr_trans_rsp;
   MemWbSt mblk_wb_o;
   logic mblk_wb_ready_i;
 
@@ -176,10 +176,8 @@ module Pipeline (
   logic [1:0]  mmu_csr_plv_i;
   logic        mmu_csr_da_i;
   logic        mmu_csr_pg_i;
-  MmuAddrTransReqSt mmu_inst_trans_req;
-  MmuAddrTransRspSt mmu_inst_trans_rsp;
-  MmuAddrTransReqSt mmu_data_trans_req;
-  MmuAddrTransRspSt mmu_data_trans_rsp;
+  MmuAddrTransReqSt [1:0] mmu_addr_trans_req;
+  MmuAddrTransRspSt [1:0] mmu_addr_trans_rsp;
   logic                                mmu_tlbsrch_en_i;
   logic                                mmu_tlbsrch_found_o;
   logic [$clog2(`TLB_ENTRY_NUM) - 1:0] mmu_tlbsrch_idx_o;
@@ -324,7 +322,7 @@ module Pipeline (
 
     icache_req.valid = faq_pop_rsp_st.valid;
     icache_req.vaddr = faq_pop_rsp_st.vaddr;
-    icache_addr_trans_rsp = mmu_inst_trans_rsp;
+    icache_addr_trans_rsp = mmu_addr_trans_rsp[0];
 
     icacop_req.valid = 0;
   end
@@ -359,8 +357,11 @@ module Pipeline (
     ibuf_write_num = $countones(icache_rsp.valid);
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
       ibuf_write_data[i].valid = icache_rsp.valid[i];
-      ibuf_write_data[i].vaddr = icache_rsp.vaddr[i];
       ibuf_write_data[i].instr = icache_rsp.instr[i];
+      ibuf_write_data[i].pc = icache_rsp.pc[i];
+      ibuf_write_data[i].npc = icache_rsp.npc[i];
+      ibuf_write_data[i].pre_oc = pre_oc[i];
+      ibuf_write_data[i].excp = icache_rsp.excp;
     end
 
     ibuf_read_ready = sche_schedule_rsp.ready;
@@ -456,6 +457,7 @@ module Pipeline (
       sche_req.arch_src1[i] = decoder_src1[i];
       sche_req.arch_dest[i] = decoder_dest[i];
       sche_req.option_code[i] = decoder_option_code[i];
+      sche_req.excp[i] = ibuf_read_data[i].excp;
     end
 
     sche_arch_rat_i = arch_rat_o;
@@ -612,58 +614,62 @@ module Pipeline (
   always_comb begin
     iblk_flush_i = glo_flush;
     // 杂项指令在成为最旧指令时才执行
-    iblk_misc_exe.base = '{valid: sche_misc_issue.valid, 
-                              imm: imm_ext(sche_misc_issue.base_info.src,
-                                           sche_misc_issue.base_info.imm_type,
-                                           '0),  // 不能存在IMM_PC情况
-                              src0: rf_rdata_o[0],
-                              src1: rf_rdata_o[1],
-                              pdest: sche_misc_issue.base_info.pdest, 
-                              rob_idx: sche_misc_issue.base_info.rob_idx};
-    iblk_misc_exe.misc_oc = sche_misc_issue.misc_oc;
-    iblk_misc_exe.pc = sche_misc_issue.base_info.pc;
-    iblk_misc_exe.npc = sche_misc_issue.base_info.npc;
+    iblk_misc_exe_i.base = '{valid: sche_misc_issue.valid, 
+                           imm: imm_ext(sche_misc_issue_o.base_info.src,
+                                        sche_misc_issue_o.base_info.imm_type,
+                                        '0),  // 不能存在IMM_PC情况
+                           src0: rf_rdata_o[0],
+                           src1: rf_rdata_o[1],
+                           pdest: sche_misc_issue_o.base_info.pdest, 
+                           rob_idx: sche_misc_issue_o.base_info.rob_idx,
+                           excp: sche_misc_issue_o.base_info.excp};
+    iblk_misc_exe_i.misc_oc = sche_misc_issue.misc_oc;
+    iblk_misc_exe_i.pc = sche_misc_issue.base_info.pc;
+    iblk_misc_exe_i.npc = sche_misc_issue.base_info.npc;
 
     // 第一条ALU执行pipe
-    iblk_alu_exe[0].base = '{valid: sche_alu_issue[0].base_info.valid, 
-                                imm: imm_ext(sche_alu_issue[0].base_info.src,
-                                             sche_alu_issue[0].base_info.imm_type,
-                                             sche_alu_issue[0].base_info.pc),
+    iblk_alu_exe_i[0].base = '{valid: sche_alu_issue[0].base_info.valid, 
+                                imm: imm_ext(sche_alu_issue_o[0].base_info.src,
+                                             sche_alu_issue_o[0].base_info.imm_type,
+                                             sche_alu_issue_o[0].base_info.pc),
                                 src0: rf_rdata_o[2],
                                 src1: rf_rdata_o[3],
-                                pdest: sche_alu_issue[0].base_info.pdest, 
-                                rob_idx: sche_alu_issue[0].base_info.rob_idx};
-    iblk_alu_exe[0].alu_oc = sche_alu_issue[0].alu_oc;
+                                pdest: sche_alu_issue_o[0].base_info.pdest, 
+                                rob_idx: sche_alu_issue_o[0].base_info.rob_idx, 
+                                excp: sche_alu_issue_o[0].base_info.excp};
+    iblk_alu_exe_i[0].alu_oc = sche_alu_issue[0].alu_oc;
 
     // 第二条ALU执行pipe
-    iblk_alu_exe[1].base = '{valid: sche_alu_issue[1].base_info.valid, 
-                                imm: imm_ext(sche_alu_issue[1].base_info.src,
-                                             sche_alu_issue[1].base_info.imm_type,
-                                             sche_alu_issue[1].base_info.pc),
+    iblk_alu_exe_i[1].base = '{valid: sche_alu_issue[1].base_info.valid, 
+                                imm: imm_ext(sche_alu_issue_o[1].base_info.src,
+                                             sche_alu_issue_o[1].base_info.imm_type,
+                                             sche_alu_issue_o[1].base_info.pc),
                                 src0: rf_rdata_o[4],
                                 src1: rf_rdata_o[5],
-                                pdest: sche_alu_issue[1].base_info.pdest, 
-                                rob_idx: sche_alu_issue[1].base_info.rob_idx};
-    iblk_alu_exe[1].alu_oc = sche_alu_issue[1].alu_oc;
+                                pdest: sche_alu_issue_o[1].base_info.pdest, 
+                                rob_idx: sche_alu_issue_o[1].base_info.rob_idx, 
+                                excp: sche_alu_issue_o[1].base_info.excp};
+    iblk_alu_exe_i[1].alu_oc = sche_alu_issue[1].alu_oc;
 
     // 乘除法执行pipe   
-    iblk_mdu_exe.base = '{valid: sche_mdu_issue.base_info.valid, 
-                             imm: imm_ext(sche_mdu_issue.base_info.src,
-                                          sche_mdu_issue.base_info.imm_type,
-                                          sche_mdu_issue.base_info.pc),
+    iblk_mdu_exe_i.base = '{valid: sche_mdu_issue.base_info.valid, 
+                             imm: imm_ext(sche_mdu_issue_o.base_info.src,
+                                          sche_mdu_issue_o.base_info.imm_type,
+                                          sche_mdu_issue_o.base_info.pc),
                              src0: rf_rdata_o[6],
                              src1: rf_rdata_o[7],
-                             pdest: sche_mdu_issue.base_info.pdest, 
-                             rob_idx: sche_mdu_issue.base_info.rob_idx};
-    iblk_mdu_exe.mdu_oc = sche_mdu_issue.mdu_oc;
+                             pdest: sche_mdu_issue_o.base_info.pdest, 
+                             rob_idx: sche_mdu_issue_o.base_info.rob_idx, 
+                             excp: sche_mdu_issue_o.base_info.excp};
+    iblk_mdu_exe_i.mdu_oc = sche_mdu_issue.mdu_oc;
 
     iblk_csr_rdata_i = csr_rd_data;
     iblk_tlbsrch_found_i = mmu_tlbsrch_found_o;
     iblk_tlbsrch_idx_i = mmu_tlbsrch_idx_o;
 
     // 特权指令在成为最旧指令时才执行
-    iblk_misc_wb_ready_i = ~iblk_misc_wb_o.PRIV_INSTR | 
-                              iblk_misc_wb_o.base.rob_idx == rob_oldest_idx_o;
+    iblk_misc_wb_ready_i = ~iblk_misc_wb_o.priv_instr |
+                            iblk_misc_wb_o.base.rob_idx == rob_oldest_idx_o;
     iblk_alu_wb_ready_i = '1;
     iblk_mdu_wb_ready_i = '1;
   end
@@ -707,18 +713,36 @@ module Pipeline (
   always_comb begin
     mblk_flush_i = glo_flush;
 
-    mblk_exe.base = '{valid: sche_mem_issue.base_info.valid, 
-                         imm: sche_mem_issue.base_info.imm, 
+    mblk_exe_i.base = '{valid: sche_mem_issue_o.base_info.valid, 
+                         imm: imm_ext(sche_mem_issue_o.base_info.src,
+                                      sche_mem_issue_o.base_info.imm_type,
+                                      '0),
                          src0: rf_rdata_o[8],
                          src1: rf_rdata_o[9],
-                         pdest: sche_mem_issue.base_info.pdest, 
-                         rob_idx: sche_mem_issue.base_info.rob_idx};
-    mblk_exe.mem_oc = sche_mem_issue.mem_oc;
+                         pdest: sche_mem_issue_o.base_info.pdest, 
+                         rob_idx: sche_mem_issue_o.base_info.rob_idx, 
+                         excp: sche_mem_issue_o.base_info.excp};
+    mblk_exe_i.mem_oc = sche_mem_issue.mem_oc;
 
-    mblk_mmu_rsp = mmu_data_trans_rsp;
+    mblk_addr_trans_rsp = mmu_addr_trans_rsp[1];
 
-    mblk_wb_ready_i = '1;
+    mblk_wb_ready_i = mblk_wb_o.base.we | mblk_wb_o.base.rob_idx == rob_oldest_idx_o;
   end
+
+  MemoryBlock inst_MemoryBlock
+  (
+    .clk            (clk),
+    .a_rst_n        (a_rst_n),
+    .flush_i        (mblk_flush_i),
+    .exe_i          (mblk_exe_i),
+    .exe_ready_o    (mblk_exe_ready_o),
+    .addr_trans_req (mblk_addr_trans_req),
+    .addr_trans_rsp (mblk_addr_trans_rsp),
+    .axi4_mst       (dcache_axi4_mst),
+    .wb_o           (mblk_wb_o),
+    .wb_ready_i     (mblk_wb_ready_i)
+  );
+
 
 /*============================== Reorder Buffer ===============================*/
   always_comb begin
@@ -843,8 +867,8 @@ module Pipeline (
     mmu_csr_da_i = csr_da_out;
     mmu_csr_pg_i = csr_pg_out;
 
-    mmu_inst_trans_req = icache_addr_trans_req;
-    mmu_data_trans_req = mblk_mmu_req;
+    mmu_addr_trans_req[0] = icache_addr_trans_req;
+    mmu_addr_trans_req[1] = mblk_addr_trans_req;
 
     mmu_tlbsrch_en_i = iblk_tlbsrch_valid_o;
 
@@ -886,11 +910,8 @@ module Pipeline (
     .csr_pg_i       (mmu_csr_pg_i),
     .csr_plv_i      (mmu_csr_plv_i),
     // inst addr trans
-    .inst_trans_req (mmu_inst_trans_req),
-    .inst_trans_rsp (mmu_inst_trans_rsp),
-    // data addr trans
-    .data_trans_req (mmu_data_trans_req),
-    .data_trans_rsp (mmu_data_trans_rsp),
+    .addr_trans_req (mmu_addr_trans_req),
+    .addr_trans_rsp (mmu_addr_trans_rsp),
     // tlb search
     .tlbsrch_en_i   (mmu_tlbsrch_en_i),
     .tlbsrch_found_o(mmu_tlbsrch_found_o),
@@ -898,7 +919,7 @@ module Pipeline (
     // tlbfill tlbwr tlb write
     .tlbfill_en_i   (mmu_tlbfill_en_i),
     .tlbwr_en_i     (mmu_tlbwr_en_i),
-    .rand_index_i   (mmu_rand_index_i),
+    .rand_idx_i     (mmu_rand_index_i),
     .tlbehi_i       (mmu_tlbehi_i),
     .tlbelo0_i      (mmu_tlbelo0_i),
     .tlbelo1_i      (mmu_tlbelo1_i),

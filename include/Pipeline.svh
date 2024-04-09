@@ -26,6 +26,8 @@
 
 `include "config.svh"
 `include "Decoder.svh"
+`include "Scheduler.svh"
+`include "ControlStatusRegister.svh"
 
 typedef struct packed {
   logic valid;
@@ -33,6 +35,7 @@ typedef struct packed {
   PreOptionCodeSt pre_oc;
   logic [`PROC_VALEN - 1:0] pc;
   logic [`PROC_VALEN - 1:0] npc;
+  ExcpSt excp;
 } IbufDataSt;
 
 /*==================================== EXE ====================================*/
@@ -42,6 +45,7 @@ typedef struct packed {
   logic [31:0] src0, src1;
   logic [$clog2(`PHY_REG_NUM) - 1:0] pdest;
   logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
+  ExcpSt excp;
 } ExeBaseSt;
 
 typedef struct packed {
@@ -74,10 +78,7 @@ typedef struct packed {
   logic [31:0] wdata;
   logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
   logic [$clog2(`PHY_REG_NUM) - 1:0] pdest;
-  logic exception;
-  ExcCodeType ecode;
-  SubEcodeType sub_ecode;
-  logic [`PROC_VALEN - 1:0] error_vaddr;
+  ExcpSt excp;
 } WbBaseSt;
 
 typedef struct packed {
@@ -90,10 +91,9 @@ typedef struct packed {
 
 typedef struct packed {
   WbBaseSt base;
-  logic PRIV_INSTR;
+  logic priv_instr;
   logic br_inst;
   PrivOpType priv_op;
-  CacheOpType cache_op;
   // csr
   logic csr_we;
   logic [13:0] csr_waddr;
@@ -113,7 +113,7 @@ typedef struct packed {
   logic [31:0] tlbrd_elo1;
   logic [31:0] tlbrd_idx;
   logic [ 9:0] tlbrd_asid;
-  // tlb or cacop
+  // tlb
   logic [`PROC_VALEN - 1:0] vaddr;
 
   // diff
@@ -123,6 +123,7 @@ typedef struct packed {
 
 typedef struct packed {
   WbBaseSt base;
+  logic [31:0] vaddr;
 } MemWbSt;
 
 

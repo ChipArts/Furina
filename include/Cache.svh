@@ -62,9 +62,7 @@ typedef struct packed {
 
   logic [`FETCH_WIDTH - 1:0][`PROC_VALEN - 1:0] vaddr;
   logic [`FETCH_WIDTH - 1:0][31:0] instr;  // 指令
-  logic excp;
-  ExcCodeType ecode;
-  SubEcodeType sub_ecode;
+  ExcpSt excp;
 } ICacheRspSt;
 
 typedef struct packed {

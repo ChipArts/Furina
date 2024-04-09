@@ -35,8 +35,8 @@ module MemoryBlock (
   input MemExeSt exe_i,
   output logic exe_ready_o,
   /* other exe io */
-  output MmuAddrTransReqSt mmu_req,
-  input MmuAddrTransRspSt mmu_rsp,
+  output MmuAddrTransReqSt addr_trans_req,
+  input MmuAddrTransRspSt addr_trans_rsp,
   AXI4.Master axi4_mst,
   /* wirte back */
   output MemWbSt wb_o,
@@ -69,6 +69,8 @@ module MemoryBlock (
 
   DCacheReqSt dcache_req;
   DCacheRspSt dcache_rsp;
+  MmuAddrTransReqSt dcache_addr_trans_req;
+  MmuAddrTransRspSt dcache_addr_trans_rsp;
 
   always_comb begin
     s1_ready = dcache_rsp.ready | ~s1_exe.base.valid;
@@ -80,6 +82,10 @@ module MemoryBlock (
     dcache_req.rob_idx = s1_exe.base.rob_idx;
     dcache_req.align_op = s1_exe.mem_oc.align_op;
     dcache_req.mem_type = s1_exe.mem_oc.mem_type;
+
+    
+    addr_trans_req = dcache_addr_trans_req;
+    dcache_addr_trans_rsp = addr_trans_rsp;
   end
 
   // DCache视为一个多周期的模块
@@ -90,8 +96,8 @@ module MemoryBlock (
     .flush_i          (flush_i),
     .req              (dcache_req),
     .rsp              (dcache_rsp),
-    .mmu_req          (mmu_req),
-    .mmu_rsp          (mmu_rsp),
+    .addr_trans_req   (dcache_addr_trans_req),
+    .addr_trans_rsp   (dcache_addr_trans_rsp),
     .axi4_mst         (axi4_mst)
   );
 

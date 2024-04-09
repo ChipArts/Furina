@@ -26,6 +26,7 @@
 
 `include "config.svh"
 `include "Decoder.svh"
+`include "ControlStatusRegister.svh"
 
 `ifdef DEBUG
   typedef struct packed {
@@ -101,9 +102,7 @@ typedef struct packed {
   logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
   logic redirect;
   logic [`PROC_VALEN - 1:0] br_target;
-  logic exception;
-  ExcCodeType ecode;
-  SubEcodeType sub_ecode;
+  ExcpSt excp;
   logic [`PROC_VALEN - 1:0] error_vaddr;
 
   // debug

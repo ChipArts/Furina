@@ -52,7 +52,7 @@ typedef struct packed {
   logic valid;  // 查询结果有效
   logic ready;  // TLB 可以进行查询操作
 
-  logic miss;   // TLB 查询结果未命中
+  logic found;   // TLB 查询结果命中
   logic [$clog2(`TLB_ENTRY_NUM) - 1:0] idx;  // TLB命中项的索引值
   logic [5:0] page_size;  // 页大小
   logic dirty;  // 查询结果脏位

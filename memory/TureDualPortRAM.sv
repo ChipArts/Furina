@@ -65,7 +65,66 @@ end
 `endif
 
 `ifdef VERILATOR_SIM
-// TODO: tdpram verilator sim module
+  logic [DATA_DEPTH - 1:0][DATA_WIDTH - 1:0] ram;
+
+  logic [DATA_WIDTH - 1:0] rdata_a, rdata_b;
+
+  always_ff @(posedge clk_a or negedge rstb_n) begin
+    if(~rsta_n) begin
+       rdata_a <= '0;
+    end else begin
+      if (WRITE_MODE == "write_first") begin
+        if (en_b_i && we_b_i && addr_a_i == addr_b_i) begin
+           rdata_a <= ram[addr_b_i];
+        end else begin
+           rdata_a <= ram[addr_a_i];
+        end
+
+        if (en_a_i && we_a_i) begin
+           ram[addr_a_i] <= data_a_i;
+        end
+      end else if (WRITE_MODE == "read_first") begin
+        rdata_a <= ram[addr_a_i];
+        if (en_a_i && we_a_i) begin
+           ram[addr_a_i] <= data_a_i;
+        end
+      end else begin
+        raddr <= ram[addr_a_i];
+        if (en_a_i && we_a_i && !(addr_a_i == addr_b_i && we_b_i)) begin
+           ram[addr_a_i] <= data_a_i;
+        end
+      end
+    end
+
+    if(~rstb_n) begin
+      rdata_b <= '0;
+    end else begin
+      if (WRITE_MODE == "write_first") begin
+        if (en_a_i && we_a_i && addr_a_i == addr_b_i) begin
+           rdata_b <= ram[addr_a_i];
+        end else begin
+           rdata_b <= ram[addr_b_i];
+        end
+
+        if (en_b_i && we_b_i && !we_a_i) begin
+           ram[addr_b_i] <= data_b_i;
+        end
+      end else if (WRITE_MODE == "read_first") begin
+        rdata_b <= ram[addr_b_i];
+        if (en_b_i && we_b_i && !we_a_i) begin
+           ram[addr_b_i] <= data_b_i;
+        end
+      end else begin
+        rdata_b <= ram[addr_b_i];
+        if (en_b_i && we_b_i && !(addr_a_i == addr_b_i && we_a_i)) begin
+           ram[addr_a_i] <= data_a_i;
+        end
+      end
+    end
+  end
+
+  assign data_a_o = rdata_a;
+  assign data_b_o = rdata_b;
 `elsif XILLINX_FPGA
   // xpm_memory_tdpram: True Dual Port RAM
   // Xilinx Parameterized Macro, version 2019.2

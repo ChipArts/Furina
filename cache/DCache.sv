@@ -37,8 +37,8 @@ module DCache (
   input DCacheReqSt req,
   output DCacheRspSt rsp,
   // to from mmu
-  output MmuAddrTransReqSt mmu_req,
-  input MmuAddrTransRspSt mmu_rsp,
+  output MmuAddrTransReqSt addr_trans_req,
+  input MmuAddrTransRspSt addr_trans_rsp,
   // axi bus
   AXI4.Master axi4_mst
 );
@@ -123,9 +123,9 @@ module DCache (
     s0_ready = s1_ready;
     rsp.ready = s0_ready;
     if (req.valid) begin
-      mmu_req.valid = s1_ready;
-      mmu_req.ready = 1'b1;
-      mmu_req.vaddr = req.vaddr;
+      addr_trans_req.valid = s1_ready;
+      addr_trans_req.ready = 1'b1;
+      addr_trans_req.vaddr = req.vaddr;
     end
   end
 
@@ -174,7 +174,7 @@ module DCache (
     s1_ready = ~(s1_valid & miss);
 
     // 1. 获得MMU读取响应
-    paddr = mmu_rsp.paddr;
+    paddr = addr_trans_rsp.paddr;
     // 2. 访问Data RAM
     // 3. 判断Cache的命中情况
     for (int i = 0; i < `DCACHE_WAY_NUM; i++) begin

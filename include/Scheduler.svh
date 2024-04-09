@@ -36,6 +36,7 @@ typedef struct packed {
   logic [`DECODE_WIDTH - 1:0][4:0] arch_src1;
   logic [`DECODE_WIDTH - 1:0][4:0] arch_dest;
   OptionCodeSt [`DECODE_WIDTH - 1:0] option_code;
+  ExcpSt excp;
 } ScheduleReqSt;
 
 typedef struct packed {
@@ -56,6 +57,7 @@ typedef struct packed {
   OptionCodeSt oc;
   logic position_bit;
   logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
+  ExcpSt excp;
 } DqEntrySt;
 
 typedef struct packed {
@@ -74,6 +76,7 @@ typedef struct packed {
   logic pdest_valid;
   logic [`PROC_VALEN - 1:0] pc;
   logic [`PROC_VALEN - 1:0] npc;
+  ExcpSt excp;
 } RsBaseSt;
 
 function RsBaseSt dq2rs(DqEntrySt dq);
@@ -93,6 +96,7 @@ function RsBaseSt dq2rs(DqEntrySt dq);
   rs.pdest_valid = dq.dest_valid;
   rs.pc = dq.pc;
   rs.npc = dq.npc;
+  rs.excp = dq.excp;
   return rs;
 endfunction : dq2rs
 
@@ -107,7 +111,25 @@ typedef struct packed {
   logic [$clog2(`PHY_REG_NUM) - 1:0] psrc1;
   logic [$clog2(`PHY_REG_NUM) - 1:0] pdest;
   logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
+  ExcpSt excp;
 } IssueBaseSt;
+
+function IssueBaseSt rs2is(RsBaseSt rs);
+  IssueBaseSt is;
+  is.valid = rs.valid;
+  is.pc = rs.pc;
+  is.npc = rs.npc;
+  is.src = rs.src;
+  is.psrc0_valid = rs.psrc0_valid;
+  is.psrc1_valid = rs.psrc1_valid;
+  is.pdest_valid = rs.pdest_valid;
+  is.psrc0 = rs.psrc0;
+  is.psrc1 = rs.psrc1;
+  is.pdest = rs.pdest;
+  is.rob_idx = rs.rob_idx;
+  is.excp = rs.excp;
+  return is;
+endfunction : rs2is
 
 typedef struct packed {
   logic valid;
@@ -129,7 +151,7 @@ typedef struct packed {
 
 typedef struct packed {
   logic valid;
-  IssueBaseInfoSt base_info;
+  IssueBaseSt base_info;
   MemOpCodeSt mem_oc;
 } MemIssueSt;
 

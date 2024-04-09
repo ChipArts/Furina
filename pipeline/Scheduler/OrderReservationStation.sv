@@ -83,15 +83,7 @@ parameter
       mem_n           = mem_q;
       gate_clock      = 1'b1;
 
-      issue_base_o.imm = mem_q[read_pointer_q].base.imm;
-      issue_base_o.pc = mem_q[read_pointer_q].base.pc;
-      issue_base_o.npc = mem_q[read_pointer_q].base.npc;
-      issue_base_o.psrc0_valid = mem_q[read_pointer_q].base.psrc0_valid;
-      issue_base_o.psrc1_valid = mem_q[read_pointer_q].base.psrc1_valid;
-      issue_base_o.pdest_valid = mem_q[read_pointer_q].base.pdest_valid;
-      issue_base_o.psrc0 = mem_q[read_pointer_q].base.psrc0;
-      issue_base_o.psrc1 = mem_q[read_pointer_q].base.psrc1;
-      issue_base_o.pdest = mem_q[read_pointer_q].base.pdest;
+      issue_base_o = rs2is(mem_q[read_pointer_q].base);
       issue_oc_o = mem_q[read_pointer_q].oc;
 
       // push a new element to the queue

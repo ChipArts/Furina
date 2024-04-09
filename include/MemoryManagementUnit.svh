@@ -26,24 +26,33 @@
 
 `include "config.svh"
 
+typedef enum logic [1:0] {
+  MMU_FETCH,
+  MMU_LOAD,
+  MMU_STORE
+} MmuMemType;
+
+
 typedef struct packed {
   logic valid;  // 请求有效
   logic ready;  // 请求方可接收返回数据
   logic cacop_direct;
+  MmuMemType mem_type;
   logic [`PROC_VALEN - 1:0] vaddr;
 } MmuAddrTransReqSt;
 
 typedef struct packed {
   logic valid;  // 数据有效
   logic ready;  // mmu可接收请求
-  logic miss;   // TLB 查询结果未命中
 
   logic [`PROC_PALEN - 1:0] paddr;
   logic uncache;
-  logic tlb_valid;
-  logic tlb_dirty;  // 查询结果脏位
-  logic [1:0] tlb_mat;  // 存储访问类型(MAT)
-  logic [1:0] tlb_plv;  // 特权等级(PLV)
+  logic tlbr;
+  logic pif;
+  logic pil;
+  logic pis;
+  logic ppi;
+  logic pme;
 } MmuAddrTransRspSt;
 
 `endif  // _MEMORY_MANAGEMENT_UNIT_SVH_

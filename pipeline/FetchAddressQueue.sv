@@ -32,10 +32,10 @@ module FetchAddressQueue (
   input clk,    // Clock
   input a_rst_n,  // Asynchronous reset active low
   input flush_i,
-  input FAQ_PushReqSt push_req,
-  input FAQ_PopReqSt pop_req,
-  output FAQ_PushRspSt push_rsp,
-  output FAQ_PopRspSt pop_rsp
+  input FaqPushReqSt push_req,
+  input FaqPopReqSt pop_req,
+  output FaqPushRspSt push_rsp,
+  output FaqPopRspSt pop_rsp
 );
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);
@@ -45,21 +45,77 @@ module FetchAddressQueue (
     logic [`FETCH_WIDTH - 1:0] valid;
   } FaqDataSt;
 
-  FaqDataSt faq_wdata, faq_rdata;
+  // 配合ICache工作，每次的fetch请求都要在一个Cache Line中
+  typedef enum logic {
+    IDEL,  // 无需进行拆分
+    SPLIT  // 进行拆分
+  } FaqState;
+
+  FaqState faq_state;
+  FaqPushReqSt push_req_buffer;
+  FaqDataSt faq_data_i, faq_data_o;
+  logic empty, full, push, pop;  // fifo ctrl
+  logic split;
+  logic [$clog2(`FETCH_WIDTH) - 1:0] f_zero_idx, zero_idx;  // register zero index
+
+  
 
   always_comb begin
-    faq_wdata.vaddr = push_req.vaddr;
-    faq_wdata.valid = push_req.valid;
-    push_rsp.ready = ~full;
-    pop_rsp.valid = faq_rdata.valid;
-    pop_rsp.vaddr = faq_rdata.vaddr;
+    f_zero_idx = (`ICACHE_BLOCK_SIZE / 4) - push_req.vaddr[`ICACHE_IDX_OFFSET - 1:2];
+    split = push_req_st.vaddr[`ICACHE_IDX_OFFSET - 1:2] > (`ICACHE_BLOCK_SIZE / 4) - `FETCH_WIDTH & 
+            faq_state == IDEL;
+    if (faq_state == SPLIT) begin
+      faq_data_st_i.vaddr = r_push_req_st.vaddr & 
+                            {{(`PROC_VALEN - `ICACHE_IDX_OFFSET){1'b1}}, 
+                            {(`ICACHE_IDX_OFFSET - 2){1'b0}}, 2'b11};
+      for (int i = 0; i < `FETCH_WIDTH; i++) begin
+        if (zero_idx + i < `FETCH_WIDTH) begin
+          faq_data_i.valid[i] = push_req_buffer.valid[zero_idx + i];
+        end else begin
+          faq_data_st_i.valid[i] = '0;
+        end
+      end
+    end else begin
+      faq_data_i.vaddr = push_req_st.vaddr;
+      for (int i = 0; i < `FETCH_WIDTH; i++) begin
+        faq_data_i.valid[i] = push_req_st.valid[i] & 
+                             (push_req_st.vaddr[`ICACHE_IDX_OFFSET - 1:2] + i < 
+                             `ICACHE_BLOCK_SIZE - `FETCH_WIDTH);
+      end
+    end
+
+    push = ~full & |faq_data_st_i.valid;
+    pop = ~empty & pop_req_st.ready & pop_req_st.valid;
+
+    push_rsp_st.ready = ~full & ~split & faq_state == IDEL;
+
+    pop_rsp_st.ready = ~empty;
+    pop_rsp_st.valid = faq_data_o.valid;
+    pop_rsp_st.vaddr = faq_data_o.vaddr;
   end
 
+  always_ff @(posedge clk or negedge rst_n) begin
+    if(~rst_n) begin
+      faq_state <= IDEL;
+      push_req_buffer <= 0;
+      zero_idx <= '0;
+    end else begin
+      case (faq_state)
+        IDEL : if (split) faq_state <= SPLIT;
+        SPLIT : if (~full) faq_state <= IDEL;  // 保证fifo有写入空间即可
+        default : /* default */;
+      endcase
+      if (faq_state == IDEL) begin
+        push_req_buffer <= push_req;
+        zero_idx <= f_zero_idx;
+      end
+    end
+  end
 
   /* Memory */
   SyncFIFO #(
     .FIFO_DEPTH(`FAQ_DEPTH),
-    .FIFO_DATA_WIDTH($bits(FAQ_DataSt)),
+    .FIFO_DATA_WIDTH($bits(FaqDataSt)),
     .READ_MODE("std"),
     .FIFO_MEMORY_TYPE("auto")
   ) U_SyncFIFO (
@@ -68,19 +124,12 @@ module FetchAddressQueue (
     .flush_i (flush_i),
     .pop_i   (pop_rsp.ready),
     .push_i  (push_rsp.ready),
-    .data_i  (faq_wdata),
-    .data_o  (faq_rdata),
+    .data_i  (faq_data_i),
+    .data_o  (faq_data_o),
     .empty_o (empty),
     .full_o  (full),
     .usage_o (/* not used */)
   );
-
-
-  
-
-
-
-
 
 
 endmodule : FetchAddressQueue
