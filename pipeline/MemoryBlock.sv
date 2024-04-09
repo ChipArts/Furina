@@ -37,12 +37,10 @@ module MemoryBlock (
   /* other exe io */
   output MmuAddrTransReqSt mmu_req,
   input MmuAddrTransRspSt mmu_rsp,
-  input [$clog2(`ROB_DEPTH) - 1:0] oldest_rob_idx_i,
   AXI4.Master axi4_mst,
-  /* commit */
-  // MISC
-  output MemCmtSt cmt_o,
-  input logic cmt_ready_i
+  /* wirte back */
+  output MemWbSt wb_o,
+  input logic wb_ready_i
 );
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);
@@ -56,6 +54,7 @@ module MemoryBlock (
 
 
 /*================================== stage1 ===================================*/
+  // TODO: exe cacop micro
   MemExeSt s1_exe;
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -93,20 +92,19 @@ module MemoryBlock (
     .rsp              (dcache_rsp),
     .mmu_req          (mmu_req),
     .mmu_rsp          (mmu_rsp),
-    .oldest_rob_idx_i (oldest_rob_idx_i),
     .axi4_mst         (axi4_mst)
   );
 
 /*================================== stage2 ===================================*/
   // 产生commit信息
   always_comb begin
-    cmt_o.base.valid = dcache_rsp.valid;
-    cmt_o.base.we = dcache_rsp.mem_type == `MEM_LOAD;
-    cmt_o.base.wdata = dcache_rsp.rdata;
-    cmt_o.base.rob_idx = dcache_rsp.rob_idx;
-    cmt_o.base.pdest = dcache_rsp.pdest;
-    cmt_o.base.exception = dcache_rsp.exception;
-    cmt_o.base.ecode = dcache_rsp.ecode;
+    wb_o.base.valid = dcache_rsp.valid;
+    wb_o.base.we = dcache_rsp.mem_type == `MEM_LOAD;
+    wb_o.base.wdata = dcache_rsp.rdata;
+    wb_o.base.rob_idx = dcache_rsp.rob_idx;
+    wb_o.base.pdest = dcache_rsp.pdest;
+    wb_o.base.exception = dcache_rsp.exception;
+    wb_o.base.ecode = dcache_rsp.ecode;
   end
 
 

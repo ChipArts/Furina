@@ -34,8 +34,8 @@ module MduPipe (
   input MduExeSt exe_i,
   output logic ready_o,
   /* cmt */
-  output MduCmtSt cmt_o,
-  input cmt_ready_i
+  output MduWbSt wb_o,
+  input wb_ready_i
 );
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);
@@ -106,18 +106,18 @@ module MduPipe (
 /*================================== stage2 ===================================*/
   // wait for mdu res valid
   always_comb begin
-    s2_ready = cmt_ready_i | ~cmt_o.base.valid;
+    s2_ready = wb_ready_i | ~wb_o.base.valid;
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      cmt_o <= '0;
+      wb_o <= '0;
     end else begin
-      if (cmt_ready_i) begin
-        cmt_o.base.valid = mult_rsp.valid | div_rsp.valid;
-        cmt_o.base.we = mult_rsp.valid | div_rsp.valid;
-        cmt_o.base.pdest = s1_exe.base.pdest;
-        cmt_o.base.wdata = mdu_res;
+      if (wb_ready_i) begin
+        wb_o.base.valid <= mult_rsp.valid | div_rsp.valid;
+        wb_o.base.we <= mult_rsp.valid | div_rsp.valid;
+        wb_o.base.pdest <= s1_exe.base.pdest;
+        wb_o.base.wdata <= mdu_res;
       end
     end
   end

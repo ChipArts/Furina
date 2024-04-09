@@ -208,7 +208,7 @@ module Furina (
   );
 
 `ifdef DEBUG
-  for (genvar i = 0; i < `RETIRE_WIDTH; i++) begin
+  for (genvar i = 0; i < `COMMIT_WIDTH; i++) begin
     DifftestInstrCommit DifftestInstrCommit(
         .clock              (clk            ),
         .coreid             (0              ),
@@ -261,7 +261,7 @@ module Furina (
       .storeData          (U_Pipeline.rob_retire_o.rob_entry[0].store_data)
   );
 
-  for (genvar i = 0; i < `RETIRE_WIDTH; i++) begin
+  for (genvar i = 0; i < `COMMIT_WIDTH; i++) begin
     DifftestLoadEvent DifftestLoadEvent(
         .clock              (aclk           ),
         .coreid             (0              ),

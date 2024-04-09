@@ -51,19 +51,19 @@ module IntegerBlock (
   input logic [31:0] tlbelo1_i,
   input logic [31:0] tlbidx_i ,
   input logic [ 9:0] tlbasid_i,
-  input logic [63:0] timer_64,
-  input logic [31:0] timer_id,
+  input logic [63:0] timer_64_i,
+  input logic [31:0] timer_id_i,
   input logic [31:0] csr_rdata_i,
-  /* commit */
+  /* write back */
   // MISC
-  output MiscCmtSt misc_cmt_o,
-  input logic misc_cmt_ready_i,
+  output MiscWbSt misc_wb_o,
+  input logic misc_wb_ready_i,
   // ALU * 2
-  output AluCmtSt [1:0] alu_cmt_o,
-  input logic [1:0] alu_cmt_ready_i,
+  output AluWbSt [1:0] alu_wb_o,
+  input logic [1:0] alu_wb_ready_i,
   // MDU
-  output MduCmtSt mdu_cmt_o,
-  input logic mdu_cmt_ready_i
+  output MduWbSt mdu_wb_o,
+  input logic mdu_wb_ready_i
 );
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);
@@ -85,9 +85,11 @@ module IntegerBlock (
     .tlbelo0_i      (tlbelo0_i),
     .tlbelo1_i      (tlbelo1_i),
     .tlbasid_i      (tlbasid_i),
+    .timer_64_i     (timer_64_i),
+    .timer_id_i     (timer_id_i),
     .csr_rdata_i (csr_rdata_i),
-    .cmt_o       (misc_cmt_o),
-    .cmt_ready_i (misc_cmt_ready_i)
+    .wb_o       (misc_wb_o),
+    .wb_ready_i (misc_wb_ready_i)
   );
 /*==================================== ALU ====================================*/
 
@@ -98,8 +100,8 @@ module IntegerBlock (
       .a_rst_n     (rst_n),
       .exe_i       (alu_exe_i[i]),
       .ready_o     (alu_ready_o[i]),
-      .cmt_o       (alu_cmt_o[i]),
-      .cmt_ready_i (alu_cmt_ready_i[i])
+      .wb_o       (alu_wb_o[i]),
+      .wb_ready_i (alu_wb_ready_i[i])
     );
   end
 
@@ -112,8 +114,8 @@ module IntegerBlock (
     .flush_i     (flush_i),
     .exe_i       (mdu_exe_i),
     .ready_o     (mdu_ready_o),
-    .cmt_o       (mdu_cmt_o),
-    .cmt_ready_i (mdu_cmt_ready_i)
+    .wb_o       (mdu_wb_o),
+    .wb_ready_i (mdu_wb_ready_i)
   );
 
 

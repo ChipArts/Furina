@@ -25,6 +25,7 @@
 `define _CACHE_SVH_
 
 `include "config.svh"
+`include "ControlStatusRegister.svh"
 
 /* ICache */
 //       Virtual Address
@@ -61,6 +62,9 @@ typedef struct packed {
 
   logic [`FETCH_WIDTH - 1:0][`PROC_VALEN - 1:0] vaddr;
   logic [`FETCH_WIDTH - 1:0][31:0] instr;  // 指令
+  logic excp;
+  ExcCodeType ecode;
+  SubEcodeType sub_ecode;
 } ICacheRspSt;
 
 typedef struct packed {

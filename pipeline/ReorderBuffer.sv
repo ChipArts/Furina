@@ -31,11 +31,11 @@ module ReorderBuffer (
   input flush_i,
   input RobAllocReqSt alloc_req,
   output RobAllocRspSt alloc_rsp,
-  input RobCmtReqSt [`COMMIT_WIDTH - 1:0] cmt_req,
-  output RobCmtRspSt [`COMMIT_WIDTH - 1:0] cmt_rsp,
-  output RobRetireSt retire_o,
+  input RobWbReqSt [`WB_WIDTH - 1:0] wb_req,
+  output RobWbRspSt [`WB_WIDTH - 1:0] wb_rsp,
+  output RobCmtSt cmt_o,
   /* other exe io */
-  output logic [$clog2(`ROB_DEPTH) - 1:0] oldest_rob_idx_o
+  output logic [$clog2(`ROB_DEPTH) - 1:0] oldest_idx_o
 );
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);
@@ -50,15 +50,15 @@ module ReorderBuffer (
   logic [$clog2(`DECODE_WIDTH):0] alloc_cnt;
   logic [`DECODE_WIDTH - 1:0][$clog2(`ROB_DEPTH):0] alloc_ptr;  // {pos, rob_idx}
 
-  logic [$clog2(`COMMIT_WIDTH):0] cmt_cnt;
-  logic [$clog2(`RETIRE_WIDTH):0] retire_cnt;
-  logic [`RETIRE_WIDTH - 1:0] redirect_mask;  // 重定向后面的指令不允许退休
-  logic [`RETIRE_WIDTH - 1:0] exc_mask;  // 异常后面的指令不允许退休
-  logic [`RETIRE_WIDTH - 1:0] pre_exist_br;
-  logic [`RETIRE_WIDTH - 1:0] br_mask;  // 仅允许一条分支指令退休
-  logic [`RETIRE_WIDTH - 1:0] st_mask;  // 仅最旧的store指令可以退休
-  logic [`RETIRE_WIDTH - 1:0] retire_mask;  // 屏蔽后续指令的退休
-  logic [`RETIRE_WIDTH - 1:0] retire_valid;  // 本次可退休得指令
+  logic [$clog2(`WB_WIDTH):0] wb_cnt;
+  logic [$clog2(`COMMIT_WIDTH):0] retire_cnt;
+  logic [`COMMIT_WIDTH - 1:0] redirect_mask;  // 重定向后面的指令不允许退休
+  logic [`COMMIT_WIDTH - 1:0] exc_mask;  // 异常后面的指令不允许退休
+  logic [`COMMIT_WIDTH - 1:0] pre_exist_br;
+  logic [`COMMIT_WIDTH - 1:0] br_mask;  // 仅允许一条分支指令退休
+  logic [`COMMIT_WIDTH - 1:0] st_mask;  // 仅最旧的store指令可以退休
+  logic [`COMMIT_WIDTH - 1:0] retire_mask;  // 屏蔽后续指令的退休
+  logic [`COMMIT_WIDTH - 1:0] retire_valid;  // 本次可退休得指令
 
 /*================================= W/R Ctrl ==================================*/
   always_comb begin
@@ -80,58 +80,58 @@ module ReorderBuffer (
       tail_ptr_n = tail_ptr + alloc_cnt;
       cnt_n = cnt + alloc_cnt;
     end
-    /* cmt logic */
-    cmt_cnt = '0;
-    for (int i = 0; i < `COMMIT_WIDTH; i++) begin
-      if (cmt_req[i].valid) begin
-        cmt_cnt = cmt_cnt + 1'b1;
-        rob_n[cmt_req[i].rob_idx].complete = 1'b1;
-        rob_n[cmt_req[i].rob_idx].exception = cmt_req[i].exception;
-        rob_n[cmt_req[i].rob_idx].ecode = cmt_req[i].ecode;
-        rob_n[cmt_req[i].rob_idx].sub_ecode = cmt_req[i].sub_ecode;
-        rob_n[cmt_req[i].rob_idx].redirect = cmt_req[i].redirect;
-        rob_n[cmt_req[i].rob_idx].br_target = cmt_req[i].br_target;
-        rob_n[cmt_req[i].rob_idx].error_vaddr = cmt_req[i].error_vaddr;
+    /* write back logic */
+    wb_cnt = '0;
+    for (int i = 0; i < `WB_WIDTH; i++) begin
+      if (wb_req[i].valid) begin
+        wb_cnt = wb_cnt + 1'b1;
+        rob_n[wb_req[i].rob_idx].complete = 1'b1;
+        rob_n[wb_req[i].rob_idx].exception = wb_req[i].exception;
+        rob_n[wb_req[i].rob_idx].ecode = wb_req[i].ecode;
+        rob_n[wb_req[i].rob_idx].sub_ecode = wb_req[i].sub_ecode;
+        rob_n[wb_req[i].rob_idx].redirect = wb_req[i].redirect;
+        rob_n[wb_req[i].rob_idx].br_target = wb_req[i].br_target;
+        rob_n[wb_req[i].rob_idx].error_vaddr = wb_req[i].error_vaddr;
       end
-      cmt_rsp[i].ready = '1;
+      wb_rsp[i].ready = '1;
     end
 
-    /* retire logic */
+    /* commit logic */
     retire_cnt = '0;
     pre_exist_br[0] = '0;
-    for (int i = 1; i < `RETIRE_WIDTH; i++) begin
+    for (int i = 1; i < `COMMIT_WIDTH; i++) begin
       pre_exist_br[i] = pre_exist_br[i - 1] | (rob[i - 1].instr_type == `BR_INSTR);
     end
     redirect_mask[0] = '1;
     exc_mask[0] = '1;
     br_mask[0] = '1;
     st_mask[0] = '1;
-    for (int i = 1; i < `RETIRE_WIDTH; i++) begin
+    for (int i = 1; i < `COMMIT_WIDTH; i++) begin
       redirect_mask[i] = redirect_mask[i - 1] & ~rob[head_idx + i].redirect;
-      exc_mask[i] = exc_mask[i - 1] & ~rob[head_idx + i].exception;
-      br_mask[i] = br_mask[i - 1] & (~pre_exist_br[i] |
-                  (pre_exist_br[i] & rob[head_idx + i].instr_type != `BR_INSTR));
-      st_mask[i] = st_mask[i - 1] &
-                 ~(rob[head_idx + i].instr_type == `MEM_INSTR &
-                   rob[head_idx + i].mem_type == `MEM_STORE);
+      exc_mask[i]      = exc_mask[i - 1] & ~rob[head_idx + i].exception;
+      br_mask[i]       = br_mask[i - 1] & (~pre_exist_br[i] |
+                         (pre_exist_br[i] & rob[head_idx + i].instr_type != `BR_INSTR));
+      st_mask[i]       = st_mask[i - 1] &
+                         ~(rob[head_idx + i].instr_type == `MEM_INSTR &
+                         rob[head_idx + i].mem_type == `MEM_STORE);
     end
     retire_mask = br_mask & redirect_mask & exc_mask;
 
     retire_valid[0] = rob[head_idx].complete;
-    for (int i = 0; i < `RETIRE_WIDTH; i++) begin
+    for (int i = 0; i < `COMMIT_WIDTH; i++) begin
       retire_valid[i] = retire_valid[i - 1] & redirect_mask[i];
     end
 
     retire_cnt = $countones(retire_valid);
     head_ptr_n = head_ptr + retire_cnt;
 
-    retire_o.valid = retire_valid;
-    for (int i = 0; i < `RETIRE_WIDTH; i++) begin
-      retire_o.rob_entry[i] = rob[head_idx + i];
+    cmt_o.valid = retire_valid;
+    for (int i = 0; i < `COMMIT_WIDTH; i++) begin
+      cmt_o.rob_entry[i] = rob[head_idx + i];
     end
 
     /* other logic */
-    oldest_rob_idx_o = rob[head_idx];
+    oldest_idx_o = rob[head_idx];
   end
 
 

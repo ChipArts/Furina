@@ -42,8 +42,8 @@ parameter
   output logic wr_ready_o,
 
   /* wake up */
-  input logic [`COMMIT_WIDTH - 1:0] cmt_pdest_valid_i,
-  input logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] cmt_pdest_i,
+  input logic [`WB_WIDTH - 1:0] cmt_pdest_valid_i,
+  input logic [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] cmt_pdest_i,
 
   /* issue */
   input logic issue_ready_i,
@@ -112,7 +112,7 @@ parameter
 
       // wake up
       for (int i = 0; i < RS_SIZE; i++) begin
-        for (int j = 0; j < `COMMIT_WIDTH; j++) begin
+        for (int j = 0; j < `WB_WIDTH; j++) begin
           if (cmt_pdest_valid_i[j]) begin
             if (mem_q[i].base.valid &&
               mem_q[i].base.psrc0 == cmt_pdest_i[j]) begin

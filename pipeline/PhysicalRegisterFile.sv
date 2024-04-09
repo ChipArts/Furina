@@ -28,6 +28,7 @@ module PhysicalRegisterFile #(
 )(
 	input clk,      // Clock
 	input a_rst_n,   // Asynchronous reset active low
+  input [READ_PORT_NUM - 1:0]  re_i,
   input [WRITE_PORT_NUM - 1:0] we_i,
   input [READ_PORT_NUM - 1:0][$clog2(PHY_REG_NUM) - 1:0] raddr_i,
   input [WRITE_PORT_NUM - 1:0][$clog2(PHY_REG_NUM) - 1:0] waddr_i,
@@ -53,8 +54,18 @@ module PhysicalRegisterFile #(
   end
 
   always_comb begin
-    foreach (raddr_i[i]) begin
-      data_o[i] = waddr_i[i] == raddr_i[i] && we_i[i] ? data_i[i] : reg_file[raddr_i[i]];
+    for (int i = 0; i < READ_PORT_NUM; i++) begin
+      for (int j = 0; j < WRITE_PORT_NUM; j++) begin
+        if (re_i[i]) begin
+          if (we_i[j] && raddr_i[i] == waddr_i[j]) begin
+            data_o[i] = data_i[waddr_i[j]];
+          end else begin
+            data_o[i] = reg_file[raddr_i[i]];
+          end
+        end else begin
+          data_o[i] = '0;
+        end
+      end
     end
   end
 

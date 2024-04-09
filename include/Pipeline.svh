@@ -66,7 +66,7 @@ typedef struct packed {
   MemOpCodeSt mem_oc;
 } MemExeSt;
 
-/*==================================== CMT ====================================*/
+/*==================================== WB ====================================*/
 // commit --> cmt
 typedef struct packed {
   logic valid;
@@ -78,18 +78,18 @@ typedef struct packed {
   ExcCodeType ecode;
   SubEcodeType sub_ecode;
   logic [`PROC_VALEN - 1:0] error_vaddr;
-} CmtBaseSt;
+} WbBaseSt;
 
 typedef struct packed {
-  CmtBaseSt base;
-} AluCmtSt;
+  WbBaseSt base;
+} AluWbSt;
 
 typedef struct packed {
-  CmtBaseSt base;
-} MduCmtSt;
+  WbBaseSt base;
+} MduWbSt;
 
 typedef struct packed {
-  CmtBaseSt base;
+  WbBaseSt base;
   logic PRIV_INSTR;
   logic br_inst;
   PrivOpType priv_op;
@@ -119,11 +119,11 @@ typedef struct packed {
   // diff
   logic [31:0] csr_rdata_diff;
   logic [63:0] timer_64_diff;
-} MiscCmtSt;
+} MiscWbSt;
 
 typedef struct packed {
-  CmtBaseSt base;
-} MemCmtSt;
+  WbBaseSt base;
+} MemWbSt;
 
 
 `endif

@@ -39,13 +39,13 @@ module Scheduler (
   input RobAllocRspSt rob_alloc_rsp,
 
   // freelist
-  input [`RETIRE_WIDTH - 1:0] fl_free_valid_i,
-  input [`RETIRE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] fl_free_preg_i,
+  input [`COMMIT_WIDTH - 1:0] fl_free_valid_i,
+  input [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] fl_free_preg_i,
   // rat
   input [31:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_i,
   // wake up
-  input logic [`COMMIT_WIDTH - 1:0] cmt_pdest_valid_i,
-  input [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] cmt_pdest_i,
+  input logic [`WB_WIDTH - 1:0] wb_pdest_valid_i,
+  input [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] wb_pdest_i,
 
   /* issue */
   // misc(BRU/Priv) * 1
@@ -82,7 +82,7 @@ module Scheduler (
 
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       fl_alloc_valid[i] =  schedule_req.valid[i] &
-                          |schedule_req.arch_dest[i] &
+                          |schedule_req.arch_dest[i] &  // dest valid
                            s1_ready;
     end
   end
@@ -135,14 +135,14 @@ module Scheduler (
   DqEntrySt [`DECODE_WIDTH - 1:0] dq_rdata;
 
   always_comb begin
-    s1_ready = (rob_alloc_rsp.ready & dq_write_ready) | ~(|s1_valid);
+    s1_ready = (rob_alloc_rsp.ready & dq_write_ready) | ~(|s1_sche_req.valid);
     // RAT 控制逻辑
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      rat_dest_valid[i] = s1_valid[i] & s1_dest_valid[i];
+      rat_dest_valid[i] = s1_sche_req.valid[i] & |s1_sche_req.arch_dest[i];
     end
 
     // 写入ROB
-    rob_alloc_req.valid = s1_valid;
+    rob_alloc_req.valid = s1_sche_req.valid;
     rob_alloc_req.ready = s1_ready;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       rob_alloc_req.valid[i] = s1_sche_req.valid[i];
@@ -155,9 +155,9 @@ module Scheduler (
     end
 
     // 写入分发队列
-    dq_write_valid = s1_valid;
+    dq_write_valid = s1_sche_req.valid;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      dq_wdata[i].valid = s1_valid[i];
+      dq_wdata[i].valid = s1_sche_req.valid[i];
       dq_wdata[i].pc = s1_sche_req.pc[i];
       dq_wdata[i].npc = s1_sche_req.npc[i];
       dq_wdata[i].src = s1_sche_req.src[i];
@@ -170,9 +170,6 @@ module Scheduler (
       dq_wdata[i].oc = s1_sche_req.option_code[i];
       dq_wdata[i].position_bit = rob_alloc_rsp.position_bit[i];
       dq_wdata[i].rob_idx = rob_alloc_rsp.rob_idx[i];
-`ifdef DEBUG
-      dq_wdata[i].instr = s1_sche_req.option_code[i].debug_inst;
-`endif
     end
   end
 
@@ -362,7 +359,7 @@ module Scheduler (
     .option_code_i (misc_rs_oc),
     .wr_valid_i    (misc_rs_wr_valid),
     .wr_ready_o    (misc_rs_wr_ready),
-    .cmt_pdest_i   (cmt_pdest_i),
+    .wb_pdest_i   (wb_pdest_i),
     .issue_ready_i (misc_issue_ready),
     .issue_valid_o (misc_issue_valid),
     .issue_base_o  (misc_issue_base),
@@ -383,7 +380,7 @@ module Scheduler (
     .option_code_i (alu_rs_oc),
     .wr_valid_i    (alu_rs_wr_valid),
     .wr_ready_o    (alu_rs_wr_ready),
-    .cmt_pdest_i   (cmt_pdest_i),
+    .wb_pdest_i   (wb_pdest_i),
     .issue_ready_i (alu_issue_ready),
     .issue_valid_o (alu_issue_valid),
     .issue_base_o  (alu_issue_base),
@@ -404,7 +401,7 @@ module Scheduler (
     .option_code_i (mdu_rs_oc),
     .wr_valid_i    (mdu_rs_wr_valid),
     .wr_ready_o    (mdu_rs_wr_ready),
-    .cmt_pdest_i   (cmt_pdest_i),
+    .wb_pdest_i   (wb_pdest_i),
     .issue_ready_i (issue_ready_i),
     .issue_valid_o (issue_valid_o),
     .issue_base_o  (issue_base_o),
@@ -423,7 +420,7 @@ module Scheduler (
     .option_code_i (mem_rs_oc),
     .wr_valid_i    (mem_rs_wr_valid),
     .wr_ready_o    (mem_rs_wr_ready),
-    .cmt_pdest_i   (cmt_pdest_i),
+    .wb_pdest_i   (wb_pdest_i),
     .issue_ready_i (mem_issue_ready),
     .issue_valid_o (mem_issue_valid),
     .issue_base_o  (mem_issue_base),

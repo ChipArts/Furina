@@ -43,8 +43,8 @@ parameter
   output logic [BANK_NUM - 1:0] wr_ready_o,
 
   /* wake up */
-  input logic [`COMMIT_WIDTH - 1:0] cmt_pdest_valid_i,
-  input logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] cmt_pdest_i,
+  input logic [`WB_WIDTH - 1:0] cmt_pdest_valid_i,
+  input logic [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] cmt_pdest_i,
 
   /* issue */
   input logic [BANK_NUM - 1:0] issue_ready_i,
@@ -101,7 +101,7 @@ parameter
     // wake up logic
     for (int i = 0; i < BANK_NUM; i++) begin
       for (int j = 0; j < BANK_SIZE; j++) begin
-        for (int k = 0; k < `COMMIT_WIDTH; k++) begin
+        for (int k = 0; k < `WB_WIDTH; k++) begin
           if (cmt_pdest_valid_i[k]) begin
             if (rs_mem[i][j].base.valid &&
               rs_mem[i][j].base.psrc0 == cmt_pdest_i[k]) begin

@@ -32,8 +32,8 @@ module AluPipe (
   input AluExeSt exe_i,
   output logic ready_o,
   /* commit */
-  output AluCmtSt cmt_o,
-  input cmt_ready_i
+  output AluWbSt wb_o,
+  input wb_ready_i
 );
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);
@@ -77,19 +77,19 @@ module AluPipe (
 /*================================== stage2 ===================================*/
   
   always_comb begin
-    s2_ready = cmt_ready_i | ~cmt_o.base.valid;
+    s2_ready = wb_ready_i | ~wb_o.base.valid;
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
-      cmt_o <= '0;
+      wb_o <= '0;
     end else begin
       if(s2_ready) begin
-        cmt_o.base.valid <= s1_exe.base.valid;
-        cmt_o.base.we <= s1_exe.base.valid;
-        cmt_o.base.wdata <= alu_res;
-        cmt_o.base.pdest <= s1_exe.base.pdest;
-        cmt_o.base.rob_idx <= s1_exe.base.rob_idx;
+        wb_o.base.valid <= s1_exe.base.valid;
+        wb_o.base.we <= s1_exe.base.valid;
+        wb_o.base.wdata <= alu_res;
+        wb_o.base.pdest <= s1_exe.base.pdest;
+        wb_o.base.rob_idx <= s1_exe.base.rob_idx;
       end
     end
   end

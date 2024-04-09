@@ -47,11 +47,11 @@ module MiscPipe (
   input logic [ 9:0] tlbasid_i,
   // csr read
   input logic [31:0] csr_rdata_i,
-  input logic [63:0] timer_64,
-  input logic [31:0] timer_id,
+  input logic [63:0] timer_64_i,
+  input logic [31:0] timer_id_i,
   /* commit */
-  output MiscCmtSt cmt_o,
-  input cmt_ready_i
+  output MiscWbSt wb_o,
+  input wb_ready_i
 );
 
   logic s0_ready, s1_ready, s2_ready;
@@ -81,10 +81,14 @@ module MiscPipe (
     if(~rst_n || flush_i) begin
       s1_exe <= '0;
       s1_csr_rdata <= '0;
+      s1_timer_64 <= '0;
+      s1_timer_id <= '0;
     end else begin
       if (s1_ready) begin
         s1_exe <= exe_i;
         s1_csr_rdata <= csr_rdata_i;
+        s1_timer_64 <= timer_64_i;
+        s1_timer_id <= timer_id_i;
       end
     end
   end
@@ -153,48 +157,48 @@ module MiscPipe (
 /*================================== stage2 ===================================*/
   always_comb begin
     // 没有要处理的任务 或 信息可以向下一级流动
-    s2_ready = ~cmt_o.base.valid | cmt_ready_i;
+    s2_ready = ~wb_o.base.valid | wb_ready_i;
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n || flush_i) begin
-      cmt_o <= 0;
+      wb_o <= 0;
     end else begin
       if (s2_ready) begin
-        cmt_o.PRIV_INSTR <= s1_exe.misc_oc.instr_type == `PRIV_INSTR;
-        cmt_o.br_inst <= s1_exe.misc_oc.instr_type == `BR_INSTR;
+        wb_o.PRIV_INSTR <= s1_exe.misc_oc.instr_type == `PRIV_INSTR;
+        wb_o.br_inst <= s1_exe.misc_oc.instr_type == `BR_INSTR;
 
-        cmt_o.base.valid <= s1_exe.base.valid;
-        cmt_o.base.we <= cmt_we;
-        cmt_o.base.wdata <= cmt_wdata;
-        cmt_o.base.pdest <= s1_exe.base.pdest;
-        cmt_o.base.rob_idx <= s1_exe.base.rob_idx;
+        wb_o.base.valid <= s1_exe.base.valid;
+        wb_o.base.we <= cmt_we;
+        wb_o.base.wdata <= cmt_wdata;
+        wb_o.base.pdest <= s1_exe.base.pdest;
+        wb_o.base.rob_idx <= s1_exe.base.rob_idx;
 
-        cmt_o.priv_op <= s1_exe.misc_oc.priv_op;
-        cmt_o.cache_op <= s1_exe.misc_oc.cache_op;
+        wb_o.priv_op <= s1_exe.misc_oc.priv_op;
+        wb_o.cache_op <= s1_exe.misc_oc.cache_op;
 
-        cmt_o.csr_we <= csr_we;
-        cmt_o.csr_waddr <= csr_waddr;
-        cmt_o.csr_wdata <= csr_wdata;
+        wb_o.csr_we <= csr_we;
+        wb_o.csr_waddr <= csr_waddr;
+        wb_o.csr_wdata <= csr_wdata;
 
-        cmt_o.invtlb_asid <= invtlb_asid;
-        cmt_o.invtlb_op <= s1_exe.base.imm[4:0];
-        cmt_o.tlbsrch_found <= tlbsrch_found_i;
-        cmt_o.tlbsrch_idx <= tlbsrch_idx_i;
-        cmt_o.tlbrd_ehi <= tlbehi_i;
-        cmt_o.tlbrd_elo0 <= tlbelo0_i;
-        cmt_o.tlbrd_elo1 <= tlbelo1_i;
-        cmt_o.tlbrd_idx <= tlbidx_i;
-        cmt_o.tlbrd_asid <= tlbasid_i;
+        wb_o.invtlb_asid <= invtlb_asid;
+        wb_o.invtlb_op <= s1_exe.base.imm[4:0];
+        wb_o.tlbsrch_found <= tlbsrch_found_i;
+        wb_o.tlbsrch_idx <= tlbsrch_idx_i;
+        wb_o.tlbrd_ehi <= tlbehi_i;
+        wb_o.tlbrd_elo0 <= tlbelo0_i;
+        wb_o.tlbrd_elo1 <= tlbelo1_i;
+        wb_o.tlbrd_idx <= tlbidx_i;
+        wb_o.tlbrd_asid <= tlbasid_i;
 
-        cmt_o.vaddr <= vaddr;
+        wb_o.vaddr <= vaddr;
 
-        cmt_o.br_taken <= br_taken;
-        cmt_o.br_redirect <= br_redirect;
-        cmt_o.br_target <= br_target;
+        wb_o.br_taken <= br_taken;
+        wb_o.br_redirect <= br_redirect;
+        wb_o.br_target <= br_target;
 `ifdef DEBUG
-        cmt_o.csr_rdata_diff <= s1_csr_rdata;
-        cmt_o.timer_64_diff <= s1_timer_64;
+        wb_o.csr_rdata_diff <= s1_csr_rdata;
+        wb_o.timer_64_diff <= s1_timer_64;
 `endif
       end
     end

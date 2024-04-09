@@ -121,7 +121,7 @@ typedef struct packed {
   logic [31:0] store_data;
   logic [31:0] mem_paddr;
   logic [31:0] mem_vaddr;
-} RobCmtReqSt;
+} RobWbReqSt;
 `else
 typedef struct packed {
   logic valid;
@@ -132,18 +132,18 @@ typedef struct packed {
   ExcCodeType ecode;
   SubEcodeType sub_ecode;
   logic [`PROC_VALEN - 1:0] error_vaddr;
-} RobCmtReqSt;
+} RobWbReqSt;
 `endif
 
 
 typedef struct packed {
   logic ready;
-} RobCmtRspSt;
+} RobWbRspSt;
 
 typedef struct packed {
-  logic [`RETIRE_WIDTH - 1:0] valid;
-  RobEntrySt [`RETIRE_WIDTH - 1:0] rob_entry;
-} RobRetireSt;
+  logic [`COMMIT_WIDTH - 1:0] valid;
+  RobEntrySt [`COMMIT_WIDTH - 1:0] rob_entry;
+} RobCmtSt;
 
 
 `endif  // _REORDER_BUFFER_SVH_

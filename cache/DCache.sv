@@ -39,8 +39,7 @@ module DCache (
   // to from mmu
   output MmuAddrTransReqSt mmu_req,
   input MmuAddrTransRspSt mmu_rsp,
-  // to from rob
-  input [$clog2(`ROB_DEPTH) - 1:0] oldest_rob_idx_i,
+  // axi bus
   AXI4.Master axi4_mst
 );
 

@@ -33,9 +33,9 @@ parameter
   input logic flush_i,
   input logic [`DECODE_WIDTH - 1:0] alloc_valid_i,
   output logic alloc_ready_o,
-  input logic [`RETIRE_WIDTH - 1:0] free_valid_i,
+  input logic [`COMMIT_WIDTH - 1:0] free_valid_i,
   output logic free_ready_o,
-  input logic [`RETIRE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] free_preg_i,
+  input logic [`COMMIT_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] free_preg_i,
   output logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] preg_o
 );
   
@@ -47,9 +47,9 @@ parameter
 
   // read/write logic
   logic [$clog2(`DECODE_WIDTH + 1) - 1:0] alloc_req_cnt;
-  logic [$clog2(`RETIRE_WIDTH + 1) - 1:0] free_req_cnt;
+  logic [$clog2(`COMMIT_WIDTH + 1) - 1:0] free_req_cnt;
   logic [$clog2(`DECODE_WIDTH) - 1:0] rd_preg_idx;
-  logic [$clog2(`RETIRE_WIDTH) - 1:0] wr_preg_idx;
+  logic [$clog2(`COMMIT_WIDTH) - 1:0] wr_preg_idx;
 
 
   always_comb begin
@@ -78,7 +78,7 @@ parameter
     // 根据Free信号更新freelist
     free_list_n = free_list;
     wr_preg_idx = tail;
-    for (int i = 0; i < `RETIRE_WIDTH; i++) begin
+    for (int i = 0; i < `COMMIT_WIDTH; i++) begin
       if (free_valid_i[i]) begin
         free_list_n[wr_preg_idx] = free_preg_i[i];
         wr_preg_idx = wr_preg_idx < PHY_REG_NUM - 1 ? wr_preg_idx + 1 : 0;
