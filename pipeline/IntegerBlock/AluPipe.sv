@@ -86,7 +86,7 @@ module AluPipe (
     end else begin
       if(s2_ready) begin
         wb_o.base.valid <= s1_exe.base.valid;
-        wb_o.base.we <= s1_exe.base.valid;
+        wb_o.base.we <= s1_exe.base.valid & s1_exe.base.pdest_valid;
         wb_o.base.wdata <= alu_res;
         wb_o.base.pdest <= s1_exe.base.pdest;
         wb_o.base.rob_idx <= s1_exe.base.rob_idx;

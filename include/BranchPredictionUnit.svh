@@ -30,12 +30,12 @@ typedef struct packed {
   logic next;  // 下一个pc
   logic redirect;  // 重定向请求
   logic [`PROC_VALEN:0] target;
-} BPU_ReqSt;
+} BpuReqSt;
 
 
 typedef struct packed {
   logic [31:0] pc;
   logic [`FETCH_WIDTH - 1:0] valid;  // 表明pc~pc+7中哪几个是有效的
-} BPU_RspSt;
+} BpuRspSt;
 
 `endif  // _BRANCH_PREDICTION_UNIT_SVH_

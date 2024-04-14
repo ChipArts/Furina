@@ -30,30 +30,42 @@
 module BranchPredictionUnit (
   input logic clk,    // Clock
   input logic a_rst_n,  // Asynchronous reset active low
-  input BPU_ReqSt bpu_req,
-  output BPU_RspSt bpu_rsp
+  input BpuReqSt bpu_req,
+  output BpuRspSt bpu_rsp
 );
 
-  `RESET_LOGIC(clk,  a_rst_n, s_rst_n);
+  `RESET_LOGIC(clk,  a_rst_n, rst_n);
+  localparam NPC_OFS = $clog2(`FETCH_WIDTH) + 2;
 
 `ifdef NPC
-  logic [31:0] pc;
-  always @(posedge clk or negedge s_rst_n) begin
-    if (!s_rst_n) begin
-      pc <= 32'h1c00_0000;
+  logic [31:0] pc, npc;
+
+  always_comb begin
+    npc = pc;
+
+    if (bpu_req.redirect) begin
+      npc = bpu_req.target;
+    end else begin
+      npc = {pc[31:NPC_OFS] + 1, {NPC_OFS{1'b0}}};
     end
-    else begin
-      if (bpu_req_st_i.redirect) begin
-        pc <= bpu_req_i.target;
-      end else begin
-        if (bpu_req_st_i.next) begin
-          pc <= pc + (`FETCH_WIDTH << 2);
-        end
+
+    bpu_rsp.pc = pc;
+    bpu_rsp.valid = '1 & {`FETCH_WIDTH{bpu_req.next}};
+    for (int i = 0; i < `FETCH_WIDTH; i++) begin
+      if (i < pc[NPC_OFS - 1:2]) begin
+        bpu_rsp.valid[i] = '0;
       end
     end
   end
 
-  assign bpu_rsp_st_o.valid = '1;
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      pc <= 32'h1c00_0000;
+    end
+    else begin
+      pc <= npc;
+    end
+  end
 `else
 // TODO BPU
 `endif

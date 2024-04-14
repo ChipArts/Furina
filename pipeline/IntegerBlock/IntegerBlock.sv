@@ -46,6 +46,7 @@ module IntegerBlock (
   output logic tlbsrch_valid_o,
   input logic tlbsrch_found_i,
   input logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbsrch_idx_i,
+  output logic tlbrd_valid_o,
   input logic [31:0] tlbehi_i ,
   input logic [31:0] tlbelo0_i,
   input logic [31:0] tlbelo1_i,

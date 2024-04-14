@@ -37,7 +37,7 @@
 //       |       ICacheIndexOffset
 //       ICacheTagOffset
 // 地址偏移
-`define ICACHE_IDX_OFFSET $clog2(`ICACHE_SIZE / `DCACHE_WAY_NUM / `ICACHE_BLOCK_SIZE)
+`define ICACHE_IDX_OFFSET $clog2(`ICACHE_BLOCK_SIZE)
 `define ICACHE_TAG_OFFSET $clog2(`ICACHE_SIZE / `DCACHE_WAY_NUM)
 // 地址位宽
 `define ICACHE_OFS_WIDTH `ICACHE_IDX_OFFSET
@@ -54,6 +54,7 @@ typedef struct packed {
   logic [`FETCH_WIDTH - 1:0] valid;  // 请求有效
   logic ready;  // 请求方可接收相应(暂时无用)
   logic [`PROC_VALEN - 1:0] vaddr;  // 请求地址
+  logic [`PROC_VALEN - 1:0] npc;
 } ICacheReqSt;
 
 typedef struct packed {
@@ -61,6 +62,7 @@ typedef struct packed {
   logic ready;  // 接收fetch请求
 
   logic [`FETCH_WIDTH - 1:0][`PROC_VALEN - 1:0] vaddr;
+  logic [`FETCH_WIDTH - 1:0][`PROC_VALEN - 1:0] npc;
   logic [`FETCH_WIDTH - 1:0][31:0] instr;  // 指令
   ExcpSt excp;
 } ICacheRspSt;
@@ -68,11 +70,17 @@ typedef struct packed {
 typedef struct packed {
   logic valid;
   logic ready;
+  logic [`PROC_VALEN - 1:0] vaddr;
+  logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
+  logic [4:3] cacop_mode;
 } IcacopReqSt;
 
 typedef struct packed {
   logic valid;
   logic ready;
+  ExcpSt excp;
+  logic [`PROC_VALEN - 1:0] vaddr;
+  logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
 } IcacopRspSt;
 
 /* DCache */
@@ -86,7 +94,7 @@ typedef struct packed {
 // |     DCacheTagOffset
 // VALEN
 // 地址偏移
-`define DCACHE_IDX_OFFSET $clog2(`DCACHE_SIZE / `DCACHE_WAY_NUM / `DCACHE_BLOCK_SIZE)
+`define DCACHE_IDX_OFFSET $clog2(`DCACHE_BLOCK_SIZE)
 `define DCACHE_TAG_OFFSET $clog2(`DCACHE_SIZE / `DCACHE_WAY_NUM)
 // 地址位宽
 `define DCACHE_OFS_WIDTH `DCACHE_IDX_OFFSET
@@ -106,10 +114,14 @@ typedef struct packed {
 typedef struct packed {
   // stage 0;
   logic                     valid;
-  MemType                   mem_type;
+  MemOpType                 mem_op;
+  logic [4:0]               code;  // for cacop and preld
+  logic                     llbit;
+  logic                     micro;
   logic [`PROC_VALEN - 1:0] vaddr;
   AlignOpType               align_op;
   logic [31:0]              wdata;
+  logic                     pdest_valid;
   logic [$clog2(`PHY_REG_NUM) - 1:0] pdest;
   logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
 
@@ -123,11 +135,17 @@ typedef struct packed {
   // stage 2
   logic valid;
   logic [31:0] rdata;
-  MemType mem_type;
+  MemOpType mem_op;
+  logic micro;
+  logic llbit;
+  logic pdest_valid;
   logic [$clog2(`PHY_REG_NUM) - 1:0] pdest;
   logic [$clog2(`ROB_DEPTH) - 1:0] rob_idx;
-  logic exception;  // 是否异常
-  ExcCodeType ecode;
+  ExcpSt excp;
+  logic [`PROC_VALEN - 1:0] vaddr;
+  // diff
+  logic [`PROC_VALEN - 1:0] paddr;
+  logic [31:0] store_data;
 } DCacheRspSt;
 
 

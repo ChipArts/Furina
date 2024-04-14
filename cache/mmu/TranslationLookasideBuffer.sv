@@ -143,17 +143,22 @@ module TranslationLookasideBuffer (
 
       tlb_read_rsp.tlb_entry_st <= '0;
     end else begin
-      tlb_search_rsp.found <= found;
-      tlb_search_rsp.idx <= matched_idx;
-      tlb_search_rsp.page_size <= matched_entry.page_size;
-      tlb_search_rsp.valid <= matched_entry.valid[parity];
-      tlb_search_rsp.dirty <= matched_entry.dirty[parity];
-      tlb_search_rsp.ppn <= matched_entry.ppn[parity];
-      tlb_search_rsp.mat <= matched_entry.mat[parity];
-      tlb_search_rsp.plv <= matched_entry.plv[parity];
+      if (tlb_search_req.valid) begin
+        tlb_search_rsp.found <= found;
+        tlb_search_rsp.idx <= matched_idx;
+        tlb_search_rsp.page_size <= matched_entry.page_size;
+        tlb_search_rsp.valid <= matched_entry.valid[parity];
+        tlb_search_rsp.dirty <= matched_entry.dirty[parity];
+        tlb_search_rsp.ppn <= matched_entry.ppn[parity];
+        tlb_search_rsp.mat <= matched_entry.mat[parity];
+        tlb_search_rsp.plv <= matched_entry.plv[parity];
+      end
       
-      tlb_read_rsp.tlb_entry_st <= tlb_entries[tlb_read_req.idx];
+      if (tlb_read_req.valid) begin
+        tlb_read_rsp.tlb_entry_st <= tlb_entries[tlb_read_req.idx];
+      end
     end
+
   end
 
 

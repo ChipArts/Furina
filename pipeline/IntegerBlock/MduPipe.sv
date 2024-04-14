@@ -115,7 +115,7 @@ module MduPipe (
     end else begin
       if (wb_ready_i) begin
         wb_o.base.valid <= mult_rsp.valid | div_rsp.valid;
-        wb_o.base.we <= mult_rsp.valid | div_rsp.valid;
+        wb_o.base.we <= mult_rsp.valid | div_rsp.valid & s1_exe.base.pdest_valid;
         wb_o.base.pdest <= s1_exe.base.pdest;
         wb_o.base.wdata <= mdu_res;
       end

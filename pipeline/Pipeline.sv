@@ -39,17 +39,30 @@ module Pipeline (
 
   `RESET_LOGIC(clk, a_rst_n, rst_n);
 /*=============================== Signal Define ===============================*/
-  logic glo_flush;  // 由退休的异常指令产生
+  /* pipeline flush */
+  logic global_flush;
+  // commit 阶段产生
+  logic excp_flush;      // 异常
+  logic tlbrefill_flush; // TLB充填异常（此时excp_flush也会拉高，由于入口特殊故单独列出）
+  logic redirect_flush;  // 分支预测失败
+  // write back 阶段产生（但是commit阶段才真正flush）
+  logic ertn_flush;      // ERET返回（返回地址为csr_era）
+  logic refetch_flush;   // 重取指令（ibar、priv、icacop、idel）
+  logic ibar_flush;      // IBAR指令
+  logic priv_flush;      // 特权指令（csr_rd修改可撤回，不需要flush）
+  logic icacop_flush;    // ICache操作
+  logic idel_flush;      // IDLE指令
+
   /* Branch Prediction Unit */
-  BPU_ReqSt bpu_req_st;
-  BPU_RspSt bpu_rsp_st;
+  BpuReqSt bpu_req;
+  BpuRspSt bpu_rsp;
 
   /* Fetch Address Queue */
-  FAQ_PushReqSt faq_push_req_st;
-  FAQ_PopReqSt faq_pop_req_st;
-  FAQ_PushRspSt faq_push_rsp_st;
-  FAQ_PopRspSt faq_pop_rsp_st;
-  logic faq_flush_i;
+  // FAQ_PushReqSt faq_push_req_st;
+  // FAQ_PopReqSt faq_pop_req_st;
+  // FAQ_PushRspSt faq_push_rsp_st;
+  // FAQ_PopRspSt faq_pop_rsp_st;
+  // logic faq_flush_i;
 
   /* ICache */
   logic icache_flush_i;
@@ -61,22 +74,21 @@ module Pipeline (
   IcacopRspSt icacop_rsp;
 
   /* Pre Decoder */
-  PreOptionCodeSt [`FETCH_WIDTH - 1:0] pre_oc;
+  ICacheRspSt icache_rsp_buffer;
+  PreOptionCodeSt [`FETCH_WIDTH - 1:0] pre_option_code_o;
   
 
   /* Instruction Buffer */
   logic ibuf_flush_i;
-  logic ibuf_write_valid;
-  logic ibuf_write_ready;
-  logic [$clog2(`FETCH_WIDTH) - 1:0] ibuf_write_num;
-  IbufDataSt [`FETCH_WIDTH - 1:0] ibuf_write_data;
-  logic [$clog2(`DECODE_WIDTH) - 1:0] ibuf_read_num;
-  logic [`DECODE_WIDTH - 1:0]ibuf_read_valid;
-  logic ibuf_read_ready;
-  IbufDataSt [`DECODE_WIDTH - 1:0] ibuf_read_data;
+  logic [`FETCH_WIDTH - 1:0] ibuf_write_valid_i;
+  logic ibuf_write_ready_o;
+  IbufDataSt [`FETCH_WIDTH - 1:0] ibuf_write_data_i;
+  logic [`DECODE_WIDTH - 1:0] ibuf_read_valid_o;
+  logic [`DECODE_WIDTH - 1:0] ibuf_read_ready_i;
+  IbufDataSt [`DECODE_WIDTH - 1:0] ibuf_read_data_o;
 
   /* Decoder */
-  OptionCodeSt [`DECODE_WIDTH - 1:0] decoder_option_code;
+  OptionCodeSt [`DECODE_WIDTH - 1:0] decoder_option_code_o;
   logic [`DECODE_WIDTH - 1:0][4:0] decoder_src0;
   logic [`DECODE_WIDTH - 1:0][4:0] decoder_src1;
   logic [`DECODE_WIDTH - 1:0][4:0] decoder_dest;
@@ -127,6 +139,7 @@ module Pipeline (
   logic iblk_tlbsrch_valid_o;
   logic iblk_tlbsrch_found_i;
   logic [$clog2(`TLB_ENTRY_NUM) - 1:0] iblk_tlbsrch_idx_i;
+  logic iblk_tlbrd_valid_o;
   logic [31:0] iblk_tlbehi_i;
   logic [31:0] iblk_tlbelo0_i;
   logic [31:0] iblk_tlbelo1_i;
@@ -156,16 +169,26 @@ module Pipeline (
   logic rob_flush_i;
   RobAllocReqSt rob_alloc_req;
   RobAllocRspSt rob_alloc_rsp;
-  RobWbReqSt [`WB_WIDTH - 1:0] rob_wb_req;
-  RobWbRspSt [`WB_WIDTH - 1:0] rob_wb_rsp;
+  MiscWbSt rob_misc_wb_req;
+  AluWbSt [1:0] rob_alu_wb_req;
+  MduWbSt rob_mdu_wb_req;
+  MemWbSt rob_mem_wb_req;
+  RobWbRspSt rob_misc_wb_rsp;
+  RobWbRspSt [1:0] rob_alu_wb_rsp;
+  RobWbRspSt rob_mdu_wb_rsp;
+  RobWbRspSt rob_mem_wb_rsp;
   RobCmtSt rob_cmt_o;
-  logic [$clog2(`ROB_DEPTH) - 1:0] rob_oldest_idx_o;
 
   /* commit */
   logic [31:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_o;
-  logic [`DECODE_WIDTH - 1:0] arch_rat_dest_valid_i;
-  logic [`DECODE_WIDTH - 1:0][4:0] arch_rat_dest_i;
-  logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_preg_i;
+  logic [`COMMIT_WIDTH - 1:0] arch_rat_dest_valid_i;
+  logic [`COMMIT_WIDTH - 1:0][4:0] arch_rat_dest_i;
+  logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_preg_i;
+
+  logic [`PHY_REG_NUM - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_free_list_o;
+  logic [`COMMIT_WIDTH - 1:0] arch_fl_alloc_valid_i;
+  logic [`COMMIT_WIDTH - 1:0] arch_fl_free_valid_i;
+  logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_fl_free_preg_i;
 
   /* Memory Management Unit */
   logic [9:0]  mmu_csr_asid_i;
@@ -191,6 +214,7 @@ module Pipeline (
   logic [31:0] mmu_tlbidx_i;
   logic [ 5:0] mmu_ecode_i;
 
+  logic        mmu_tlbrd_en_i;
   logic [31:0] mmu_tlbehi_o;
   logic [31:0] mmu_tlbelo0_o;
   logic [31:0] mmu_tlbelo1_o;
@@ -282,46 +306,64 @@ module Pipeline (
   logic [31:0]  csr_pgdh_diff;
 
 /*=========================== Branch Prediction Unit ==========================*/
+  logic idel_lock;
+  always_ff @(posedge clk or negedge rst_n) begin
+    if(~rst_n) begin
+      idel_lock <= 0;
+    end else begin
+      if (idel_flush && !csr_has_int) begin
+        idel_lock <= '1;
+      end else if (csr_has_int) begin
+        idel_lock <= '0;
+      end
+    end
+  end
+  
   always_comb begin
-    bpu_req_st.next = faq_push_rsp_st.ready;
-    bpu_req_st.redirect = glo_flush;
-    bpu_req_st.target = rob_cmt_o.rob_entry[0].br_target;
+    bpu_req.next = icache_rsp.ready & ~idel_lock;
+    bpu_req.redirect = global_flush;
+    bpu_req.target = tlbrefill_flush ? csr_tlbrentry_out :
+                     excp_flush      ? csr_eentry_out :
+                     redirect_flush  ? rob_cmt_o.rob_entry[0].br_target :
+                     ertn_flush      ? csr_era_out :
+                     refetch_flush   ? rob_cmt_o.rob_entry[0].pc + 4    :
+                     32'h1c00_0000;
   end
 
   BranchPredictionUnit U_BranchPredictionUnit (
     .clk(clk), 
     .a_rst_n(rst_n), 
-    .bpu_req(bpu_req_st), 
-    .bpu_rsp(bpu_rsp_st)
+    .bpu_req(bpu_req), 
+    .bpu_rsp(bpu_rsp)
   );
 
 /*============================ Fetch Address Queue ============================*/
-  always_comb begin
-    faq_flush_i = glo_flush;
+  // always_comb begin
+  //   faq_flush_i = glo_flush;
 
-    faq_push_req_st.valid = bpu_rsp_st.valid;
-    faq_push_req_st.vaddr = bpu_rsp_st.pc;
+  //   faq_push_req_st.valid = bpu_rsp_st.valid;
+  //   faq_push_req_st.vaddr = bpu_rsp_st.pc;
 
-    faq_pop_req_st.valid = icache_fetch_rsp_st.ready;
-    faq_pop_req_st.ready = icache_fetch_rsp_st.ready;
-  end
+  //   faq_pop_req_st.valid = icache_fetch_rsp_st.ready;
+  //   faq_pop_req_st.ready = icache_fetch_rsp_st.ready;
+  // end
 
-  FetchAddressQueue U_FetchAddressQueue (
-    .clk         (clk),
-    .a_rst_n     (rst_n),
-    .flush_i     (faq_flush_i),
-    .push_req_st (faq_push_req_st),
-    .pop_req_st  (faq_pop_req_st),
-    .push_rsp_st (faq_push_rsp_st),
-    .pop_rsp_st  (faq_pop_rsp_st)
-  );
+  // FetchAddressQueue U_FetchAddressQueue (
+  //   .clk         (clk),
+  //   .a_rst_n     (rst_n),
+  //   .flush_i     (faq_flush_i),
+  //   .push_req_st (faq_push_req_st),
+  //   .pop_req_st  (faq_pop_req_st),
+  //   .push_rsp_st (faq_push_rsp_st),
+  //   .pop_rsp_st  (faq_pop_rsp_st)
+  // );
 
 /*========================== Instruction Fetch Unit ===========================*/
   always_comb begin
-    icache_flush_i = glo_flush;
+    icache_flush_i = global_flush;
 
-    icache_req.valid = faq_pop_rsp_st.valid;
-    icache_req.vaddr = faq_pop_rsp_st.vaddr;
+    icache_req.valid = bpu_rsp.valid;
+    icache_req.vaddr = bpu_rsp.pc;
     icache_addr_trans_rsp = mmu_addr_trans_rsp[0];
 
     icacop_req.valid = 0;
@@ -342,30 +384,41 @@ module Pipeline (
   );
 
 /*================================ Pre Decoder ================================*/
+  always_ff @(posedge clk or negedge rst_n) begin
+    if(~rst_n || global_flush) begin
+      icache_rsp_buffer <= 0;
+    end else begin
+      icache_rsp_buffer <= icache_rsp;
+    end
+  end
   
   // TODO: 实现分支预测的pre检查
   for (genvar i = 0; i < `FETCH_WIDTH; i++) begin
-    PreDecoder inst_PreDecoder (.instr(instr), .pre_oc(pre_oc));
+    PreDecoder inst_PreDecoder (.instr_i(icache_rsp_buffer[i].instr), .pre_option_code_o(pre_option_code_o));
   end
 
 
 /*============================ Instruction Buffer =============================*/
+  // 在此处进行队列压缩，剔除无效的指令
+  logic [$clog2(`FETCH_WIDTH) - 1:0] ibuf_idx;
   always_comb begin
-    ibuf_flush_i = glo_flush;
+    ibuf_flush_i = global_flush;
 
-    ibuf_write_valid = |icache_fetch_rsp_st.valid;
-    ibuf_write_num = $countones(icache_rsp.valid);
+    ibuf_idx = '0;
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
-      ibuf_write_data[i].valid = icache_rsp.valid[i];
-      ibuf_write_data[i].instr = icache_rsp.instr[i];
-      ibuf_write_data[i].pc = icache_rsp.pc[i];
-      ibuf_write_data[i].npc = icache_rsp.npc[i];
-      ibuf_write_data[i].pre_oc = pre_oc[i];
-      ibuf_write_data[i].excp = icache_rsp.excp;
+      if (icache_rsp_buffer[i].valid) begin
+        ibuf_write_valid_i[ibuf_idx] = 1'b1;
+        ibuf_write_data_i[ibuf_idx].valid = 1'b1;
+        ibuf_write_data_i[ibuf_idx].pc = icache_rsp_buffer[i].pc;
+        ibuf_write_data_i[ibuf_idx].npc = icache_rsp_buffer[i].npc;
+        ibuf_write_data_i[ibuf_idx].instr = icache_rsp_buffer[i].instr;
+        ibuf_write_data_i[ibuf_idx].excp = icache_rsp_buffer[i].excp;
+        ibuf_write_data_i[ibuf_idx].pre_oc = pre_option_code_o[i];
+        ibuf_idx = ibuf_idx + 1;
+      end
     end
 
-    ibuf_read_ready = sche_schedule_rsp.ready;
-    ibuf_read_num = `DECODE_WIDTH;
+    ibuf_read_ready_i = {`DECODE_WIDTH{sche_rsp.ready}};
   end
 
   SyncMultiChannelFIFO #(
@@ -378,20 +431,18 @@ module Pipeline (
     .clk           (clk),
     .a_rst_n       (rst_n),
     .flush_i       (ibuf_flush_i),
-    .write_valid_i (ibuf_write_valid),
-    .write_ready_o (ibuf_write_ready),
-    .write_num_i   (ibuf_write_num),
-    .write_data_i  (ibuf_write_data),
-    .read_valid_o  (ibuf_read_valid),
-    .read_ready_i  (ibuf_read_ready),
-    .read_num_i    (ibuf_read_num),
-    .read_data_o   (ibuf_read_data)
+    .write_valid_i (ibuf_write_valid_i),
+    .write_ready_o (ibuf_write_ready_o),
+    .write_data_i  (ibuf_write_data_i),
+    .read_valid_o  (ibuf_read_valid_o),
+    .read_ready_i  (ibuf_read_ready_i),
+    .read_data_o   (ibuf_read_data_o)
   );
 
 /*================================== Decoder ==================================*/
   // 对控制相关信息解码
   for (genvar i = 0; i < `DECODE_WIDTH; i++) begin
-    Decoder inst_Decoder (.instr_i(ibuf_read_data[i].instr), .option_code_o(decoder_option_code[i]));
+    Decoder inst_Decoder (.instr_i(ibuf_read_data[i].instr), .option_code_o(decoder_option_code_o[i]));
   end
 
   // 处理特殊的解码
@@ -399,19 +450,19 @@ module Pipeline (
   always_comb begin
     // 三个CSR特权指令
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      if (decoder_option_code[i].priv_op == `PRIV_CSR_XCHG) begin
+      if (decoder_option_code[i].misc_op == `PRIV_CSR_XCHG) begin
         case (ibuf_read_data[i].instr[9:5])
-          5'b0 : decoder_option_code[i].priv_op = `PRIV_CSR_READ;
-          5'b1 : decoder_option_code[i].priv_op = `PRIV_CSR_WRITE;
-          default : decoder_option_code[i].priv_op = `PRIV_CSR_XCHG;
+          5'b0 : decoder_option_code_o[i].misc_op = `PRIV_CSR_READ;
+          5'b1 : decoder_option_code_o[i].misc_op = `PRIV_CSR_WRITE;
+          default : decoder_option_code_o[i].misc_op = `PRIV_CSR_XCHG;
         endcase
       end
     end
     // 两个rdtimel指令
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      if (decoder_option_code[i].priv_op == `PRIV_RDCNTVL) begin
+      if (decoder_option_code[i].misc_op == `MISC_RDCNTVL) begin
         if (ibuf_read_data[i].instr[9:5] != 0) begin
-          decoder_option_code[i].priv_op = `PRIV_RDCNTID;
+          decoder_option_code_o[i].misc_op = `MISC_RDCNTID;
         end
       end
     end
@@ -447,16 +498,16 @@ module Pipeline (
 /*================================= Scheduler ================================*/
   /* Dispatch/Wake up/Select */
   always_comb begin
-    sche_flush_i = glo_flush;
+    sche_flush_i = global_flush;
 
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      sche_req.valid[i] = ibuf_read_valid[i];
+      sche_req.valid[i] = ibuf_read_valid_o[i];
       sche_req.pc[i] = ibuf_read_data[i].pc;
       sche_req.npc[i] = ibuf_read_data[i].npc;
       sche_req.arch_src0[i] = decoder_src0[i];
       sche_req.arch_src1[i] = decoder_src1[i];
       sche_req.arch_dest[i] = decoder_dest[i];
-      sche_req.option_code[i] = decoder_option_code[i];
+      sche_req.option_code[i] = decoder_option_code_o[i];
       sche_req.excp[i] = ibuf_read_data[i].excp;
     end
 
@@ -595,81 +646,46 @@ module Pipeline (
   end
 
   // imm ext
-  function logic[31:0] imm_ext(logic[25:0] src, ImmType imm_type, logic[31:0] pc);
-    logic [31:0] imm;
-    case (imm_type)
-      `IMM_UI5  : imm = {27'b0 ,src[14:10]};
-      `IMM_UI12 : imm = {20'b0, src[21:10]};
-      `IMM_SI12 : imm = {{20{src[21]}}, src[21:10]};
-      `IMM_SI14 : imm = {{18{src[23]}}, src[23:10]};
-      `IMM_SI16 : imm = {{16{src[25]}}, src[25:10]};
-      `IMM_SI20 : imm = {{12{src[24]}}, src[24: 5]};
-      `IMM_SI26 : imm = {{ 6{src[9]}} , src[9: 0], src[25:10]};
-      `IMM_PC   : imm = pc + {{12{src[24]}}, src[24: 5]};
-      default : imm = '0;
-    endcase
-  endfunction : imm_ext
+  // 读mmu信息
 
 /*=============================== Integer Block ===============================*/
   always_comb begin
-    iblk_flush_i = glo_flush;
+    iblk_flush_i = global_flush;
     // 杂项指令在成为最旧指令时才执行
-    iblk_misc_exe_i.base = '{valid: sche_misc_issue.valid, 
-                           imm: imm_ext(sche_misc_issue_o.base_info.src,
-                                        sche_misc_issue_o.base_info.imm_type,
-                                        '0),  // 不能存在IMM_PC情况
-                           src0: rf_rdata_o[0],
-                           src1: rf_rdata_o[1],
-                           pdest: sche_misc_issue_o.base_info.pdest, 
-                           rob_idx: sche_misc_issue_o.base_info.rob_idx,
-                           excp: sche_misc_issue_o.base_info.excp};
+    iblk_misc_exe_i.base = is2exe(sche_misc_issue_o, rf_rdata_o[1], rf_rdata_o[0]);
     iblk_misc_exe_i.misc_oc = sche_misc_issue.misc_oc;
     iblk_misc_exe_i.pc = sche_misc_issue.base_info.pc;
     iblk_misc_exe_i.npc = sche_misc_issue.base_info.npc;
 
     // 第一条ALU执行pipe
-    iblk_alu_exe_i[0].base = '{valid: sche_alu_issue[0].base_info.valid, 
-                                imm: imm_ext(sche_alu_issue_o[0].base_info.src,
-                                             sche_alu_issue_o[0].base_info.imm_type,
-                                             sche_alu_issue_o[0].base_info.pc),
-                                src0: rf_rdata_o[2],
-                                src1: rf_rdata_o[3],
-                                pdest: sche_alu_issue_o[0].base_info.pdest, 
-                                rob_idx: sche_alu_issue_o[0].base_info.rob_idx, 
-                                excp: sche_alu_issue_o[0].base_info.excp};
+    iblk_alu_exe_i[0].base = is2exe(sche_alu_issue_o[0], rf_rdata_o[3], rf_rdata_o[2]);
     iblk_alu_exe_i[0].alu_oc = sche_alu_issue[0].alu_oc;
 
     // 第二条ALU执行pipe
-    iblk_alu_exe_i[1].base = '{valid: sche_alu_issue[1].base_info.valid, 
-                                imm: imm_ext(sche_alu_issue_o[1].base_info.src,
-                                             sche_alu_issue_o[1].base_info.imm_type,
-                                             sche_alu_issue_o[1].base_info.pc),
-                                src0: rf_rdata_o[4],
-                                src1: rf_rdata_o[5],
-                                pdest: sche_alu_issue_o[1].base_info.pdest, 
-                                rob_idx: sche_alu_issue_o[1].base_info.rob_idx, 
-                                excp: sche_alu_issue_o[1].base_info.excp};
+    iblk_alu_exe_i[1].base = is2exe(sche_alu_issue_o[0], rf_rdata_o[5], rf_rdata_o[4]);
     iblk_alu_exe_i[1].alu_oc = sche_alu_issue[1].alu_oc;
 
     // 乘除法执行pipe   
-    iblk_mdu_exe_i.base = '{valid: sche_mdu_issue.base_info.valid, 
-                             imm: imm_ext(sche_mdu_issue_o.base_info.src,
-                                          sche_mdu_issue_o.base_info.imm_type,
-                                          sche_mdu_issue_o.base_info.pc),
-                             src0: rf_rdata_o[6],
-                             src1: rf_rdata_o[7],
-                             pdest: sche_mdu_issue_o.base_info.pdest, 
-                             rob_idx: sche_mdu_issue_o.base_info.rob_idx, 
-                             excp: sche_mdu_issue_o.base_info.excp};
+    iblk_mdu_exe_i.base = is2exe(sche_mdu_issue_o, rf_rdata_o[7], rf_rdata_o[6]);
     iblk_mdu_exe_i.mdu_oc = sche_mdu_issue.mdu_oc;
 
     iblk_csr_rdata_i = csr_rd_data;
     iblk_tlbsrch_found_i = mmu_tlbsrch_found_o;
     iblk_tlbsrch_idx_i = mmu_tlbsrch_idx_o;
+    
+    iblk_tlbehi_i = mmu_tlbehi_o;
+    iblk_tlbelo0_i = mmu_tlbelo0_o;
+    iblk_tlbelo1_i = mmu_tlbelo1_o;
+    iblk_tlbidx_i = mmu_tlbidx_o;
+    iblk_tlbasid_i = mmu_tlbasid_o;
+
+    iblk_timer_64_i = csr_timer_64_out;
+    iblk_timer_id_i = csr_tid_out;
+    iblk_csr_rdata_i = csr_rd_data;
+
 
     // 特权指令在成为最旧指令时才执行
-    iblk_misc_wb_ready_i = ~iblk_misc_wb_o.priv_instr |
-                            iblk_misc_wb_o.base.rob_idx == rob_oldest_idx_o;
+    iblk_misc_wb_ready_i = rob_misc_wb_rsp.ready;
     iblk_alu_wb_ready_i = '1;
     iblk_mdu_wb_ready_i = '1;
   end
@@ -687,14 +703,18 @@ module Pipeline (
     .mdu_exe_i       (iblk_mdu_exe_i),
     .mdu_ready_o     (iblk_mdu_ready_o),
     /* other exe info */
+    // tlbsrch
     .tlbsrch_valid_o (iblk_tlbsrch_valid_o),
     .tlbsrch_found_i (iblk_tlbsrch_found_i),
     .tlbsrch_idx_i   (iblk_tlbsrch_idx_i),
+    // tlbrd
+    .tlbrd_valid_o   (iblk_tlbrd_valid_o),
     .tlbehi_i        (iblk_tlbehi_i),
     .tlbelo0_i       (iblk_tlbelo0_i),
     .tlbelo1_i       (iblk_tlbelo1_i),
     .tlbidx_i        (iblk_tlbidx_i),
     .tlbasid_i       (iblk_tlbasid_i),
+    // csr data
     .timer_64_i      (iblk_timer_64_i),
     .timer_id_i      (iblk_timer_id_i),
     .csr_rdata_i     (iblk_csr_rdata_i),
@@ -711,22 +731,16 @@ module Pipeline (
 
 /*=============================== Memory Block ================================*/
   always_comb begin
-    mblk_flush_i = glo_flush;
+    mblk_flush_i = global_flush;
 
-    mblk_exe_i.base = '{valid: sche_mem_issue_o.base_info.valid, 
-                         imm: imm_ext(sche_mem_issue_o.base_info.src,
-                                      sche_mem_issue_o.base_info.imm_type,
-                                      '0),
-                         src0: rf_rdata_o[8],
-                         src1: rf_rdata_o[9],
-                         pdest: sche_mem_issue_o.base_info.pdest, 
-                         rob_idx: sche_mem_issue_o.base_info.rob_idx, 
-                         excp: sche_mem_issue_o.base_info.excp};
-    mblk_exe_i.mem_oc = sche_mem_issue.mem_oc;
+    mblk_exe_i.base = is2exe(sche_mem_issue_o, rf_rdata_o[9], rf_rdata_o[8]);
+    mblk_exe_i.mem_oc = sche_mem_issue_o.mem_oc;
+    mblk_exe_i.code = sche_mem_issue_o.base_info.src[4:0];
+    mblk_exe_i.llbit = csr_llbit_in;  // 决定SC.W指令是否执行
 
     mblk_addr_trans_rsp = mmu_addr_trans_rsp[1];
 
-    mblk_wb_ready_i = mblk_wb_o.base.we | mblk_wb_o.base.rob_idx == rob_oldest_idx_o;
+    mblk_wb_ready_i = rob_misc_wb_rsp.ready;
   end
 
   MemoryBlock inst_MemoryBlock
@@ -744,81 +758,80 @@ module Pipeline (
   );
 
 
-/*============================== Reorder Buffer ===============================*/
+/*======================== Reorder Buffer(Write Back) =========================*/
   always_comb begin
     rob_flush_i = '0;
     rob_alloc_req = sche_rob_alloc_req;
-    // misc
-    rob_wb_req[0] = '{valid: iblk_misc_wb_o.base.valid,
-                       rob_idx: iblk_misc_wb_o.base.rob_idx,
-                       exception: iblk_misc_wb_o.base.exception,
-                       ecode: iblk_misc_wb_o.base.ecode, 
-                       sub_ecode: iblk_misc_wb_o.base.sub_ecode, 
-                       error_vaddr: iblk_misc_wb_o.base.error_vaddr, 
-                       redirect: iblk_misc_wb_o.br_redirect,
-                       br_target: iblk_misc_wb_o.br_target};
-    // alu 0
-    rob_wb_req[1] = '{valid: iblk_alu_wb_o[0].base.valid,
-                       rob_idx: iblk_alu_wb_o[0].base.rob_idx,
-                       exception: iblk_alu_wb_o[0].base.exception,
-                       ecode: iblk_alu_wb_o[0].base.ecode,
-                       sub_ecode: iblk_alu_wb_o[0].base.sub_ecode,
-                       error_vaddr: iblk_alu_wb_o[0].base.error_vaddr,
-                       redirect: '0,
-                       br_target: '0};
 
-    // alu 1
-    rob_wb_req[2] = '{valid: iblk_alu_wb_o[1].base.valid,
-                       rob_idx: iblk_alu_wb_o[1].base.rob_idx,
-                       exception: iblk_alu_wb_o[1].base.exception,
-                       ecode: iblk_alu_wb_o[1].base.ecode,
-                       sub_ecode: iblk_alu_wb_o[1].base.sub_ecode,
-                       error_vaddr: iblk_alu_wb_o[1].base.error_vaddr,
-                       redirect: '0,
-                       br_target: '0};
 
-    // mdu
-    rob_wb_req[3] = '{valid: iblk_mdu_wb_o.base.valid,
-                       rob_idx: iblk_mdu_wb_o.base.rob_idx,
-                       exception: iblk_mdu_wb_o.base.exception,
-                       ecode: iblk_mdu_wb_o.base.ecode,
-                       sub_ecode: iblk_mdu_wb_o.base.sub_ecode,
-                       error_vaddr: iblk_mdu_wb_o.base.error_vaddr,
-                       redirect: '0,
-                       br_target: '0};
-    // mem
-    rob_wb_req[4] = '{valid: mblk_wb_o.base.valid,
-                       rob_idx: mblk_wb_o.base.rob_idx,
-                       exception: mblk_wb_o.base.exception,
-                       ecode: mblk_wb_o.base.ecode,
-                       sub_ecode: mblk_wb_o.base.sub_ecode,
-                       error_vaddr: mblk_wb_o.base.error_vaddr,
-                       redirect: '0,
-                       br_target: '0};
+    rob_misc_wb_req = iblk_misc_wb_o;
+    rob_alu_wb_req = iblk_alu_wb_o;
+    rob_mdu_wb_req = iblk_mdu_wb_o;
+    rob_mem_wb_req = mblk_wb_o;
 
   end
 
   ReorderBuffer inst_ReorderBuffer
   (
-    .clk          (clk),
-    .a_rst_n      (rst_n),
-    .flush_i      (rob_flush_i),
-    .alloc_req    (rob_alloc_req),
-    .alloc_rsp    (rob_alloc_rsp),
-    .wb_req       (rob_wb_req),
-    .wb_rsp       (rob_wb_rsp),
-    .cmt_o        (rob_cmt_o),
-    .oldest_idx_o (rob_oldest_idx_o)
+    .clk         (clk),
+    .a_rst_n     (rst_n),
+    .flush_i     (rob_flush_i),
+    .alloc_req   (rob_alloc_req),
+    .alloc_rsp   (rob_alloc_rsp),
+    // write back
+    .misc_wb_req (rob_misc_wb_req),
+    .alu_wb_req  (rob_alu_wb_req),
+    .mdu_wb_req  (rob_mdu_wb_req),
+    .mem_wb_req  (rob_mem_wb_req),
+    .misc_wb_rsp (rob_misc_wb_rsp),
+    .alu_wb_rsp  (rob_alu_wb_rsp),
+    .mdu_wb_rsp  (rob_mdu_wb_rsp),
+    .mem_wb_rsp  (rob_mem_wb_rsp),
+    // commit
+    .cmt_o       (rob_cmt_o)
   );
 
+
 /*================================== Commit ===================================*/
-  assign glo_flush = rob_cmt_o.valid[0] & (rob_cmt_o.rob_entry[0].exception | rob_cmt_o.rob_entry[0].redirect);
+  // 处理异常和分支预测失败
+
+  // logic global_flush;
+  // // commit 阶段产生
+  // logic excp_flush;      // 异常
+  // logic tlbrefill_flush; // TLB充填异常（此时excp_flush也会拉高，由于入口特殊故单独列出）
+  // logic redirect_flush;  // 分支预测失败
+  // // write back 阶段产生（但是commit阶段才真正flush）
+  // logic ertn_flush;      // ERET返回（返回地址为csr_era）
+  // logic refetch_flush;   // 重取指令（ibar、priv、icacop、idel）
+  // logic ibar_flush;      // IBAR指令
+  // logic priv_flush;      // 特权指令（csr_rd修改可撤回，不需要flush）
+  // logic icacop_flush;    // ICache操作
+  // logic idel_flush;      // IDLE指令
+  always_comb begin
+    excp_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].excp.valid;
+    tlbrefill_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].excp.valid & rob_cmt_o.rob_entry[0].excp.ecode == `ECODE_TLBR;
+    redirect_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].br_redirect;
+    
+    ertn_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].ertn_flush;
+    ibar_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].ibar_flush;
+    priv_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].priv_flush;
+    icacop_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].icacop_flush;
+    idel_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].idel_flush;
+
+    refetch_flush = ibar_flush | priv_flush | icacop_flush | idel_flush;
+
+    global_flush = excp_flush | redirect_flush | ertn_flush | refetch_flush;
+  end
 
   always_comb begin
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
       arch_rat_dest_valid_i[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0;
       arch_rat_dest_i[i] = rob_cmt_o.rob_entry[i].arch_reg;
       arch_rat_preg_i[i] = rob_cmt_o.rob_entry[i].phy_reg;
+
+      arch_fl_alloc_valid_i[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0;
+      arch_fl_free_valid_i[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0;
+      arch_fl_free_preg_i[i] = rob_cmt_o.rob_entry[i].old_phy_reg;
     end
   end
 
@@ -834,6 +847,19 @@ module Pipeline (
     .preg_i       (arch_rat_preg_i)
   );
 
+  ArchFreeList #(
+    .PHY_REG_NUM(`PHY_REG_NUM)
+  ) inst_ArchFreeList (
+    .clk              (clk),
+    .a_rst_n          (rst_n),
+    .flush_i          ('0),
+    .arch_free_list_o (arch_free_list_o),
+    .alloc_valid_i    (arch_fl_alloc_valid_i),
+    .free_valid_i     (arch_fl_free_valid_i),
+    .free_preg_i      (arch_fl_free_preg_i)
+  );
+
+
 `ifdef DEBUG
   logic [31:0][31:0] arch_regfile, arch_regfile_n;
 
@@ -841,7 +867,7 @@ module Pipeline (
     arch_regfile_n = arch_regfile;
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
       if (rob_cmt_o.valid[i] && 
-          rob_cmt_o.rob_entry[i].arch_reg != 0) begin
+          rob_cmt_o.rob_entry[i].rf_wen) begin
         arch_regfile_n[rob_cmt_o.rob_entry[i].arch_reg] = rob_cmt_o.rob_entry[i].rf_wdata;
       end
     end
@@ -859,6 +885,7 @@ module Pipeline (
 /*========================== Memory Management Unit ===========================*/
 
   always_comb begin
+    // mmu 需要的csr信息
     mmu_csr_asid_i = csr_asid_out;
     mmu_csr_dmw0_i = csr_dmw0_out;
     mmu_csr_dmw1_i = csr_dmw1_out;
@@ -867,30 +894,34 @@ module Pipeline (
     mmu_csr_da_i = csr_da_out;
     mmu_csr_pg_i = csr_pg_out;
 
+    // mmu地址翻译请求
     mmu_addr_trans_req[0] = icache_addr_trans_req;
     mmu_addr_trans_req[1] = mblk_addr_trans_req;
 
+    // mmu tlb search
     mmu_tlbsrch_en_i = iblk_tlbsrch_valid_o;
 
+    // mmu tlb fill and write
     mmu_tlbfill_en_i = iblk_misc_wb_o.base.valid &
                        iblk_misc_wb_ready_i &
-                       iblk_misc_wb_o.PRIV_INSTR  &
-                       iblk_misc_wb_o.priv_op == `PRIV_TLBFILL;
+                       iblk_misc_wb_o.tlbfill_en;
     mmu_tlbwr_en_i = iblk_misc_wb_o.base.valid &
                      iblk_misc_wb_ready_i &
-                     iblk_misc_wb_o.PRIV_INSTR &
-                     iblk_misc_wb_o.priv_op == `PRIV_TLBWR;
-    mmu_rand_index_i = csr_rand_index;
+                     iblk_misc_wb_o.tlbwr_en;
+    mmu_rand_index_i = iblk_misc_wb_o.tlbfill_idx;
     mmu_tlbehi_i = csr_tlbehi_out;
     mmu_tlbelo0_i = csr_tlbelo0_out;
     mmu_tlbelo1_i = csr_tlbelo1_out;
     mmu_tlbidx_i = csr_tlbidx_out;
     mmu_ecode_i = csr_ecode_out;
 
+    // mmu tlb read
+    mmu_tlbrd_en_i = iblk_tlbrd_valid_o;
+
+    // mmu invtlb
     mmu_invtlb_en_i = iblk_misc_wb_o.base.valid &
                       iblk_misc_wb_ready_i &
-                      iblk_misc_wb_o.PRIV_INSTR &
-                      iblk_misc_wb_o.priv_op == `PRIV_TLBINV;
+                      iblk_misc_wb_o.invtlb_en;
     mmu_invtlb_asid_i = iblk_misc_wb_o.invtlb_asid;
     mmu_invtlb_vpn_i = iblk_misc_wb_o.vaddr[`PROC_VALEN - 1:13];
     mmu_invtlb_op_i = iblk_misc_wb_o.invtlb_op;
@@ -926,6 +957,7 @@ module Pipeline (
     .tlbidx_i       (mmu_tlbidx_i),
     .ecode_i        (mmu_ecode_i),
     //tlbr tlb read
+    .tlbrd_en_i     (mmu_tlbrd_en_i),
     .tlbehi_o       (mmu_tlbehi_o),
     .tlbelo0_o      (mmu_tlbelo0_o),
     .tlbelo1_o      (mmu_tlbelo1_o),
@@ -940,6 +972,7 @@ module Pipeline (
 
 /*======================= CSR(Control/Status Register) ========================*/
   always_comb begin
+    // csr读写
     csr_rd_addr = sche_misc_issue_o.base_info.src[23:10];
     csr_wr_en = iblk_misc_wb_o.base.valid &
                 iblk_misc_wb_ready_i&
@@ -949,45 +982,46 @@ module Pipeline (
 
     csr_interrupt = interrupt;
 
-    csr_excp_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry.exception;
-    csr_ertn_flush = iblk_misc_wb_o.base.valid &
-                     iblk_misc_wb_ready_i &
-                     iblk_misc_wb_o.PRIV_INSTR &
-                     iblk_misc_wb_o.priv_op == `PRIV_ERTN;
-    csr_era_in = rob_cmt_o.rob_entry.pc;
-    csr_esubcode_in = rob_cmt_o.rob_entry.sub_ecode;
-    csr_ecode_in = rob_cmt_o.rob_entry.ecode;
+    // 异常处理
+    csr_excp_flush = excp_flush;
+    csr_ertn_flush = ertn_flush;
+    csr_era_in =  rob_cmt_o.rob_entry[0].excp.ecode inside {`ECODE_SYS, `ECODE_BRK} ? // sys 和 brk恢复时应该跳到era+4
+                  rob_cmt_o.rob_entry[0].pc + 4 : rob_cmt_o.rob_entry[0].pc;
+    csr_ecode_in = rob_cmt_o.rob_entry[0].excp.ecode;
+    csr_esubcode_in = rob_cmt_o.rob_entry[0].excp.sub_ecode;
     csr_va_error_in = rob_cmt_o.valid[0] & 
-                      rob_cmt_o.rob_entry.exception &
-                      rob_cmt_o.rob_entry.ecode inside 
+                      rob_cmt_o.rob_entry[0].excp.valid &
+                      rob_cmt_o.rob_entry[0].excp.ecode inside 
                       {`ECODE_ADE, `ECODE_TLBR, `ECODE_PIF, `ECODE_PPI,
                        `ECODE_ALE, `ECODE_PME,  `ECODE_PIS, `ECODE_PIL};
     csr_bad_va_in = rob_cmt_o.rob_entry[0].error_vaddr;
 
+    csr_excp_tlbrefill = tlbrefill_flush;
+    csr_excp_tlb = rob_cmt_o.valid[0] & 
+                   rob_cmt_o.rob_entry[0].excp.valid &
+                   rob_cmt_o.rob_entry[0].excp.ecode inside
+                   {`ECODE_TLBR, `ECODE_PIF, `ECODE_PPI,
+                    `ECODE_PME,  `ECODE_PIS, `ECODE_PIL};
+    csr_excp_tlb_vppn = rob_cmt_o.rob_entry[0].error_vaddr[31:13];
+
+    // 填写tlbsrch结果
     csr_tlbsrch_en = iblk_misc_wb_o.base.valid &
                      iblk_misc_wb_ready_i &
-                     iblk_misc_wb_o.PRIV_INSTR &
-                     iblk_misc_wb_o.priv_op == `PRIV_TLBSRCH;
+                     iblk_misc_wb_o.tlbsrch_en;
     csr_tlbsrch_found = iblk_misc_wb_o.tlbsrch_found;
     csr_tlbsrch_index = iblk_misc_wb_o.tlbsrch_idx;
 
-    csr_excp_tlbrefill = rob_cmt_o.valid[0] & 
-                         rob_cmt_o.rob_entry.exception &
-                         rob_cmt_o.rob_entry.ecode == `ECODE_TLBR;
-    csr_excp_tlb = rob_cmt_o.valid[0] & 
-                   rob_cmt_o.rob_entry.exception &
-                   rob_cmt_o.rob_entry.ecode inside
-                   {`ECODE_TLBR, `ECODE_PIF, `ECODE_PPI,
-                    `ECODE_PME,  `ECODE_PIS, `ECODE_PIL};
-    csr_excp_tlb_vppn = rob_cmt_o.rob_entry[0].error_vaddr;
+    // 填写原子指令标记
+    csr_llbit_in = mblk_wb_o.mem_op == `MEM_LOAD ? '1 : '0;
+    csr_llbit_set_in = mblk_wb_o.base.valid & 
+                       mblk_wb_o.micro &
+                       (mblk_wb_o.mem_op == `MEM_LOAD |
+                       (mblk_wb_o.mem_op == `MEM_STORE & mblk_wb_o.llbit));
 
-    csr_llbit_in = '0;
-    csr_llbit_set_in = '0;
-
+    // 填写tlbrd结果
     csr_tlbrd_en = iblk_misc_wb_o.base.valid &
                    iblk_misc_wb_ready_i &
-                   iblk_misc_wb_o.PRIV_INSTR &
-                   iblk_misc_wb_o.priv_op == `PRIV_TLBRD;
+                   iblk_misc_wb_o.tlbrd_en;
     csr_tlbehi_in = iblk_misc_wb_o.tlbrd_ehi;
     csr_tlbelo0_in = iblk_misc_wb_o.tlbrd_elo0;
     csr_tlbelo1_in = iblk_misc_wb_o.tlbrd_elo1;

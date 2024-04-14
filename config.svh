@@ -34,7 +34,7 @@
 // RESET
 `define DIST_DRIVE_RESET  // 分布式驱动复位，在每一个模块中添加异步复位同步释放逻辑
 // Processor
-`define FETCH_WIDTH 4    // 取指令的宽度
+`define FETCH_WIDTH 2    // 取指令的宽度
 `define DECODE_WIDTH 2   // 解码宽度
 `define DISPATCH_WIDTH 2 // 每周期最多派遣的指令的个数
 `define WB_WIDTH 5   // 每周期最多写回的指令数

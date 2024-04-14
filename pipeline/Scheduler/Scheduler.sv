@@ -38,9 +38,13 @@ module Scheduler (
   output RobAllocReqSt rob_alloc_req,
   input RobAllocRspSt rob_alloc_rsp,
 
+  // excp
+  input csr_has_int,
+  input csr_plv,
   // freelist
   input [`COMMIT_WIDTH - 1:0] fl_free_valid_i,
   input [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] fl_free_preg_i,
+  input [`PHY_REG_NUM - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_free_list_i,
   // rat
   input [31:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_i,
   // wake up
@@ -82,6 +86,8 @@ module Scheduler (
 
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       fl_alloc_valid[i] =  schedule_req.valid[i] &
+                          !schedule_req.excp[i].valid &
+                          !schedule_req.option_code[i].invalid_inst &
                           |schedule_req.arch_dest[i] &  // dest valid
                            s1_ready;
     end
@@ -94,6 +100,7 @@ module Scheduler (
     .clk           (clk),
     .a_rst_n       (rst_n),
     .flush_i       (flush_i),
+    .arch_free_list_i(arch_free_list_i),
     .alloc_valid_i (fl_alloc_valid),
     .alloc_ready_o (fl_alloc_ready),
     .free_valid_i  (fl_free_valid_i),
@@ -103,7 +110,7 @@ module Scheduler (
   );
 
 /*================================== stage1 ===================================*/
-  // 缓存指令和解码信息
+  /* 缓存指令和解码信息 */
   ScheduleReqSt s1_sche_req;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] s1_fl_alloc_preg;
 
@@ -119,14 +126,19 @@ module Scheduler (
     end
   end
 
+  /* 写入分发队列、重命名、excp检查、SC可执行性检查 */
+  ExcpSt [`DECODE_WIDTH - 1:0] excp;
+  logic [`DECODE_WIDTH - 1:0] priv_instr;
+  logic [`DECODE_WIDTH - 1:0] syscall_instr;
+  logic [`DECODE_WIDTH - 1:0] break_instr;
 
-  // 重命名
-  logic dq_write_ready;
   logic [`DECODE_WIDTH - 1:0] rat_dest_valid;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_psrc0;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_psrc1;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_ppdst;
 
+  logic [$clog2(`DECODE_WIDTH) - 1:0] dq_write_idx;
+  logic dq_write_ready;
   logic [`DECODE_WIDTH - 1:0] dq_write_valid;
   DqEntrySt [`DECODE_WIDTH - 1:0] dq_wdata;
 
@@ -141,6 +153,50 @@ module Scheduler (
       rat_dest_valid[i] = s1_sche_req.valid[i] & |s1_sche_req.arch_dest[i];
     end
 
+    // 在此处检查INT、INE、IPE、SYS、BRK异常
+    // 优先级：INT > INE > IPE = SYS = BRK
+    for (int i = 0; i < `DECODE_WIDTH; i++) begin
+      priv_instr[i] =  schedule_req.option_code[i].instr_type == `PRIV_INSTR |
+                      (schedule_req.option_code[i].instr_type == `MEM_INSTR &
+                       schedule_req.option_code[i].mem_op == `MEM_CACOP &
+                       schedule_req.src[1][4:3] != 2'b10);
+      syscall_instr = schedule_req.option_code[i].instr_type == `MISC_INSTR &
+                      schedule_req.option_code[i].misc_op == `MISC_SYSCALL ;
+      break_instr = schedule_req.option_code[i].instr_type == `MISC_INSTR &
+                    schedule_req.option_code[i].misc_op == `MISC_BREAK;
+
+    end
+    excp = '0;  
+    for (int i = 0; i < `DECODE_WIDTH; i++) begin
+      if (s1_sche_req.excp[i].valid) begin
+        excp[i] = s1_sche_req.excp[i];
+      end else if(s1_sche_req.option_code[i].invalid_inst) begin
+        excp[i].valid = '1;
+        excp[i].ecode = `ECODE_INE;
+        excp[i].sub_ecode = `ESUBCODE_ADEF;
+      end else if (csr_has_int) begin
+        excp[i].valid = '1;
+        excp[i].ecode = `ESUBCODE_ADEF;
+        excp[i].sub_ecode = '0;
+      end else if (schedule_req.option_code[i].invalid_inst) begin
+        excp[i].valid = '1;
+        excp[i].ecode = `ECODE_IPE;
+        excp[i].sub_ecode = `ESUBCODE_ADEF;
+      end else if (priv_instr[i] && csr_plv == 2'b11) begin
+        excp[i].valid = '1;
+        excp[i].ecode = `ECODE_IPE;
+        excp[i].sub_ecode = `ESUBCODE_ADEF;
+      end else if (syscall_instr) begin
+        excp[i].valid = '1;
+        excp[i].ecode = `ECODE_SYS;
+        excp[i].sub_ecode = `ESUBCODE_ADEF;
+      end else if (break_instr) begin
+        excp[i].valid = '1;
+        excp[i].ecode = `ECODE_BRK;
+        excp[i].sub_ecode = `ESUBCODE_ADEF;
+      end
+    end
+
     // 写入ROB
     rob_alloc_req.valid = s1_sche_req.valid;
     rob_alloc_req.ready = s1_ready;
@@ -149,28 +205,34 @@ module Scheduler (
       rob_alloc_req.pc[i] = s1_sche_req.pc[i];
       rob_alloc_req.instr_type[i] = s1_sche_req.instr_type[i];
       rob_alloc_req.arch_reg[i] = s1_sche_req.arch_dest[i];
+      rob_alloc_req.excp[i] = excp[i];
 `ifdef DEBUG
       rob_alloc_req.rob_entry[i].instr = s1_sche_req.option_code[i].debug_inst;
 `endif
     end
 
-    // 写入分发队列
-    dq_write_valid = s1_sche_req.valid;
+    // 写入分发队列（剔除产生异常的指令）
+    dq_write_idx = '0;
+    dq_wdata = '0;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      dq_wdata[i].valid = s1_sche_req.valid[i];
-      dq_wdata[i].pc = s1_sche_req.pc[i];
-      dq_wdata[i].npc = s1_sche_req.npc[i];
-      dq_wdata[i].src = s1_sche_req.src[i];
-      dq_wdata[i].src0_valid = s1_sche_req.arch_src0[i] != 5'b0;
-      dq_wdata[i].src1_valid = s1_sche_req.arch_src1[i] != 5'b0;
-      dq_wdata[i].dest_valid = s1_sche_req.arch_dest[i] != 5'b0;
-      dq_wdata[i].src0 = rat_psrc0[i];
-      dq_wdata[i].src1 = rat_psrc1[i];
-      dq_wdata[i].dest = s1_fl_alloc_preg[i];
-      dq_wdata[i].oc = s1_sche_req.option_code[i];
-      dq_wdata[i].position_bit = rob_alloc_rsp.position_bit[i];
-      dq_wdata[i].excp = s1_sche_req.excp;
-      dq_wdata[i].rob_idx = rob_alloc_rsp.rob_idx[i];
+      if (s1_sche_req.valid[i] && !excp[i].valid) begin
+        dq_write_valid[dq_write_idx] = '1;
+        dq_wdata[dq_write_idx].valid = '1;
+        dq_wdata[dq_write_idx].pc = s1_sche_req.pc[i];
+        dq_wdata[dq_write_idx].npc = s1_sche_req.npc[i];
+        dq_wdata[dq_write_idx].src = s1_sche_req.src[i];
+        dq_wdata[dq_write_idx].src0_valid = s1_sche_req.arch_src0[i] != 5'b0;
+        dq_wdata[dq_write_idx].src1_valid = s1_sche_req.arch_src1[i] != 5'b0;
+        dq_wdata[dq_write_idx].dest_valid = s1_sche_req.arch_dest[i] != 5'b0;
+        dq_wdata[dq_write_idx].src0 = rat_psrc0[i];
+        dq_wdata[dq_write_idx].src1 = rat_psrc1[i];
+        dq_wdata[dq_write_idx].dest = s1_fl_alloc_preg[i];
+        dq_wdata[dq_write_idx].oc = s1_sche_req.option_code[i];
+        dq_wdata[dq_write_idx].position_bit = rob_alloc_rsp.position_bit[i];
+        dq_wdata[dq_write_idx].excp = s1_sche_req.excp;
+        dq_wdata[dq_write_idx].rob_idx = rob_alloc_rsp.rob_idx[i];
+        dq_write_idx += 1;
+      end
     end
   end
 
@@ -276,7 +338,7 @@ module Scheduler (
       if (dq_rdata[i - 1].oc.instr_type == `MEM_INSTR) begin
         mem_cnt[i] = mem_cnt[i - 1] + 1;
       end
-      if (dq_rdata[i - 1].oc.instr_type inside {`PRIV_INSTR, `BR_INSTR}) begin
+      if (dq_rdata[i - 1].oc.instr_type inside {`MISC_INSTR, `BR_INSTR, `PRIV_INSTR}) begin
         misc_cnt[i] = misc_cnt[i - 1] + 1;
       end
     end
@@ -287,7 +349,7 @@ module Scheduler (
           `ALU_INSTR : dq_read_ready[0] = alu_cnt[0] < $countones(alu_rs_wr_ready);
           `MDU_INSTR : dq_read_ready[0] = mdu_cnt[0] < $countones(mdu_rs_wr_ready);
           `MEM_INSTR : dq_read_ready[0] = mem_cnt[0] < $countones(mem_rs_wr_ready);
-          `PRIV_INSTR, `BR_INSTR : dq_read_ready[0] = misc_cnt[0] < $countones(misc_rs_wr_ready);
+          `MISC_INSTR, `BR_INSTR, `PRIV_INSTR : dq_read_ready[0] = misc_cnt[0] < $countones(misc_rs_wr_ready);
           default : dq_read_ready[0] = '0;
         endcase
     end
@@ -297,7 +359,7 @@ module Scheduler (
           `ALU_INSTR : dq_read_ready[i] = alu_cnt[i] < $countones(alu_rs_wr_ready) & dq_read_ready[i - 1];
           `MDU_INSTR : dq_read_ready[i] = mdu_cnt[i] < $countones(mdu_rs_wr_ready) & dq_read_ready[i - 1];
           `MEM_INSTR : dq_read_ready[i] = mem_cnt[i] < $countones(mem_rs_wr_ready) & dq_read_ready[i - 1];
-          `PRIV_INSTR, `BR_INSTR : dq_read_ready[i] = misc_cnt[i] < $countones(misc_rs_wr_ready) & dq_read_ready[i - 1];
+          `MISC_INSTR, `BR_INSTR, `PRIV_INSTR : dq_read_ready[i] = misc_cnt[i] < $countones(misc_rs_wr_ready) & dq_read_ready[i - 1];
           default : dq_read_ready[i] = '0;
         endcase
       end
@@ -332,8 +394,7 @@ module Scheduler (
         mdu_rs_base = dq2rs(dq_rdata[i]);
         mdu_rs_oc = gen2mdu(dq_rdata[i].oc);
       end
-      if ((dq_rdata[i].oc.instr_type == `PRIV_INSTR || 
-           dq_rdata[i].oc.instr_type == `BR_INSTR) &&
+      if ((dq_rdata[i].oc.instr_type inside {`MISC_INSTR, `BR_INSTR, `PRIV_INSTR}) &&
            misc_cnt == 0) begin
         misc_rs_wr_valid = dq_read_ready[i];
         misc_rs_base = dq2rs(dq_rdata[i]);
@@ -360,7 +421,7 @@ module Scheduler (
     .option_code_i (misc_rs_oc),
     .wr_valid_i    (misc_rs_wr_valid),
     .wr_ready_o    (misc_rs_wr_ready),
-    .wb_pdest_i   (wb_pdest_i),
+    .wb_pdest_i    (wb_pdest_i),
     .issue_ready_i (misc_issue_ready),
     .issue_valid_o (misc_issue_valid),
     .issue_base_o  (misc_issue_base),

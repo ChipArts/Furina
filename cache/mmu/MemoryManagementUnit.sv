@@ -61,6 +61,7 @@ module MemoryManagementUnit (
   input logic [31:0] tlbidx_i , 
   input logic [ 5:0] ecode_i  ,
   //tlbr tlb read
+  input  logic tlbrd_en_i,
   output logic [31:0] tlbehi_o ,
   output logic [31:0] tlbelo0_o,
   output logic [31:0] tlbelo1_o,
@@ -148,7 +149,7 @@ module MemoryManagementUnit (
                                    plv: {tlbelo0_i[`TLB_PLV], tlbelo1_i[`TLB_PLV]},
                                    ppn: {tlbelo0_i[`TLB_PPN_EN], tlbelo1_i[`TLB_PPN_EN]}};
     // read req
-    tlb_read_req.valid = '1;
+    tlb_read_req.valid = tlbrd_en_i;
     tlb_read_req.idx = tlbidx_i[`INDEX];
     // inv req
     tlb_inv_req.valid = invtlb_en_i;
@@ -176,7 +177,7 @@ module MemoryManagementUnit (
     tlbehi_o   = {r_vppn, 13'b0};
     tlbelo0_o  = {4'b0, r_ppn0, 1'b0, r_g, r_mat0, r_plv0, r_d0, r_v0};
     tlbelo1_o  = {4'b0, r_ppn1, 1'b0, r_g, r_mat1, r_plv1, r_d1, r_v1};
-    tlbidx_o   = {!r_e, 1'b0, r_ps, 24'b0}; //note do not write index
+    tlbidx_o   = {!r_e, 1'b0, r_ps, 24'b0}; // note do not write index
     tlbasid_o  = r_asid;
 
     // search rsp
@@ -208,24 +209,33 @@ module MemoryManagementUnit (
                                   (dmw0_en[i] && (csr_dmw0_i[`DMW_MAT] == 2'b0))       ||
                                   (dmw1_en[i] && (csr_dmw1_i[`DMW_MAT] == 2'b0))       ||
                                   (addr_trans_en[i] && (tlb_search_rsp[1].mat == 2'b0));
-      addr_trans_rsp[i].tlb_valid = tlb_search_rsp[i].valid;
-      addr_trans_rsp[i].tlb_dirty = tlb_search_rsp[i].dirty;
-      addr_trans_rsp[i].tlb_mat   = tlb_search_rsp[i].mat;
-      addr_trans_rsp[i].tlb_plv   = tlb_search_rsp[i].plv;
+      // addr_trans_rsp[i].tlb_valid = tlb_search_rsp[i].valid;
+      // addr_trans_rsp[i].tlb_dirty = tlb_search_rsp[i].dirty;
+      // addr_trans_rsp[i].tlb_mat   = tlb_search_rsp[i].mat;
+      // addr_trans_rsp[i].tlb_plv   = tlb_search_rsp[i].plv;
+
       // 抛出异常
-      addr_trans_rsp[i].tlbr = ~tlb_search_rsp[i].found;
-      if (!tlb_search_rsp[i].valid) begin
-        case (addr_trans_req_buffer[i].mem_type)
-          MMU_FETCH : addr_trans_rsp[i].pif = '1;
-          MMU_LOAD  : aadr_trans_rsp[i].pil = '1;
-          MMU_STORE : addr_trans_rsp[i].pis = '1;
-          default : /* default */;
-        endcase
-      end else if (csr_plv_i > tlb_search_rsp[i].plv) begin
-        addr_trans_rsp[i].ppi = '1;
-      end else if (addr_trans_req_buffer[i].mem_type == MMU_STORE && tlb_search_rsp[i].dirty == 0) begin
-        addr_trans_rsp[i].pme = '1;
+      addr_trans_rsp[i].pif = '0;
+      addr_trans_rsp[i].pil = '0;
+      addr_trans_rsp[i].pis = '0;
+      addr_trans_rsp[i].ppi = '0;
+      addr_trans_rsp[i].pme = '0;
+      if (addr_trans_en[i]) begin
+        addr_trans_rsp[i].tlbr = ~tlb_search_rsp[i].found;
+        if (!tlb_search_rsp[i].valid) begin
+          case (addr_trans_req_buffer[i].mem_type)
+            MMU_FETCH : addr_trans_rsp[i].pif = '1;
+            MMU_LOAD  : addr_trans_rsp[i].pil = '1;
+            MMU_STORE : addr_trans_rsp[i].pis = '1;
+            default : /* default */;
+          endcase
+        end else if (csr_plv_i > tlb_search_rsp[i].plv) begin
+          addr_trans_rsp[i].ppi = '1;
+        end else if (addr_trans_req_buffer[i].mem_type == MMU_STORE && tlb_search_rsp[i].dirty == 0) begin
+          addr_trans_rsp[i].pme = '1;
+        end
       end
+      
     end
 
 

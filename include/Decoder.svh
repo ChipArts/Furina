@@ -66,13 +66,22 @@ typedef logic [2:0] ImmType;
 typedef logic [2:0] InstrType;
 `define ALU_INSTR    (3'd0)  // ALU指令
 `define MDU_INSTR    (3'd1)  // MDU指令
-`define BR_INSTR     (3'd2)  // 控制流指令
-`define PRIV_INSTR   (3'd3)  // 特权指令
-`define MEM_INSTR    (3'd4)  // 访存指令
+`define MEM_INSTR    (3'd2)  // 存储相关指令（（原子）访存、栅障、预取、cacop）
+`define BR_INSTR     (3'd3)  // 控制流指令
+`define PRIV_INSTR   (3'd4)  // 特权指令
+`define MISC_INSTR   (3'd5)  // 整数杂项
 
-typedef logic MemOpType;
-`define MEM_LOAD (1'd0)
-`define MEM_STORE (1'd1)
+typedef logic[2:0] MemOpType;
+`define MEM_LOAD  (3'd0)
+`define MEM_STORE (3'd1)
+`define MEM_CACOP (3'd2)
+`define MEM_PRELD (3'd3)
+`define MEM_IBAR  (3'd4)
+`define MEM_DBAR  (3'd5)
+// `define MEM_LL    (3'd3)
+// `define MEM_SC    (3'd4)
+
+
 
 typedef logic[3:0] AluOpType;
 `define ALU_ADD (4'd0)
@@ -110,24 +119,28 @@ typedef logic[3:0] PrivOpType;
 `define PRIV_CSR_READ  (4'd0)
 `define PRIV_CSR_WRITE (4'd1)
 `define PRIV_CSR_XCHG  (4'd2)
-`define PRIV_CACOP     (4'd3)
-`define PRIV_TLBSRCH   (4'd4)
-`define PRIV_TLBRD     (4'd5)
-`define PRIV_TLBWR     (4'd6)
-`define PRIV_TLBFILL   (4'd7)
-`define PRIV_TLBINV    (4'd8)
-`define PRIV_ERTN      (4'd9)
-`define PRIV_IDEL      (4'd10)
-`define PRIV_SYSCALL   (4'd11)
-`define PRIV_BREAK     (4'd12)
-`define PRIV_RDCNTVL   (4'd13)
-`define PRIV_RDCNTVH   (4'd14)
-`define PRIV_RDCNTID   (4'd15)
+`define PRIV_TLBSRCH   (4'd3)
+`define PRIV_TLBRD     (4'd4)
+`define PRIV_TLBWR     (4'd5)
+`define PRIV_TLBFILL   (4'd6)
+`define PRIV_TLBINV    (4'd7)
+`define PRIV_ERTN      (4'd8)
+`define PRIV_IDLE      (4'd9)
+// `define PRIV_CACOP     (4'd10)  Memory Block中处理
+
+typedef logic [2:0] MiscOpType;
+`define MISC_SYSCALL   (3'd0)
+`define MISC_BREAK     (3'd1)
+`define MISC_RDCNTVL   (3'd2)
+`define MISC_RDCNTVH   (3'd3)
+`define MISC_RDCNTID   (3'd4)
+
 
 typedef logic SignedOpType;
 typedef logic ImmOpType;
 typedef logic WriteBackOpType;
 typedef logic IndirectBrOpType;
+typedef logic MicroOpType;  // 原子操作
 
 typedef logic [31:0] DebugInstrType;
 typedef logic InvalidInstType;
@@ -135,6 +148,7 @@ typedef logic InvalidInstType;
 typedef struct packed {
   MemOpType mem_op;
   AlignOpType align_op;
+  MicroOpType micro_op;
 } MemOpCodeSt;
 
 typedef struct packed {
@@ -152,6 +166,7 @@ typedef struct packed {
   InstType instr_type;
   BranchOpType branch_op;
   PrivOpType priv_op;
+  MiscOpType misc_op;
   SignedOpType signed_op;
   IndirectBrOpType indirect_br_op;  // 特殊处理JILR指令
 } MiscOpCodeSt;
@@ -165,18 +180,19 @@ typedef struct packed {
     AluOpType alu_op;
     ImmOpType imm_op;
     ImmType imm_type;
-    PrivOpType priv_op;
+    MiscOpType misc_op;
     AlignOpType align_op;
-    MemOpType mem_op_type;
+    MemOpType mem_op;
     InstrType instr_type;
     InvalidInstType invalid_inst;
+    MicroOpType micro_op;
 } OptionCodeSt;
 
 function MiscOpCodeSt gen2misc(OptionCodeSt option_code);
   MiscOpCodeSt misc_op_code;
   misc_op_code.signed_op = option_code.signed_op;
   misc_op_code.branch_op = option_code.branch_op;
-  misc_op_code.priv_op = option_code.priv_op;
+  misc_op_code.misc_op = option_code.misc_op;
   misc_op_code.instr_type = option_code.instr_type;
   misc_op_code.indirect_br_op = option_code.indirect_br_op;
   return misc_op_code;
@@ -193,8 +209,9 @@ endfunction : gen2alu
 
 function MemOpCodeSt gen2mem(OptionCodeSt option_code);
   MemOpCodeSt mem_op_code;
-  mem_op_code.mem_op = option_code.mem_op_type;
+  mem_op_code.mem_op = option_code.mem_op;
   mem_op_code.align_op = option_code.align_op;
+  mem_op_code.micro_op = option_code.micro_op;
   return mem_op_code;
 
 endfunction : gen2mem
