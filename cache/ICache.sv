@@ -241,6 +241,7 @@ module ICache (
     axi4_mst.aw_valid = '0;
     // input: axi4_mst.aw_ready
 
+    axi4_mst.w_id = '0;
     axi4_mst.w_data = '0;
     axi4_mst.w_strb = '0;
     axi4_mst.w_last = '0;

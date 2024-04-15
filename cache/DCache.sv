@@ -530,6 +530,7 @@ module DCache (
     axi4_mst.aw_valid = cache_state == MISS;
     // input: axi4_mst.aw_ready
 
+    axi4_mst.w_id   = '0;
     axi4_mst.w_data = data_ram_rdata[axi_wdata_idx];
     axi4_mst.w_strb = '1;
     axi4_mst.w_last = axi_wdata_idx == `DCACHE_BLOCK_SIZE / 4 - 1;
