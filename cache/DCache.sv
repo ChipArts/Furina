@@ -416,7 +416,7 @@ module DCache (
           default : /* default */;
         endcase
       end
-      `ALIGN_W: stage2_output_st_o.data = matched_word;
+      `ALIGN_W: dcache_rsp.data = matched_word;
       `ALIGN_BU: begin
         case (s2_vaddr[1:0])
           2'b00: dcache_rsp.rdata = {{24{1'b0}}, matched_word[7:0]};
@@ -605,16 +605,16 @@ module DCache (
       data_ram_wdata = '0;
       data_ram_wdata[s2_vaddr[`DCACHE_IDX_OFFSET - 1:2]] |= s2_wdata;
     end
-    data_ram_raddr = `ICACHE_IDX_OF(s1_vaddr);
+    data_ram_raddr = `DCACHE_IDX_OF(s1_vaddr);
     // tag ram
     tag_ram_we = '0;
     tag_ram_we[s2_repl_way] = refill;  // 事实上cacop(code == 1,2)不需要写入，但是写入也不会产生错误
     tag_ram_waddr = `DCACHE_IDX_OF(s2_vaddr);
     tag_ram_wdata = cacop_mode0 ? '0 : `DCACHE_TAG_OF(paddr);
-    tag_ram_raddr = s1_ready ? `ICACHE_IDX_OF(icache_req.vaddr) :  `ICACHE_IDX_OF(s1_vaddr);
+    tag_ram_raddr = s1_ready ? `DCACHE_IDX_OF(dcache_req.vaddr) :  `DCACHE_IDX_OF(s1_vaddr);
     // meta ram
     meta_ram_we = '0;
-    meta_ram_waddr = `ICACHE_IDX_OF(s2_vaddr);
+    meta_ram_waddr = `DCACHE_IDX_OF(s2_vaddr);
     if (cache_state == REFILL) begin
       meta_ram_we[s2_repl_way] = refill; // 事实上cacop(code == 0)不需要写入，但是写入也不会产生错误
       meta_ram_wdata = cacop_mode1 || cacop_mode2_hit ? '{valid: 1'b0, dirty: 1'b0} : '{valid: 1'b1, dirty: 1'b0};
@@ -622,7 +622,7 @@ module DCache (
       meta_ram_we[matched_way] = s2_valid & (s2_mem_op == `MEM_STORE) & ~s2_miss & s2_ready;
       meta_ram_wdata = '{valid: 1'b1, dirty: 1'b1};
     end
-    meta_ram_raddr = s1_ready ? `ICACHE_IDX_OF(icache_req.vaddr) : `DCACHE_IDX_OF(s1_vaddr);
+    meta_ram_raddr = s1_ready ? `DCACHE_IDX_OF(icache_req.vaddr) : `DCACHE_IDX_OF(s1_vaddr);
     // plru ram
     plru_ram_we = s1_valid;
     plru_ram_waddr = `DCACHE_IDX_OF(s1_vaddr);
@@ -661,7 +661,7 @@ module DCache (
     );
   end
 
-  for (genvar j = 0; j < `DCACHE_WAY_NUM; j++) begin
+  for (genvar i = 0; i < `DCACHE_WAY_NUM; i++) begin
     // Tag Memory
     SimpleDualPortRAM #(
       .DATA_DEPTH(2 ** `DCACHE_IDX_WIDTH),

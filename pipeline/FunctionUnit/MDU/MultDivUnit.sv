@@ -50,7 +50,7 @@ module MultDivUnit (
     .div_ready_o  (div_rsp.ready),
     .res_valid_o  (div_rsp.valid),
     .res_ready_i  (div_req.ready),
-    .div_signed_i (dev_req.div_signed),
+    .div_signed_i (div_req.div_signed),
     .dividend_i   (div_req.dividend),
     .divisor_i    (div_req.divisor),
     .quotient_o   (div_rsp.quotient),

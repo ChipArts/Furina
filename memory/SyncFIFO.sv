@@ -73,7 +73,7 @@ localparam
     .MEMORY_PRIMITIVE("auto")
   ) inst_SimpleDualPortRAM (
     .clk_a    (clk),
-    .en_a_i   (en_a_i),
+    .en_a_i   ('1),
     .we_a_i   (ram_we),
     .addr_a_i (write_pointer_q),
     .data_a_i (data_i),

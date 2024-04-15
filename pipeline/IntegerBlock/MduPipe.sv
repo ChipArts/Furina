@@ -25,6 +25,7 @@
 `include "Decoder.svh"
 `include "common.svh"
 `include "Pipeline.svh"
+`include "MultDivUnit.svh"
 
 module MduPipe (
   input logic clk,      // Clock
