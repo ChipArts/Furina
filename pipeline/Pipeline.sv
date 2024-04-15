@@ -285,7 +285,7 @@ module Pipeline (
   
   logic [31:0]  csr_crmd_diff;
   logic [31:0]  csr_prmd_diff;
-  logic [31:0]  csr_ectl_diff;
+  logic [31:0]  csr_ecfg_diff;
   logic [31:0]  csr_estat_diff;
   logic [31:0]  csr_era_diff;
   logic [31:0]  csr_badv_diff;
@@ -647,7 +647,7 @@ module Pipeline (
 
   // 读取CSR寄存器
   always_comb begin : proc_read_csr
-    csr_rd_addr = sche_misc_issue.base_info.src[23:10];  // 读取CSR指令的csr地址
+    csr_rd_addr = sche_misc_issue_o.base_info.src[23:10];  // 读取CSR指令的csr地址
   end
 
   // imm ext
@@ -658,9 +658,9 @@ module Pipeline (
     iblk_flush_i = global_flush;
     // 杂项指令在成为最旧指令时才执行
     iblk_misc_exe_i.base = is2exe(sche_misc_issue_o, rf_rdata_o[1], rf_rdata_o[0]);
-    iblk_misc_exe_i.misc_oc = sche_misc_issue.misc_oc;
-    iblk_misc_exe_i.pc = sche_misc_issue.base_info.pc;
-    iblk_misc_exe_i.npc = sche_misc_issue.base_info.npc;
+    iblk_misc_exe_i.misc_oc = sche_misc_issue_o.misc_oc;
+    iblk_misc_exe_i.pc = sche_misc_issue_o.base_info.pc;
+    iblk_misc_exe_i.npc = sche_misc_issue_o.base_info.npc;
 
     // 第一条ALU执行pipe
     iblk_alu_exe_i[0].base = is2exe(sche_alu_issue_o[0], rf_rdata_o[3], rf_rdata_o[2]);
@@ -1103,7 +1103,7 @@ module Pipeline (
     // csr regs for diff
     .csr_crmd_diff      (csr_crmd_diff),
     .csr_prmd_diff      (csr_prmd_diff),
-    .csr_ectl_diff      (csr_ectl_diff),
+    .csr_ecfg_diff      (csr_ecfg_diff),
     .csr_estat_diff     (csr_estat_diff),
     .csr_era_diff       (csr_era_diff),
     .csr_badv_diff      (csr_badv_diff),

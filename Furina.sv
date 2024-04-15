@@ -38,10 +38,14 @@ module Furina (
     .AXI_DATA_WIDTH(32),
     .AXI_ID_WIDTH  (4),
     .AXI_USER_WIDTH(1)
-  ) axi4();
+  ) icache_axi4_mst();
 
-  axi4 icache_axi4_mst;
-  axi4 dcache_axi4_mst;
+  AXI4 #(
+    .AXI_ADDR_WIDTH(`PROC_PALEN),
+    .AXI_DATA_WIDTH(32),
+    .AXI_ID_WIDTH  (4),
+    .AXI_USER_WIDTH(1)
+  ) dcache_axi4_mst();
 
   Pipeline U_Pipeline
   (
@@ -279,7 +283,7 @@ module Furina (
       .crmd               (U_Pipeline.csr_crmd_diff    ),
       .prmd               (U_Pipeline.csr_prmd_diff    ),
       .euen               (0                  ),
-      .ecfg               (U_Pipeline.csr_ectl_diff    ),
+      .ecfg               (U_Pipeline.csr_ecfg_diff    ),
       .estat              (U_Pipeline.csr_estat_diff   ),
       .era                (U_Pipeline.csr_era_diff     ),
       .badv               (U_Pipeline.csr_badv_diff    ),
