@@ -44,7 +44,7 @@ module TranslationLookasideBuffer (
   
   `RESET_LOGIC(clk, a_rst_n, rst_n);
 
-  TLBEntrySt [`TLB_ENTRY_NUM - 1:0] tlb_entries;
+  TlbEntrySt [`TLB_ENTRY_NUM - 1:0] tlb_entries;
 
   /** TLB Ctrl Logic **/
   logic parity;  // 奇偶标识
