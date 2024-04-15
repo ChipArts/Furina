@@ -622,12 +622,12 @@ module DCache (
       meta_ram_we[matched_way] = s2_valid & (s2_mem_op == `MEM_STORE) & ~s2_miss & s2_ready;
       meta_ram_wdata = '{valid: 1'b1, dirty: 1'b1};
     end
-    meta_ram_raddr = s1_ready ? `DCACHE_IDX_OF(icache_req.vaddr) : `DCACHE_IDX_OF(s1_vaddr);
+    meta_ram_raddr = s1_ready ? `DCACHE_IDX_OF(dcache_req.vaddr) : `DCACHE_IDX_OF(s1_vaddr);
     // plru ram
     plru_ram_we = s1_valid;
     plru_ram_waddr = `DCACHE_IDX_OF(s1_vaddr);
     plru_ram_wdata = plru_ram_rdata == matched_way ? ~plru_ram_rdata : plru_ram_rdata;
-    plru_ram_raddr = s1_ready ? `DCACHE_IDX_OF(icache_req.vaddr) : `DCACHE_IDX_OF(s1_vaddr);
+    plru_ram_raddr = s1_ready ? `DCACHE_IDX_OF(dcache_req.vaddr) : `DCACHE_IDX_OF(s1_vaddr);
 
     // 一点转发逻辑
     // cache refill时转发tag和meta
@@ -674,7 +674,7 @@ module DCache (
       .en_a_i   ('1),
       .we_a_i   (tag_ram_we[i]),
       .addr_a_i (tag_ram_waddr),
-      .data_a_i (tag_ram_data_i),
+      .data_a_i (tag_ram_wdata),
       .clk_b    (clk),
       .rstb_n   (rst_n),
       .en_b_i   ('1),
@@ -694,7 +694,7 @@ module DCache (
       .en_a_i   ('1),
       .we_a_i   (meta_ram_we[j]),
       .addr_a_i (meta_ram_waddr),
-      .data_a_i (meta_ram_data_i),
+      .data_a_i (meta_ram_wdata),
       .clk_b    (clk),
       .rstb_n   (rst_n),
       .en_b_i   ('1),

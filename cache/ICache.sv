@@ -209,7 +209,7 @@ module ICache (
       case (axi_state)
         // cache操作不会引起重填
         IDEL : if (miss && |s1_fetch_valid && !s1_cacop_en) axi_state <= MISS;
-        MISS : if (axi4_mst.rd_ready) axi_state <= REFILL;
+        MISS : if (axi4_mst.r_ready) axi_state <= REFILL;
         REFILL : if (axi4_mst.r_last) axi_state <= IDEL;
         default : /* default */;
       endcase
@@ -349,7 +349,7 @@ module ICache (
 
 
 /*================================ ICache Memory ===============================*/
-  for (genvar j = 0; j < `ICACHE_WAY_NUM; j++) begin
+  for (genvar i = 0; i < `ICACHE_WAY_NUM; i++) begin
       SimpleDualPortRAM #(
           .DATA_DEPTH(2 ** `ICACHE_IDX_WIDTH),
           .DATA_WIDTH(`ICACHE_BLOCK_SIZE * 8),
@@ -359,7 +359,7 @@ module ICache (
         ) U_ICacheDataRAM (
           .clk_a    (clk),
           .en_a_i   ('1),
-          .we_a_i   (data_ram_we[j]),
+          .we_a_i   (data_ram_we[i]),
           .addr_a_i (data_ram_waddr),
           .data_a_i (data_ram_wdata[i]),
           .clk_b    (clk),
@@ -378,7 +378,7 @@ module ICache (
         ) U_ICacheTagRAM (
           .clk_a    (clk),
           .en_a_i   ('1),
-          .we_a_i   (tag_ram_we[j]),
+          .we_a_i   (tag_ram_we[i]),
           .addr_a_i (tag_ram_waddr),
           .data_a_i (tag_ram_wdata),
           .clk_b    (clk),
@@ -397,7 +397,7 @@ module ICache (
         ) U_ICacheValidRAM (
           .clk_a    (clk),
           .en_a_i   ('1),
-          .we_a_i   (valid_ram_we[j]),
+          .we_a_i   (valid_ram_we[i]),
           .addr_a_i (valid_ram_waddr),
           .data_a_i (valid_ram_wdata),
           .clk_b    (clk),

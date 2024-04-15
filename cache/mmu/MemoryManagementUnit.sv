@@ -253,8 +253,8 @@ module MemoryManagementUnit (
       .tlb_read_rsp   (tlb_read_rsp),
       .tlb_write_req  (tlb_write_req),
       .tlb_write_rsp  (tlb_write_rsp),
-      .tlb_iv_req     (tlb_inv_req),
-      .tlb_iv_rsp     (tlb_inv_rsp)
+      .tlb_inv_req     (tlb_inv_req),
+      .tlb_inv_rsp     (tlb_inv_rsp)
     );
   end
   

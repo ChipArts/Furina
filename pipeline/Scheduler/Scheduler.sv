@@ -237,7 +237,7 @@ module Scheduler (
   end
 
   RegisterAliasTable #(
-    .PHYS_REG_NUM(`PHY_REG_NUM)
+    .PHY_REG_NUM(`PHY_REG_NUM)
   ) U_IntegerRegisterAliasTable (
     .clk         (clk),
     .a_rst_n     (rst_n),
@@ -247,9 +247,9 @@ module Scheduler (
     .arch_rat    (arch_rat_i),
     // 查询
     .dest_valid_i(rat_dest_valid),
-    .src0_i      (s1_sche_req.arch_src0[i]),
-    .src1_i      (s1_sche_req.arch_src1[i]),
-    .dest_i      (s1_sche_req.arch_dest[i]),
+    .src0_i      (s1_sche_req.arch_src0),
+    .src1_i      (s1_sche_req.arch_src1),
+    .dest_i      (s1_sche_req.arch_dest),
     .preg_i      (s1_fl_alloc_preg),
     // 输出(comb)
     .psrc0_o     (rat_psrc0),
@@ -421,6 +421,7 @@ module Scheduler (
     .option_code_i (misc_rs_oc),
     .wr_valid_i    (misc_rs_wr_valid),
     .wr_ready_o    (misc_rs_wr_ready),
+    .wb_pdest_valid_i(wb_pdest_valid_i),
     .wb_pdest_i    (wb_pdest_i),
     .issue_ready_i (misc_issue_ready),
     .issue_valid_o (misc_issue_valid),
@@ -442,7 +443,8 @@ module Scheduler (
     .option_code_i (alu_rs_oc),
     .wr_valid_i    (alu_rs_wr_valid),
     .wr_ready_o    (alu_rs_wr_ready),
-    .wb_pdest_i   (wb_pdest_i),
+    .wb_pdest_valid_i(wb_pdest_valid_i),
+    .wb_pdest_i    (wb_pdest_i),
     .issue_ready_i (alu_issue_ready),
     .issue_valid_o (alu_issue_valid),
     .issue_base_o  (alu_issue_base),
@@ -463,11 +465,12 @@ module Scheduler (
     .option_code_i (mdu_rs_oc),
     .wr_valid_i    (mdu_rs_wr_valid),
     .wr_ready_o    (mdu_rs_wr_ready),
-    .wb_pdest_i   (wb_pdest_i),
-    .issue_ready_i (issue_ready_i),
-    .issue_valid_o (issue_valid_o),
-    .issue_base_o  (issue_base_o),
-    .issue_oc_o    (issue_oc_o)
+    .wb_pdest_valid_i(wb_pdest_valid_i),
+    .wb_pdest_i    (wb_pdest_i),
+    .issue_ready_i (mdu_ready_i),
+    .issue_valid_o (mdu_valid_o),
+    .issue_base_o  (mdu_base_o),
+    .issue_oc_o    (mdu_oc_o)
   );
 
   // Memory
@@ -482,6 +485,7 @@ module Scheduler (
     .option_code_i (mem_rs_oc),
     .wr_valid_i    (mem_rs_wr_valid),
     .wr_ready_o    (mem_rs_wr_ready),
+    .wb_pdest_valid_i(wb_pdest_valid_i),
     .wb_pdest_i   (wb_pdest_i),
     .issue_ready_i (mem_issue_ready),
     .issue_valid_o (mem_issue_valid),

@@ -447,7 +447,7 @@ module Pipeline (
 /*================================== Decoder ==================================*/
   // 对控制相关信息解码
   for (genvar i = 0; i < `DECODE_WIDTH; i++) begin
-    Decoder inst_Decoder (.instr_i(ibuf_read_data[i].instr), .option_code_o(decoder_option_code_o[i]));
+    Decoder inst_Decoder (.instr_i(ibuf_read_data_o[i].instr), .option_code_o(decoder_option_code_o[i]));
   end
 
   // 处理特殊的解码
@@ -455,8 +455,8 @@ module Pipeline (
   always_comb begin
     // 三个CSR特权指令
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      if (decoder_option_code[i].misc_op == `PRIV_CSR_XCHG) begin
-        case (ibuf_read_data[i].instr[9:5])
+      if (decoder_option_code_o[i].misc_op == `PRIV_CSR_XCHG) begin
+        case (ibuf_read_data_o[i].instr[9:5])
           5'b0 : decoder_option_code_o[i].misc_op = `PRIV_CSR_READ;
           5'b1 : decoder_option_code_o[i].misc_op = `PRIV_CSR_WRITE;
           default : decoder_option_code_o[i].misc_op = `PRIV_CSR_XCHG;
@@ -465,8 +465,8 @@ module Pipeline (
     end
     // 两个rdtimel指令
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      if (decoder_option_code[i].misc_op == `MISC_RDCNTVL) begin
-        if (ibuf_read_data[i].instr[9:5] != 0) begin
+      if (decoder_option_code_o[i].misc_op == `MISC_RDCNTVL) begin
+        if (ibuf_read_data_o[i].instr[9:5] != 0) begin
           decoder_option_code_o[i].misc_op = `MISC_RDCNTID;
         end
       end
@@ -476,24 +476,24 @@ module Pipeline (
   // 准备寄存器编号
   always_comb begin
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      case (ibuf_read_data[i].pre_oc.src0_type)
+      case (ibuf_read_data_o[i].pre_oc.src0_type)
         `SRC_R0 : decoder_src0[i] = 5'd0;
-        `SRC_RD : decoder_src0[i] = ibuf_read_data[i].instr[4:0];
-        `SRC_RJ : decoder_src0[i] = ibuf_read_data[i].instr[9:5];
-        `SRC_RK : decoder_src0[i] = ibuf_read_data[i].instr[14:10];
+        `SRC_RD : decoder_src0[i] = ibuf_read_data_o[i].instr[4:0];
+        `SRC_RJ : decoder_src0[i] = ibuf_read_data_o[i].instr[9:5];
+        `SRC_RK : decoder_src0[i] = ibuf_read_data_o[i].instr[14:10];
         default : /* default */;
       endcase
-      case (ibuf_read_data[i].pre_oc.src1_type)
-        `SRC_RD : decoder_src1[i] = ibuf_read_data[i].instr[4:0];
-        `SRC_RJ : decoder_src1[i] = ibuf_read_data[i].instr[9:5];
-        `SRC_RK : decoder_src1[i] = ibuf_read_data[i].instr[14:10];
+      case (ibuf_read_data_o[i].pre_oc.src1_type)
+        `SRC_RD : decoder_src1[i] = ibuf_read_data_o[i].instr[4:0];
+        `SRC_RJ : decoder_src1[i] = ibuf_read_data_o[i].instr[9:5];
+        `SRC_RK : decoder_src1[i] = ibuf_read_data_o[i].instr[14:10];
         `SRC_R0 : decoder_src1[i] = 5'd0;
         default : /* default */;
       endcase
-      case (ibuf_read_data[i].pre_oc.dest_type)
+      case (ibuf_read_data_o[i].pre_oc.dest_type)
         `DEST_R0 : decoder_dest[i] = 5'd0;
-        `DEST_RD : decoder_dest[i] = ibuf_read_data[i].instr[4:0];
-        `DEST_JD : decoder_dest[i] = ibuf_read_data[i].instr[9:5] | ibuf_read_data[i].instr[4:0];
+        `DEST_RD : decoder_dest[i] = ibuf_read_data_o[i].instr[4:0];
+        `DEST_JD : decoder_dest[i] = ibuf_read_data_o[i].instr[9:5] | ibuf_read_data_o[i].instr[4:0];
         `DEST_RA : decoder_dest[i] = 5'd1;
         default : /* default */;
       endcase
@@ -507,13 +507,13 @@ module Pipeline (
 
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       sche_req.valid[i] = ibuf_read_valid_o[i];
-      sche_req.pc[i] = ibuf_read_data[i].pc;
-      sche_req.npc[i] = ibuf_read_data[i].npc;
+      sche_req.pc[i] = ibuf_read_data_o[i].pc;
+      sche_req.npc[i] = ibuf_read_data_o[i].npc;
       sche_req.arch_src0[i] = decoder_src0[i];
       sche_req.arch_src1[i] = decoder_src1[i];
       sche_req.arch_dest[i] = decoder_dest[i];
       sche_req.option_code[i] = decoder_option_code_o[i];
-      sche_req.excp[i] = ibuf_read_data[i].excp;
+      sche_req.excp[i] = ibuf_read_data_o[i].excp;
     end
 
     sche_arch_rat_i = arch_rat_o;

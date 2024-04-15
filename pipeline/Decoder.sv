@@ -27,7 +27,7 @@
 
 module Decoder (
   input  wire [31:0]   instr_i,
-  output wire [64:0]   pre_option_code_o
+  output wire [64:0]   option_code_o
 );
 
   wire       [31:0]   _zz_ctrl;
