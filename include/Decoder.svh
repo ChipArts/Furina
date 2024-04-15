@@ -163,7 +163,7 @@ typedef struct packed {
 } MduOpCodeSt;
 
 typedef struct packed {
-  InstType instr_type;
+  InstrType instr_type;
   BranchOpType branch_op;
   PrivOpType priv_op;
   MiscOpType misc_op;
