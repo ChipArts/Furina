@@ -23,11 +23,15 @@
 
 `include "config.svh"
 `include "common.svh"
-`include "Decoder.svh"
-`include "Pipeline.svh"
-`include "ControlStatusRegister.svh"
+
 `include "BranchPredictionUnit.svh"
+`include "Cache.svh"
+`include "ControlStatusRegister.svh"
+`include "Decoder.svh"
+`include "MemoryManagementUnit.svh"
+`include "Pipeline.svh"
 `include "ReorderBuffer.svh"
+`include "Scheduler.svh"
 
 
 module Pipeline (
