@@ -414,7 +414,7 @@ module Pipeline (
       if (icache_rsp_buffer.valid[i]) begin
         ibuf_write_valid_i[ibuf_idx] = 1'b1;
         ibuf_write_data_i[ibuf_idx].valid = 1'b1;
-        ibuf_write_data_i[ibuf_idx].pc = icache_rsp_buffer.pc[i];
+        ibuf_write_data_i[ibuf_idx].pc = icache_rsp_buffer.vaddr[i];
         ibuf_write_data_i[ibuf_idx].npc = icache_rsp_buffer.npc[i];
         ibuf_write_data_i[ibuf_idx].instr = icache_rsp_buffer.instr[i];
         ibuf_write_data_i[ibuf_idx].excp = icache_rsp_buffer.excp[i];
@@ -657,21 +657,21 @@ module Pipeline (
   always_comb begin
     iblk_flush_i = global_flush;
     // 杂项指令在成为最旧指令时才执行
-    iblk_misc_exe_i.base = is2exe(sche_misc_issue_o, rf_rdata_o[1], rf_rdata_o[0]);
+    iblk_misc_exe_i.base = is2exe(sche_misc_issue_o.base_info, sche_misc_issue_o.valid, rf_rdata_o[1], rf_rdata_o[0]);
     iblk_misc_exe_i.misc_oc = sche_misc_issue_o.misc_oc;
     iblk_misc_exe_i.pc = sche_misc_issue_o.base_info.pc;
     iblk_misc_exe_i.npc = sche_misc_issue_o.base_info.npc;
 
     // 第一条ALU执行pipe
-    iblk_alu_exe_i[0].base = is2exe(sche_alu_issue_o[0], rf_rdata_o[3], rf_rdata_o[2]);
+    iblk_alu_exe_i[0].base = is2exe(sche_alu_issue_o[0].base_info, sche_alu_issue_o[0].valid, rf_rdata_o[3], rf_rdata_o[2]);
     iblk_alu_exe_i[0].alu_oc = sche_alu_issue_o[0].alu_oc;
 
     // 第二条ALU执行pipe
-    iblk_alu_exe_i[1].base = is2exe(sche_alu_issue_o[0], rf_rdata_o[5], rf_rdata_o[4]);
+    iblk_alu_exe_i[1].base = is2exe(sche_alu_issue_o[1].base_info, sche_alu_issue_o[1].valid, rf_rdata_o[5], rf_rdata_o[4]);
     iblk_alu_exe_i[1].alu_oc = sche_alu_issue_o[1].alu_oc;
 
     // 乘除法执行pipe   
-    iblk_mdu_exe_i.base = is2exe(sche_mdu_issue_o, rf_rdata_o[7], rf_rdata_o[6]);
+    iblk_mdu_exe_i.base = is2exe(sche_mdu_issue_o.base_info, sche_mdu_issue_o.valid, rf_rdata_o[7], rf_rdata_o[6]);
     iblk_mdu_exe_i.mdu_oc = sche_mdu_issue_o.mdu_oc;
 
     iblk_csr_rdata_i = csr_rd_data;
@@ -738,7 +738,7 @@ module Pipeline (
   always_comb begin
     mblk_flush_i = global_flush;
 
-    mblk_exe_i.base = is2exe(sche_mem_issue_o, rf_rdata_o[9], rf_rdata_o[8]);
+    mblk_exe_i.base = is2exe(sche_mem_issue_o.base_info, sche_mem_issue_o.valid, rf_rdata_o[9], rf_rdata_o[8]);
     mblk_exe_i.mem_oc = sche_mem_issue_o.mem_oc;
     mblk_exe_i.code = sche_mem_issue_o.base_info.src[4:0];
     mblk_exe_i.llbit = csr_llbit_in;  // 决定SC.W指令是否执行

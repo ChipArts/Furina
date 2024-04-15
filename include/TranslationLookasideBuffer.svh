@@ -84,19 +84,18 @@ typedef struct packed {
 } TlbWriteRspSt;
 
 // TLB无效化请求
-typedef enum logic [5:0] {
-  TLB_INV_ALL0,
-  TLB_INV_ALL1,
-  TLB_INV_GLO1,
-  TLB_INV_GLO0,
-  TLB_INV_GLO0_ASID,
-  TLB_INV_GLO0_ASID_VA,
-  TLB_INV_GLO1_ASID_VA
-} TlbInvOptionType;
+typedef logic [4:0] TlbInvOptionType;
+`define TLB_INV_ALL0         (5'd0)
+`define TLB_INV_ALL1         (5'd1)
+`define TLB_INV_GLO1         (5'd2)
+`define TLB_INV_GLO0         (5'd3)
+`define TLB_INV_GLO0_ASID    (5'd4)
+`define TLB_INV_GLO0_ASID_VA (5'd5)
+`define TLB_INV_GLO1_ASID_VA (5'd6)
 
 typedef struct packed {
   logic valid;  // 请求有效
-  TlbInvOptionType option_t;  // 无效化选项
+  TlbInvOptionType op;  // 无效化选项
   logic [9:0] asid;
   logic [`PROC_VALEN - 1:13] vppn;
 } TlbInvReqSt;

@@ -258,7 +258,7 @@ module ReorderBuffer (
       rob_n[mem_wb_req.base.rob_idx].store_valid = mem_wb_req.mem_op == `MEM_STORE &
                                                    (~mem_wb_req.micro | mem_wb_req.llbit);
       rob_n[mem_wb_req.base.rob_idx].load_valid = mem_wb_req.mem_op == `MEM_LOAD;
-      rob_n[mem_wb_req.base.rob_idx].store_data = mem_wb_req.wdata;
+      rob_n[mem_wb_req.base.rob_idx].store_data = mem_wb_req.store_data;
       rob_n[mem_wb_req.base.rob_idx].mem_paddr = mem_wb_req.paddr;
       rob_n[mem_wb_req.base.rob_idx].mem_vaddr = mem_wb_req.vaddr;
 `endif
@@ -272,7 +272,7 @@ module ReorderBuffer (
     br_mask[0] = '1;
     // 第二条指令
     // BR恢复需要抽干流水线
-    redirect_mask[1] = redirect_mask[0] & ~rob[head_idx + 1].redirect;
+    redirect_mask[1] = redirect_mask[0] & ~rob[head_idx + 1].br_redirect;
     // excp恢复需要抽干流水线
     exc_mask[1]      = exc_mask[0] & ~rob[head_idx + 1].excp.valid;
     // 仅允许一条分支指令提交（BPU更新只有一个写口）

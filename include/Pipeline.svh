@@ -129,7 +129,7 @@ typedef struct packed {
 
   // for priv misc
   logic ertn_en;
-  logic idel_en;
+  logic idle_en;
 
   // diff
   logic cnt_instr_diff;
@@ -166,9 +166,9 @@ function logic[31:0] imm_ext(logic[25:0] src, ImmType imm_type, logic[31:0] pc);
   endcase
 endfunction : imm_ext
 
-function ExeBaseSt is2exe(IssueBaseSt is, logic[31:0] src1, logic[31:0] src0);
+function ExeBaseSt is2exe(IssueBaseSt is, logic valid, logic[31:0] src1, logic[31:0] src0);
   ExeBaseSt exe;
-  exe.valid = is.valid;
+  exe.valid = valid;
   exe.src0 = src0;
   exe.src1 = src1;
   exe.pdest_valid = is.pdest_valid;

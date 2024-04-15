@@ -131,13 +131,13 @@ parameter
       for (int j = 1; j < BANK_SIZE; j++) begin
         // 是一条可发射的指令
         if (!free[i][j] &&
-            (rs_mem[i][j].psrc0_ready || !rs_mem[i][j].psrc0_valid) &&
-            (rs_mem[i][j].psrc1_ready || !rs_mem[i][j].psrc1_valid)) begin
+            (rs_mem[i][j].base.psrc0_ready || !rs_mem[i][j].base.psrc0_valid) &&
+            (rs_mem[i][j].base.psrc1_ready || !rs_mem[i][j].base.psrc1_valid)) begin
           // 是一条更老的指令
-          if ((rs_mem[i][j].position_bit == position_bit[i] &&
-               rs_mem[i][j].rob_idx > rob_idx[i]) || 
-              (rs_mem[i][j].position_bit != position_bit[i] &&
-               rs_mem[i][j].rob_idx < rob_idx[i])) begin
+          if ((rs_mem[i][j].base.position_bit == position_bit[i] &&
+               rs_mem[i][j].base.rob_idx > rob_idx[i]) || 
+              (rs_mem[i][j].base.position_bit != position_bit[i] &&
+               rs_mem[i][j].base.rob_idx < rob_idx[i])) begin
             issue_base_o[i] = rs2is(rs_mem[i][j].base);
             issue_oc_o[i] = rs_mem[i][j].oc;
 

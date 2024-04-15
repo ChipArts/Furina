@@ -67,7 +67,7 @@ module AluPipe (
   ArithmeticLogicUnit inst_ArithmeticLogicUnit
   (
     .src0_i   (s1_exe.base.src0),
-    .src1_i   (s1_exe.alu_oc.imm_valid ? s1_exe.alu_oc.imm : s1_exe.base.src1),
+    .src1_i   (s1_exe.alu_oc.imm_op ? s1_exe.base.imm : s1_exe.base.src1),
     .signed_i (s1_exe.alu_oc.signed_op),
     .alu_op_i (s1_exe.alu_oc.alu_op),
     .res_o    (alu_res)

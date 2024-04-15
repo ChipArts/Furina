@@ -152,9 +152,9 @@ module DCache (
       addr_trans_req.ready = 1'b1;
       addr_trans_req.vaddr = dcache_req.vaddr;
       case (dcache_req.mem_op)
-        `MEM_LOAD : addr_trans_req.mem_op = MMU_LOAD;
-        `MEM_STORE: addr_trans_req.mem_op = MMU_STORE;
-        default : addr_trans_req.mem_op = MMU_LOAD;
+        `MEM_LOAD : addr_trans_req.mem_type = MMU_LOAD;
+        `MEM_STORE: addr_trans_req.mem_type = MMU_STORE;
+        default : addr_trans_req.mem_type = MMU_LOAD;
       endcase
       addr_trans_req.cacop_direct = dcache_req.mem_op == `MEM_CACOP &
                                     dcache_req.code[4:3] < 2'b10;
@@ -416,7 +416,7 @@ module DCache (
           default : /* default */;
         endcase
       end
-      `ALIGN_W: dcache_rsp.data = matched_word;
+      `ALIGN_W: dcache_rsp.rdata = matched_word;
       `ALIGN_BU: begin
         case (s2_vaddr[1:0])
           2'b00: dcache_rsp.rdata = {{24{1'b0}}, matched_word[7:0]};

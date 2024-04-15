@@ -204,7 +204,6 @@ function AluOpCodeSt gen2alu(OptionCodeSt option_code);
   alu_op_code.alu_op = option_code.alu_op;
   alu_op_code.signed_op = option_code.signed_op;
   alu_op_code.imm_op = option_code.imm_op;
-  alu_op_code.imm_type = option_code.imm_type;
   return alu_op_code;
 endfunction : gen2alu
 

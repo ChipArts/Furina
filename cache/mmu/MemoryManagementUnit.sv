@@ -154,7 +154,7 @@ module MemoryManagementUnit (
     // inv req
     tlb_inv_req.valid = invtlb_en_i;
     tlb_inv_req.asid = invtlb_asid_i;
-    tlb_inv_req.vpn = invtlb_vpn_i;
+    tlb_inv_req.vppn = invtlb_vpn_i;
     tlb_inv_req.op = invtlb_op_i;
 
     // read rsp
@@ -197,7 +197,6 @@ module MemoryManagementUnit (
 
       addr_trans_rsp[i].valid = addr_trans_req[i].valid;
       addr_trans_rsp[i].ready = '1;
-      addr_trans_rsp[i].miss  = tlb_search_rsp[1].miss;
       addr_trans_rsp[i].paddr = (pg_mode && dmw0_en[i] && !addr_trans_req_buffer[i].cacop_direct) ? {csr_dmw0_i[`PSEG], addr_trans_req_buffer[i].vaddr[28:0]} : 
                                 (pg_mode && dmw1_en[i] && !addr_trans_req_buffer[i].cacop_direct) ? {csr_dmw1_i[`PSEG], addr_trans_req_buffer[i].vaddr[28:0]} : 
                                  addr_trans_en[i] ? 

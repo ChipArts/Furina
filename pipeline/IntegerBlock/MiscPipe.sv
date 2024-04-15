@@ -143,12 +143,12 @@ module MiscPipe (
   BranchUnit U_BranchUnit
   (
     .signed_i    (s1_exe.misc_oc.signed_op),
-    .pc_i        (s1_exe.base.pc),
-    .npc_i       (s1_exe.base.npc),
+    .pc_i        (s1_exe.pc),
+    .npc_i       (s1_exe.npc),
     .imm_i       (s1_exe.base.imm),
     .src0_i      (s1_exe.base.src0),
     .src1_i      (s1_exe.base.src1),
-    .indirect_i  (s1_exe.misc_oc.br_indirect),
+    .indirect_i  (s1_exe.misc_oc.indirect_br_op),
     .branch_op_i (s1_exe.misc_oc.branch_op),
     // output
     .redirect_o  (br_redirect),

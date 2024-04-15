@@ -120,7 +120,6 @@ typedef struct packed {
 
 function IssueBaseSt rs2is(RsBaseSt rs);
   IssueBaseSt is;
-  is.valid = rs.valid;
   is.pc = rs.pc;
   is.npc = rs.npc;
   is.src = rs.src;

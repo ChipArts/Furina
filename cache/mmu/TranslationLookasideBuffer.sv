@@ -92,31 +92,31 @@ module TranslationLookasideBuffer (
         tlb_entries[tlb_write_req.idx] <= tlb_write_req.tlb_entry_st;
       end else begin
         for (int i = 0; i < `TLB_ENTRY_NUM; i++) begin
-          case (tlb_inv_req.option_t)
-            TLB_INV_ALL0 : tlb_entries[i] <= '0;
-            TLB_INV_ALL1 : tlb_entries[i] <= '0;
-            TLB_INV_GLO1 : begin
+          case (tlb_inv_req.op)
+            `TLB_INV_ALL0 : tlb_entries[i] <= '0;
+            `TLB_INV_ALL1 : tlb_entries[i] <= '0;
+            `TLB_INV_GLO1 : begin
               if (tlb_entries[i].glo) begin
                 tlb_entries[i] <= '0;
               end
             end
-            TLB_INV_GLO0 : begin
+            `TLB_INV_GLO0 : begin
               if (~tlb_entries[i].glo) begin
                 tlb_entries[i] <= '0;
               end
             end
-            TLB_INV_GLO0_ASID : begin
+            `TLB_INV_GLO0_ASID : begin
               if (~tlb_entries[i].glo & (tlb_entries[i].asid == tlb_inv_req.asid)) begin
                 tlb_entries[i] <= '0;
               end
             end
-            TLB_INV_GLO0_ASID_VA : begin
+            `TLB_INV_GLO0_ASID_VA : begin
               if (~tlb_entries[i].glo & (tlb_entries[i].asid == tlb_inv_req.asid) & 
                   (tlb_entries[i].vppn == tlb_inv_req.vppn)) begin
                 tlb_entries[i] <= '0;
               end
             end
-            TLB_INV_GLO1_ASID_VA : begin
+            `TLB_INV_GLO1_ASID_VA : begin
               if (tlb_entries[i].glo & (tlb_entries[i].asid == tlb_inv_req.asid) & 
                   (tlb_entries[i].vppn == tlb_inv_req.vppn)) begin
                 tlb_entries[i] <= '0;
@@ -132,7 +132,7 @@ module TranslationLookasideBuffer (
   // ff输出
   always_ff @(posedge clk or negedge rst_n) begin
     if (~rst_n) begin
-      tlb_search_rsp.miss <= '0;
+      tlb_search_rsp.found <= '0;
       tlb_search_rsp.idx <= '0;
       tlb_search_rsp.page_size <= '0;
       tlb_search_rsp.valid <= '0;

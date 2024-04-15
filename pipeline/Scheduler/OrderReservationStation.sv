@@ -107,12 +107,12 @@ parameter
         for (int j = 0; j < `WB_WIDTH; j++) begin
           if (wb_pdest_valid_i[j]) begin
             if (mem_q[i].base.valid &&
-              mem_q[i].base.psrc0 == wb_pdest_i[j]) begin
-              mem_n[i].psrc0_ready = '1;
+                mem_q[i].base.psrc0 == wb_pdest_i[j]) begin
+              mem_n[i].base.psrc0_ready = '1;
             end
             if (mem_q[i].base.valid &&
                 mem_q[i].base.psrc1 == wb_pdest_i[j]) begin
-              mem_n[i].psrc1_ready = '1;
+              mem_n[i].base.psrc1_ready = '1;
             end
           end
         end

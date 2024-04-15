@@ -207,7 +207,7 @@ module Scheduler (
       rob_alloc_req.arch_reg[i] = s1_sche_req.arch_dest[i];
       rob_alloc_req.excp[i] = excp[i];
 `ifdef DEBUG
-      rob_alloc_req.instr[i] = s1_sche_req.option_code[i].debug_inst;
+      rob_alloc_req.instr[i] = s1_sche_req.option_code[i].debug_instr;
 `endif
     end
 
