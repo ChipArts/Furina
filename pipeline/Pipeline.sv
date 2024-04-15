@@ -27,6 +27,7 @@
 `include "Pipeline.svh"
 `include "ControlStatusRegister.svh"
 `include "BranchPredictionUnit.svh"
+`include "ReorderBuffer.svh"
 
 
 module Pipeline (
