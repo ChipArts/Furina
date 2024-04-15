@@ -95,7 +95,7 @@ module MiscPipe (
 
   // 处理分支或特权指令
   // 缩短一点代码长度
-  InstType instr_type;
+  InstrType instr_type;
   PrivOpType priv_op;
   MiscOpType misc_op;
   logic [31:0] src0, src1;
