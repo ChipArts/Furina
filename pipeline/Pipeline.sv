@@ -664,15 +664,15 @@ module Pipeline (
 
     // 第一条ALU执行pipe
     iblk_alu_exe_i[0].base = is2exe(sche_alu_issue_o[0], rf_rdata_o[3], rf_rdata_o[2]);
-    iblk_alu_exe_i[0].alu_oc = sche_alu_issue[0].alu_oc;
+    iblk_alu_exe_i[0].alu_oc = sche_alu_issue_o[0].alu_oc;
 
     // 第二条ALU执行pipe
     iblk_alu_exe_i[1].base = is2exe(sche_alu_issue_o[0], rf_rdata_o[5], rf_rdata_o[4]);
-    iblk_alu_exe_i[1].alu_oc = sche_alu_issue[1].alu_oc;
+    iblk_alu_exe_i[1].alu_oc = sche_alu_issue_o[1].alu_oc;
 
     // 乘除法执行pipe   
     iblk_mdu_exe_i.base = is2exe(sche_mdu_issue_o, rf_rdata_o[7], rf_rdata_o[6]);
-    iblk_mdu_exe_i.mdu_oc = sche_mdu_issue.mdu_oc;
+    iblk_mdu_exe_i.mdu_oc = sche_mdu_issue_o.mdu_oc;
 
     iblk_csr_rdata_i = csr_rd_data;
     iblk_tlbsrch_found_i = mmu_tlbsrch_found_o;
@@ -699,7 +699,7 @@ module Pipeline (
   (
     .clk             (clk),
     .a_rst_n         (a_rst_n),
-    .flush_i         (flush_i),
+    .flush_i         (iblk_flush_i),
     /* exe */
     .misc_exe_i      (iblk_misc_exe_i),
     .misc_ready_o    (iblk_misc_ready_o),
@@ -765,7 +765,7 @@ module Pipeline (
 
 /*======================== Reorder Buffer(Write Back) =========================*/
   always_comb begin
-    rob_flush_i = '0;
+    rob_flush_i = global_flush;
     rob_alloc_req = sche_rob_alloc_req;
 
 

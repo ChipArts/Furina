@@ -467,10 +467,10 @@ module Scheduler (
     .wr_ready_o    (mdu_rs_wr_ready),
     .wb_pdest_valid_i(wb_pdest_valid_i),
     .wb_pdest_i    (wb_pdest_i),
-    .issue_ready_i (mdu_ready_i),
-    .issue_valid_o (mdu_valid_o),
-    .issue_base_o  (mdu_base_o),
-    .issue_oc_o    (mdu_oc_o)
+    .issue_ready_i (mdu_issue_ready),
+    .issue_valid_o (mdu_issue_valid),
+    .issue_base_o  (mdu_issue_base),
+    .issue_oc_o    (mdu_issue_oc)
   );
 
   // Memory

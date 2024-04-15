@@ -255,7 +255,7 @@ module Furina (
   );
 
   DifftestStoreEvent DifftestStoreEvent(
-      .clock              (aclk           ),
+      .clock              (clk           ),
       .coreid             (0              ),
       .index              (0              ),
       .valid              (U_Pipeline.rob_cmt_o.valid[0] & 
@@ -267,7 +267,7 @@ module Furina (
 
   for (genvar i = 0; i < `COMMIT_WIDTH; i++) begin
     DifftestLoadEvent DifftestLoadEvent(
-        .clock              (aclk           ),
+        .clock              (clk           ),
         .coreid             (0              ),
         .index              (i              ),
         .valid              (U_Pipeline.rob_cmt_o.valid[i] & 
@@ -278,7 +278,7 @@ module Furina (
   end
 
   DifftestCSRRegState DifftestCSRRegState(
-      .clock              (aclk               ),
+      .clock              (clk               ),
       .coreid             (0                  ),
       .crmd               (U_Pipeline.csr_crmd_diff    ),
       .prmd               (U_Pipeline.csr_prmd_diff    ),
@@ -310,7 +310,7 @@ module Furina (
   );
 
   DifftestGRegState DifftestGRegState(
-      .clock              (aclk       ),
+      .clock              (clk       ),
       .coreid             (0          ),
       .gpr_0              (0          ),
       .gpr_1              (U_Pipeline.arch_regfile_n[1]    ),

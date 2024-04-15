@@ -693,7 +693,7 @@ module DCache (
     ) U_DCacheMetaRAM (
       .clk_a    (clk),
       .en_a_i   ('1),
-      .we_a_i   (meta_ram_we[j]),
+      .we_a_i   (meta_ram_we[i]),
       .addr_a_i (meta_ram_waddr),
       .data_a_i (meta_ram_wdata),
       .clk_b    (clk),

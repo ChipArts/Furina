@@ -569,6 +569,6 @@ module Decoder (
   assign ctrl = {(|((instr_i & _zz_ctrl) == 32'h40000000)),{(|(_zz_ctrl_1 == _zz_ctrl_2)),{(|{_zz_ctrl_3,_zz_ctrl_5}),{(|_zz_ctrl_16),{_zz_ctrl_21,{_zz_ctrl_24,_zz_ctrl_31}}}}}};
   assign fixDebug = {instr_i,ctrl};
   assign fixInvalidInst = {fixDebug,(! (|{((instr_i & 32'hf0000000) == 32'h50000000),{((instr_i & 32'hf0000000) == 32'h60000000),{((instr_i & _zz_fixInvalidInst) == 32'h4c000000),{(_zz_fixInvalidInst_1 == _zz_fixInvalidInst_2),{_zz_fixInvalidInst_3,{_zz_fixInvalidInst_4,_zz_fixInvalidInst_5}}}}}}))};
-  assign pre_option_code_o = fixInvalidInst;
+  assign option_code_o = fixInvalidInst;
 
 endmodule

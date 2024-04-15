@@ -79,7 +79,7 @@ localparam
     .data_a_i (data_i),
     .clk_b    (clk),
     .rstb_n   (rst_n),
-    .en_b_i   (en_b_i),
+    .en_b_i   ('1),
     .addr_b_i (read_pointer_n),
     .data_b_o (ram_rdata)
   );
