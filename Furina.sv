@@ -40,8 +40,8 @@ module Furina (
     .AXI_USER_WIDTH(1)
   ) axi4();
 
-  axi4.Master icache_axi4_mst;
-  axi4.Master dcache_axi4_mst;
+  axi4 icache_axi4_mst;
+  axi4 dcache_axi4_mst;
 
   Pipeline U_Pipeline
   (
