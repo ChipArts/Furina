@@ -174,18 +174,19 @@ typedef struct packed {
 typedef struct packed {
     DebugInstrType debug_instr;
     IndirectBrOpType indirect_br_op;
+    MicroOpType micro_op;
     SignedOpType signed_op;
     BranchOpType branch_op;
     MduOpType mdu_op;
+    MiscOpType misc_op;
     AluOpType alu_op;
     ImmOpType imm_op;
     ImmType imm_type;
-    MiscOpType misc_op;
+    PrivOpType priv_op;
     AlignOpType align_op;
     MemOpType mem_op;
     InstrType instr_type;
     InvalidInstType invalid_inst;
-    MicroOpType micro_op;
 } OptionCodeSt;
 
 function MiscOpCodeSt gen2misc(OptionCodeSt option_code);
