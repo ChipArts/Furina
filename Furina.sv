@@ -37,8 +37,8 @@ module Furina (
     .AXI_ADDR_WIDTH(`PROC_PALEN),
     .AXI_DATA_WIDTH(32),
     .AXI_ID_WIDTH  (4),
-    .AXI_USER_WIDTH(1),
-  ) axi4;
+    .AXI_USER_WIDTH(1)
+  ) axi4();
 
   axi4.Master icache_axi4_mst;
   axi4.Master dcache_axi4_mst;

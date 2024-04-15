@@ -84,8 +84,8 @@ module core_top(
 	    .AXI_ADDR_WIDTH(32),
 	    .AXI_DATA_WIDTH(32),
 	    .AXI_ID_WIDTH  (4),
-	    .AXI_USER_WIDTH(1),
-  	) axi4;
+	    .AXI_USER_WIDTH(1)
+  	) axi4();
 
 	Furina inst_Furina (.clk(clk), .a_rst_n(aresetn), .interrupt(intrpt), .axi4_mst(axi4));
 
