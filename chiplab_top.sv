@@ -69,6 +69,12 @@ module core_top(
     input           bvalid,
     output          bready,
     //debug info
+    input           break_point,
+    input           infor_flag,
+    input  [ 4:0]   reg_num,
+    output          ws_valid,
+    output [31:0]   rf_rdata,
+
     output [31:0] debug0_wb_pc,
     output [ 3:0] debug0_wb_rf_wen,
     output [ 4:0] debug0_wb_rf_wnum,
@@ -128,6 +134,9 @@ module core_top(
     assign axi4.b_resp = bresp;
     assign axi4.b_valid = bvalid;
     assign bready = axi4.b_ready;
+
+    assign ws_valid = '0;
+    assign rf_rdata = '0;
 
     assign debug0_wb_pc = '0;
     assign debug0_wb_rf_wen = '0;
