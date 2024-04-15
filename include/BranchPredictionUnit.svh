@@ -29,7 +29,7 @@
 typedef struct packed {
   logic next;  // 下一个pc
   logic redirect;  // 重定向请求
-  logic [`PROC_VALEN:0] target;
+  logic [`PROC_VALEN - 1:0] target;
 } BpuReqSt;
 
 

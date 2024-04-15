@@ -399,7 +399,7 @@ module Pipeline (
   
   // TODO: 实现分支预测的pre检查
   for (genvar i = 0; i < `FETCH_WIDTH; i++) begin
-    PreDecoder inst_PreDecoder (.instr_i(icache_rsp_buffer[i].instr), .pre_option_code_o(pre_option_code_o));
+    PreDecoder inst_PreDecoder (.instr_i(icache_rsp_buffer.instr[i]), .pre_option_code_o(pre_option_code_o));
   end
 
 
@@ -411,13 +411,13 @@ module Pipeline (
 
     ibuf_idx = '0;
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
-      if (icache_rsp_buffer[i].valid) begin
+      if (icache_rsp_buffer.valid[i]) begin
         ibuf_write_valid_i[ibuf_idx] = 1'b1;
         ibuf_write_data_i[ibuf_idx].valid = 1'b1;
-        ibuf_write_data_i[ibuf_idx].pc = icache_rsp_buffer[i].pc;
-        ibuf_write_data_i[ibuf_idx].npc = icache_rsp_buffer[i].npc;
-        ibuf_write_data_i[ibuf_idx].instr = icache_rsp_buffer[i].instr;
-        ibuf_write_data_i[ibuf_idx].excp = icache_rsp_buffer[i].excp;
+        ibuf_write_data_i[ibuf_idx].pc = icache_rsp_buffer.pc[i];
+        ibuf_write_data_i[ibuf_idx].npc = icache_rsp_buffer.npc[i];
+        ibuf_write_data_i[ibuf_idx].instr = icache_rsp_buffer.instr[i];
+        ibuf_write_data_i[ibuf_idx].excp = icache_rsp_buffer.excp[i];
         ibuf_write_data_i[ibuf_idx].pre_oc = pre_option_code_o[i];
         ibuf_idx = ibuf_idx + 1;
       end
