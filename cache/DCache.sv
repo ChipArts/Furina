@@ -685,8 +685,8 @@ module DCache (
     // Meta Memory
     SimpleDualPortRAM #(
       .DATA_DEPTH(2 ** `DCACHE_IDX_WIDTH),
-      .DATA_WIDTH($clog2(DCacheMetaSt)),
-      .BYTE_WRITE_WIDTH($clog2(DCacheMetaSt)),
+      .DATA_WIDTH($bits(DCacheMetaSt)),
+      .BYTE_WRITE_WIDTH($bits(DCacheMetaSt)),
       .CLOCKING_MODE("common_clock"),
       .WRITE_MODE("write_first")
     ) U_DCacheMetaRAM (
