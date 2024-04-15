@@ -1,4 +1,4 @@
-
+#! /usr/bin/env python3
 import os
 
 # 获取CHIPLAB_HOME环境变量
