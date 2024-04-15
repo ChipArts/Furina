@@ -83,7 +83,7 @@ module ReorderBuffer (
     /* alloc logic */
     alloc_cnt = $countones(alloc_req.valid);
     alloc_rsp.ready = cnt <= `ROB_DEPTH - `DECODE_WIDTH;
-    if (alloc_rsp.ready) begin
+    if (alloc_rsp.ready & alloc_req.ready) begin
       tail_ptr_n = tail_ptr + alloc_cnt;
     end
     for (int i = 0; i < `DECODE_WIDTH; i++) begin

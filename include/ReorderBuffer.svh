@@ -85,6 +85,7 @@
 
 typedef struct packed {
   logic [`DECODE_WIDTH - 1:0] valid;
+  logic ready;
   logic [`DECODE_WIDTH - 1:0][`PROC_VALEN - 1:0] pc;
   InstrType [`DECODE_WIDTH - 1:0]instr_type;
   logic [`DECODE_WIDTH - 1:0][4:0] arch_reg;
