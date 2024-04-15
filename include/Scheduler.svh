@@ -26,6 +26,7 @@
 
 `include "config.svh"
 `include "Decoder.svh"
+`include "ControlStatusRegister.svh"
 
 typedef struct packed {
   logic [`DECODE_WIDTH - 1:0] valid;
