@@ -89,15 +89,15 @@ module core_top(
 
 	Furina inst_Furina (.clk(clk), .a_rst_n(aresetn), .interrupt(intrpt), .axi4_mst(axi4));
 
-    assign arid    = axi4.arid;
-    assign araddr  = axi4.araddr;
-    assign arlen   = axi4.arlen;
-    assign arsize  = axi4.arsize;
-    assign arburst = axi4.arburst;
-    assign arlock  = axi4.arlock;
-    assign arcache = axi4.arcache;
-    assign arprot  = axi4.arprot;
-    assign axi4.arvalid = arvalid;
+    assign arid    = axi4.ar_id;
+    assign araddr  = axi4.ar_addr;
+    assign arlen   = axi4.ar_len;
+    assign arsize  = axi4.ar_size;
+    assign arburst = axi4.ar_burst;
+    assign arlock  = axi4.ar_lock;
+    assign arcache = axi4.ar_cache;
+    assign arprot  = axi4.ar_prot;
+    assign axi4.ar_valid = arvalid;
 
     assign axi4.r_id = rid;
     assign axi4.r_data = rdata;
@@ -106,22 +106,22 @@ module core_top(
     assign axi4.r_valid = rvalid;
     assign rready = axi4.r_ready;
 
-    assign awid    = axi4.awid;
-    assign awaddr  = axi4.awaddr;
-    assign awlen   = axi4.awlen;
-    assign awsize  = axi4.awsize;
-    assign awburst = axi4.awburst;
-    assign awlock  = axi4.awlock;
-    assign awcache = axi4.awcache;
-    assign awprot  = axi4.awprot;
-    assign awvalid = axi4.awvalid;
+    assign awid    = axi4.aw_id;
+    assign awaddr  = axi4.aw_addr;
+    assign awlen   = axi4.aw_len;
+    assign awsize  = axi4.aw_size;
+    assign awburst = axi4.aw_burst;
+    assign awlock  = axi4.aw_lock;
+    assign awcache = axi4.aw_cache;
+    assign awprot  = axi4.aw_prot;
+    assign awvalid = axi4.aw_valid;
     assign axi4.aw_ready = awready;
 
-    assign wid    = axi4.wid;
-    assign wdata  = axi4.wdata;
-    assign wstrb  = axi4.wstrb;
-    assign wlast  = axi4.wlast;
-    assign wvalid = axi4.wvalid;
+    assign wid    = axi4.w_id;
+    assign wdata  = axi4.w_data;
+    assign wstrb  = axi4.w_strb;
+    assign wlast  = axi4.w_last;
+    assign wvalid = axi4.w_valid;
     assign axi4.w_ready = wready;
 
     assign axi4.b_id = bid;
