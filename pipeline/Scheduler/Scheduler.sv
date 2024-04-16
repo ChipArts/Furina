@@ -39,17 +39,17 @@ module Scheduler (
   input RobAllocRspSt rob_alloc_rsp,
 
   // excp
-  input csr_has_int,
-  input csr_plv,
+  input logic csr_has_int_i,
+  input logic [1:0] csr_plv_i,
   // freelist
-  input [`COMMIT_WIDTH - 1:0] fl_free_valid_i,
-  input [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] fl_free_preg_i,
-  input [`PHY_REG_NUM - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_free_list_i,
+  input logic [`COMMIT_WIDTH - 1:0] fl_free_valid_i,
+  input logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] fl_free_preg_i,
+  input logic [`PHY_REG_NUM - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_free_list_i,
   // rat
-  input [31:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_i,
+  input logic [31:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_i,
   // wake up
   input logic [`WB_WIDTH - 1:0] wb_pdest_valid_i,
-  input [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] wb_pdest_i,
+  input logic [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] wb_pdest_i,
 
   /* issue */
   // misc(BRU/Priv) * 1
@@ -168,21 +168,21 @@ module Scheduler (
     end
     excp = '0;  
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      if (s1_sche_req.excp[i].valid) begin
+      if (csr_has_int_i) begin
+        excp[i].valid = '1;
+        excp[i].ecode = `ESUBCODE_ADEF;
+        excp[i].sub_ecode = '0;
+      end else if (s1_sche_req.excp[i].valid) begin
         excp[i] = s1_sche_req.excp[i];
       end else if(s1_sche_req.option_code[i].invalid_inst) begin
         excp[i].valid = '1;
         excp[i].ecode = `ECODE_INE;
         excp[i].sub_ecode = `ESUBCODE_ADEF;
-      end else if (csr_has_int) begin
-        excp[i].valid = '1;
-        excp[i].ecode = `ESUBCODE_ADEF;
-        excp[i].sub_ecode = '0;
       end else if (schedule_req.option_code[i].invalid_inst) begin
         excp[i].valid = '1;
         excp[i].ecode = `ECODE_IPE;
         excp[i].sub_ecode = `ESUBCODE_ADEF;
-      end else if (priv_instr[i] && csr_plv == 2'b11) begin
+      end else if (priv_instr[i] && csr_plv_i == 2'b11) begin
         excp[i].valid = '1;
         excp[i].ecode = `ECODE_IPE;
         excp[i].sub_ecode = `ESUBCODE_ADEF;

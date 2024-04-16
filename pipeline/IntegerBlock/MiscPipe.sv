@@ -99,7 +99,6 @@ module MiscPipe (
   PrivOpType priv_op;
   MiscOpType misc_op;
   logic [31:0] src0, src1;
-  logic [31:0] imm;
   // csr
   logic csr_we;
   logic [13:0] csr_waddr;
@@ -125,7 +124,7 @@ module MiscPipe (
     imm = s1_exe.base.imm;
 
     csr_we = misc_op == `PRIV_CSR_WRITE | misc_op == `PRIV_CSR_XCHG;
-    csr_waddr = imm[13:0];
+    csr_waddr = s1_exe.base.imm[13:0];
     csr_wdata = misc_op == `PRIV_CSR_XCHG ? src0 & src1 : src0;
 
     invtlb_asid = src0[9:0];

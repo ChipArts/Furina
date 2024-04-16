@@ -29,6 +29,7 @@ parameter
   int unsigned DATA_WIDTH = 32,
   int unsigned BYTE_WRITE_WIDTH = 8,
   string       MEMORY_PRIMITIVE = "auto",
+  string       WRITE_MODE       = "write_first",
 localparam
   int unsigned ADDR_WIDTH = $clog2(DATA_DEPTH),
   int unsigned MEMORY_SIZE = DATA_WIDTH * DATA_DEPTH
@@ -49,20 +50,32 @@ end
 `ifdef VERILATOR_SIM
   logic [DATA_DEPTH - 1:0][DATA_WIDTH - 1:0] ram;
 
-  logic [DATA_WIDTH - 1:0] rdata;
+  logic [DATA_WIDTH - 1:0] rdata_q, rdata_n;
 
-  always_ff @(posedge clk_a or negedge rstb_n) begin
-    if(~rstb_n) begin
-       rdata <= '0;
+  always_comb begin
+    if (WRITE_MODE == "write_first" &&
+        en_i && we_i) begin
+      rdata_n = data_i;
     end else begin
-      raddr <= ram[addr_i];
-      if (en_a_i && we_i) begin
+      rdata_n = ram[addr_i];
+    end
+  end
+
+  always_ff @(posedge clk_a or negedge rst_n) begin
+    if(~rst_n) begin
+       rdata_q <= '0;
+    end else begin
+      if (en_i) begin
+        rdata_q <= rdata_n;
+      end
+
+      if (en_i && we_i) begin
          ram[addr_i] <= data_i;
       end
     end
   end
 
-  assign data_b_o = rdata;
+  assign data_o = rdata_q;
 
 `elsif VIVADO_VCS_SIM
 // xpm_memory_spram: Single Port RAM

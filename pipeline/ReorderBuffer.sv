@@ -88,8 +88,8 @@ module ReorderBuffer (
     end
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       alloc_ptr[i] = tail_ptr + i;
-      alloc_rsp.position_bit[i] = alloc_ptr[$clog2(`ROB_DEPTH)];
-      alloc_rsp.rob_idx[i] = alloc_ptr[$clog2(`ROB_DEPTH) - 1:0];
+      alloc_rsp.position_bit[i] = alloc_ptr[i][$clog2(`ROB_DEPTH)];
+      alloc_rsp.rob_idx[i] = alloc_ptr[i][$clog2(`ROB_DEPTH) - 1:0];
 
       // set rob entry
       rob_n[alloc_ptr[i]] = '0;

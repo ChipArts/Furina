@@ -93,9 +93,9 @@ parameter
 
 
     if (alloc_ready_o) begin
-      free_list_cnt_n = free_req_cnt + free_req_cnt - alloc_req_cnt;
+      free_list_cnt_n = free_list_cnt + free_req_cnt - alloc_req_cnt;
     end else begin
-      free_list_cnt_n = free_req_cnt + free_req_cnt;
+      free_list_cnt_n = free_list_cnt + free_req_cnt;
     end
   end
 

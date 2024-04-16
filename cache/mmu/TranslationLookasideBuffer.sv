@@ -90,7 +90,7 @@ module TranslationLookasideBuffer (
     end else begin
       if (tlb_write_req.valid) begin
         tlb_entries[tlb_write_req.idx] <= tlb_write_req.tlb_entry_st;
-      end else begin
+      end else if(tlb_inv_req.valid) begin
         for (int i = 0; i < `TLB_ENTRY_NUM; i++) begin
           case (tlb_inv_req.op)
             `TLB_INV_ALL0 : tlb_entries[i] <= '0;

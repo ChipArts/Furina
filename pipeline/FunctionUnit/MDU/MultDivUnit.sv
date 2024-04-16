@@ -35,16 +35,13 @@ module MultDivUnit (
   output MduDivRspSt div_rsp
 );
 
-`ifdef DIST_DRIVE_RESET
   `RESET_LOGIC(clk, a_rst_n, rst_n);
-`else
-  wire rst_n = a_rst_n;
-`endif
+
 
   Divider U_Divider
   (
     .clk          (clk),
-    .a_rst_n      (a_rst_n),
+    .a_rst_n      (rst_n),
     .flush_i      (div_req.flush),
     .div_valid_i  (div_req.valid),
     .div_ready_o  (div_rsp.ready),
@@ -60,7 +57,7 @@ module MultDivUnit (
   Multiplier U_Multiplier
   (
     .clk          (clk),
-    .a_rst_n      (a_rst_n),
+    .a_rst_n      (rst_n),
     .flush_i      (mult_req.flush),
     .mul_valid_i  (mult_req.valid),
     .mul_ready_o  (mult_rsp.ready),

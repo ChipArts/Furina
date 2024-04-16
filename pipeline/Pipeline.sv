@@ -104,8 +104,11 @@ module Pipeline (
   ScheduleRspSt sche_rsp;
   RobAllocReqSt sche_rob_alloc_req;
   RobAllocRspSt sche_rob_alloc_rsp;
+  logic sche_csr_has_int_i,
+  logic [1:0] sche_csr_plv_i,
   logic [`COMMIT_WIDTH - 1:0] sche_fl_free_valid_i;
   logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_fl_free_preg_i;
+  logic [`PHY_REG_NUM - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_arch_free_list_i,
   logic [31:0][$clog2(`PHY_REG_NUM) - 1:0] sche_arch_rat_i;
   logic [`WB_WIDTH - 1:0] sche_wb_pdest_valid_i;
   logic [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_wb_pdest_i;
@@ -120,17 +123,12 @@ module Pipeline (
 
   /* RegFile */
   // 每周期最多发射misc*1、alu*2、mdu*1、mem*1
-  logic [4:0] rf_re_i;
+  logic [9:0] rf_re_i;
   logic [4:0] rf_we_i;
   logic [4:0][$clog2(`PHY_REG_NUM) - 1:0] rf_waddr_i;
   logic [9:0][$clog2(`PHY_REG_NUM) - 1:0] rf_raddr_i;
   logic [4:0][31:0] rf_wdata_i;
   logic [9:0][31:0] rf_rdata_o;
-
-  logic [31:0] misc_exe_imm;
-  logic [1:0][31:0] alu_exe_imm;
-  logic [31:0] mdu_exe_imm;
-  logic [31:0] mem_exe_imm;
 
   /* Integer Block */
   // IntegerBlock --> iblk
@@ -484,10 +482,10 @@ module Pipeline (
         default : /* default */;
       endcase
       case (ibuf_read_data_o[i].pre_oc.src1_type)
+        `SRC_R0 : decoder_src1[i] = 5'd0;
         `SRC_RD : decoder_src1[i] = ibuf_read_data_o[i].instr[4:0];
         `SRC_RJ : decoder_src1[i] = ibuf_read_data_o[i].instr[9:5];
         `SRC_RK : decoder_src1[i] = ibuf_read_data_o[i].instr[14:10];
-        `SRC_R0 : decoder_src1[i] = 5'd0;
         default : /* default */;
       endcase
       case (ibuf_read_data_o[i].pre_oc.dest_type)
@@ -509,6 +507,7 @@ module Pipeline (
       sche_req.valid[i] = ibuf_read_valid_o[i];
       sche_req.pc[i] = ibuf_read_data_o[i].pc;
       sche_req.npc[i] = ibuf_read_data_o[i].npc;
+      sche_req.src[i] = ibuf_read_data_o[i].instr[25:0];
       sche_req.arch_src0[i] = decoder_src0[i];
       sche_req.arch_src1[i] = decoder_src1[i];
       sche_req.arch_dest[i] = decoder_dest[i];
@@ -516,12 +515,17 @@ module Pipeline (
       sche_req.excp[i] = ibuf_read_data_o[i].excp;
     end
 
-    sche_arch_rat_i = arch_rat_o;
     sche_rob_alloc_rsp = rob_alloc_rsp;
-    sche_fl_free_valid_i = rob_cmt_o.valid;
+
+    sche_csr_has_int_i = csr_has_int;
+    sche_csr_plv_i = csr_plv_out;
+
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
+      sche_fl_free_valid_i[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0;
       sche_fl_free_preg_i[i] = rob_cmt_o.rob_entry[i].old_phy_reg;
     end
+    sche_arch_free_list_i = arch_free_list_o;  // 用于恢复freelist
+    sche_arch_rat_i = arch_rat_o;  // 用于恢复RAT
 
     sche_wb_pdest_i[0] = iblk_misc_wb_o.base.pdest;
     sche_wb_pdest_i[1] = iblk_alu_wb_o[0].base.pdest;
@@ -535,10 +539,10 @@ module Pipeline (
     sche_wb_pdest_valid_i[3] = iblk_mdu_wb_o.base.valid & iblk_mdu_wb_o.base.we & iblk_mdu_wb_ready_i;
     sche_wb_pdest_valid_i[4] = mblk_wb_o.base.valid & mblk_wb_o.base.we & mblk_wb_ready_i;
 
-    sche_misc_ready_i = iblk_misc_wb_ready_i;
-    sche_alu_ready_i = iblk_alu_wb_ready_i;
-    sche_mdu_ready_i = iblk_mdu_wb_ready_i;
-    sche_mem_ready_i = mblk_wb_ready_i;
+    sche_misc_ready_i = iblk_misc_ready_o;
+    sche_alu_ready_i = iblk_alu_ready_o;
+    sche_mdu_ready_i = iblk_mdu_ready_o;
+    sche_mem_ready_i = mblk_exe_ready_o;
 
   end
 
@@ -551,8 +555,11 @@ module Pipeline (
     .schedule_rsp     (sche_rsp),
     .rob_alloc_req    (sche_rob_alloc_req),
     .rob_alloc_rsp    (sche_rob_alloc_rsp),
+    .csr_has_int_i    (sche_csr_has_int_i),
+    .csr_plv_i        (sche_csr_plv_i),
     .fl_free_valid_i  (sche_fl_free_valid_i),
     .fl_free_preg_i   (sche_fl_free_preg_i),
+    .arch_free_list_i (sche_arch_free_list_i),
     .arch_rat_i       (sche_arch_rat_i),
     .wb_pdest_valid_i (sche_wb_pdest_valid_i),
     .wb_pdest_i       (sche_wb_pdest_i),
@@ -691,8 +698,8 @@ module Pipeline (
 
     // 特权指令在成为最旧指令时才执行
     iblk_misc_wb_ready_i = rob_misc_wb_rsp.ready;
-    iblk_alu_wb_ready_i = '1;
-    iblk_mdu_wb_ready_i = '1;
+    iblk_alu_wb_ready_i = rob_alu_wb_rsp.ready;
+    iblk_mdu_wb_ready_i = rob_mdu_wb_rsp.ready;
   end
 
   IntegerBlock inst_IntegerBlock

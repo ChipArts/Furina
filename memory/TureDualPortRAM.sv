@@ -67,64 +67,72 @@ end
 `ifdef VERILATOR_SIM
   logic [DATA_DEPTH - 1:0][DATA_WIDTH - 1:0] ram;
 
-  logic [DATA_WIDTH - 1:0] rdata_a, rdata_b;
+  logic [DATA_WIDTH - 1:0] rdata_a_q, rdata_b_q;
+  logic [DATA_WIDTH - 1:0] rdata_a_n, rdata_b_n;
 
-  always_ff @(posedge clk_a or negedge rstb_n) begin
-    if(~rsta_n) begin
-       rdata_a <= '0;
-    end else begin
-      if (WRITE_MODE == "write_first") begin
-        if (en_b_i && we_b_i && addr_a_i == addr_b_i) begin
-           rdata_a <= ram[addr_b_i];
-        end else begin
-           rdata_a <= ram[addr_a_i];
-        end
+  logic we_confilct;
 
-        if (en_a_i && we_a_i) begin
-           ram[addr_a_i] <= data_a_i;
-        end
-      end else if (WRITE_MODE == "read_first") begin
-        rdata_a <= ram[addr_a_i];
-        if (en_a_i && we_a_i) begin
-           ram[addr_a_i] <= data_a_i;
-        end
+  always_comb begin
+    we_confilct = en_a_i && we_a_i &&
+                  en_b_i && en_b_i &&
+                  addr_a_i == addr_b_i;
+
+    if (WRITE_MODE_A == "write_first") begin
+      if (en_a_i && we_a_i) begin
+        rdata_a_n = data_a_i;
+      end else if (en_b_i && we_b_i && addr_a_i == addr_b_i) begin
+        rdata_a_n = data_b_i;
       end else begin
-        raddr <= ram[addr_a_i];
-        if (en_a_i && we_a_i && !(addr_a_i == addr_b_i && we_b_i)) begin
-           ram[addr_a_i] <= data_a_i;
-        end
+        rdata_a_n = ram[addr_a_i];
       end
+    end else begin
+      rdata_a_n = ram[addr_a_i];
     end
 
-    if(~rstb_n) begin
-      rdata_b <= '0;
-    end else begin
-      if (WRITE_MODE == "write_first") begin
-        if (en_a_i && we_a_i && addr_a_i == addr_b_i) begin
-           rdata_b <= ram[addr_a_i];
-        end else begin
-           rdata_b <= ram[addr_b_i];
-        end
-
-        if (en_b_i && we_b_i && !we_a_i) begin
-           ram[addr_b_i] <= data_b_i;
-        end
-      end else if (WRITE_MODE == "read_first") begin
-        rdata_b <= ram[addr_b_i];
-        if (en_b_i && we_b_i && !we_a_i) begin
-           ram[addr_b_i] <= data_b_i;
-        end
+    if (WRITE_MODE_B == "write_first") begin
+      if (en_b_i && we_b_i) begin
+        rdata_b_n = data_b_i;
+      end else if (en_a_i && we_a_i && addr_a_i == addr_b_i) begin
+        rdata_b_n = data_a_i;
       end else begin
-        rdata_b <= ram[addr_b_i];
-        if (en_b_i && we_b_i && !(addr_a_i == addr_b_i && we_a_i)) begin
-           ram[addr_a_i] <= data_a_i;
-        end
+        rdata_b_n = ram[addr_b_i];
+      end
+    end else begin
+      rdata_b_n = ram[addr_b_i];
+    end
+  end
+
+
+  always_ff @(posedge clk_a or negedge rsta_n) begin
+    if(~rsta_n) begin
+      rdata_a_q <= '0;
+    end else begin
+      if (en_a_i) begin
+        raddr_a_q <= rdata_a_n;
+      end
+
+      if (en_b_i && we_b_i && !(we_confilct && WRITE_MODE_A == "no_change")) begin
+        ram[addr_a_i] <= data_a_i;
       end
     end
   end
 
-  assign data_a_o = rdata_a;
-  assign data_b_o = rdata_b;
+  always_ff @(posedge clk_a or negedge rstb_n) begin
+    if(~rstb_n) begin
+      rdata_b_q <= '0;
+    end else begin
+      if (en_b_i) begin
+        rdata_b_q <= rdata_b_n;
+      end
+
+      if (en_b_i && we_b_i && !(we_confilct && WRITE_MODE_B == "no_change")) begin
+        ram[addr_b_i] <= data_b_i;
+      end
+    end
+  end
+
+  assign data_a_o = rdata_a_q;
+  assign data_b_o = rdata_b_q;
 `elsif XILLINX_FPGA
   // xpm_memory_tdpram: True Dual Port RAM
   // Xilinx Parameterized Macro, version 2019.2

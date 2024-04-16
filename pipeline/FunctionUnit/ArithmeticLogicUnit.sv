@@ -32,52 +32,50 @@ module ArithmeticLogicUnit (
 );
 
   // 加减和逻辑运算
-  logic [31:0] alu_res;
-  logic alu_valid;
 
   always_comb begin
     case (alu_op_i)
         `ALU_ADD  : begin
-            alu_res = src0_i + src1_i;
+            res_o = src0_i + src1_i;
         end
         `ALU_SUB  : begin
-            alu_res = src0_i - src1_i;
+            res_o = src0_i - src1_i;
         end
         `ALU_SLT  : begin
-            alu_res[31:1] = 31'b0;
+            res_o[31:1] = 31'b0;
             if (signed_i) begin
-              alu_res[0] = $signed(src0_i) < $signed(src1_i);
+              res_o[0] = $signed(src0_i) < $signed(src1_i);
             end else begin
-              alu_res[0] = src0_i < src1_i;
+              res_o[0] = src0_i < src1_i;
             end
         end
         `ALU_AND  : begin
-            alu_res = src0_i & src1_i;
+            res_o = src0_i & src1_i;
         end
         `ALU_OR   : begin
-            alu_res = src0_i | src1_i;
+            res_o = src0_i | src1_i;
         end
         `ALU_XOR  : begin
-            alu_res = src0_i ^ src1_i;
+            res_o = src0_i ^ src1_i;
         end
         `ALU_NOR  : begin
-            alu_res = ~(src0_i | src1_i);
+            res_o = ~(src0_i | src1_i);
         end
         `ALU_SL   : begin
-            alu_res = src0_i << src1_i[4:0];
+            res_o = src0_i << src1_i[4:0];
         end
         `ALU_SR   : begin
             if (signed_i) begin
-              alu_res = $signed($signed(src0_i) >>> $signed(src1_i[4:0]));
+              res_o = $signed($signed(src0_i) >>> $signed(src1_i[4:0]));
             end else begin
-              alu_res = src0_i >> src1_i[4:0];
+              res_o = src0_i >> src1_i[4:0];
             end
         end
         `ALU_LUI  : begin
-            alu_res = src1_i << 12;
+            res_o = src1_i << 12;
         end
         default : begin
-            alu_res = 0;
+            res_o = 0;
         end
       endcase
   end
