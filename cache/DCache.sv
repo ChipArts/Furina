@@ -85,7 +85,7 @@ module DCache (
   logic [`DCACHE_WAY_NUM - 2:0] plru_ram_rdata;
 
   /* Cache FSM */
-  typedef enum logic [1:0] {
+  typedef enum logic [2:0] {
     IDEL,  // 空闲
     MISS,  // 发生miss或cacop等需要复用处理流程，有必要则同时等待aw_ready
     WRITE_BACK,  // 写回脏数据

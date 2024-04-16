@@ -129,7 +129,7 @@ module ReorderBuffer (
       rob_n[misc_wb_req.base.rob_idx].ibar_flush = '0;
       rob_n[misc_wb_req.base.rob_idx].priv_flush = misc_psc;
       rob_n[misc_wb_req.base.rob_idx].icacop_flush = '0;
-      rob_n[misc_wb_req.base.rob_idx].idel_flush = misc_wb_req.idel_en;
+      rob_n[misc_wb_req.base.rob_idx].idle_flush = misc_wb_req.idle_en;
 `ifdef DEBUG
       // DEBUG
       rob_n[misc_wb_req.base.rob_idx].is_tibfill = misc_wb_req.tlbfill_en;

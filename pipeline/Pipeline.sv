@@ -56,7 +56,7 @@ module Pipeline (
   logic ibar_flush;      // IBAR指令
   logic priv_flush;      // 特权指令（csr_rd修改可撤回，不需要flush）
   logic icacop_flush;    // ICache操作
-  logic idel_flush;      // IDLE指令
+  logic idle_flush;      // IDLE指令
 
   /* Branch Prediction Unit */
   BpuReqSt bpu_req;
@@ -316,7 +316,7 @@ module Pipeline (
     if(~rst_n) begin
       idel_lock <= 0;
     end else begin
-      if (idel_flush && !csr_has_int) begin
+      if (idle_flush && !csr_has_int) begin
         idel_lock <= '1;
       end else if (csr_has_int) begin
         idel_lock <= '0;
@@ -811,7 +811,7 @@ module Pipeline (
   // logic ibar_flush;      // IBAR指令
   // logic priv_flush;      // 特权指令（csr_rd修改可撤回，不需要flush）
   // logic icacop_flush;    // ICache操作
-  // logic idel_flush;      // IDLE指令
+  // logic idle_flush;      // IDLE指令
   always_comb begin
     excp_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].excp.valid;
     tlbrefill_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].excp.valid & rob_cmt_o.rob_entry[0].excp.ecode == `ECODE_TLBR;
@@ -821,9 +821,9 @@ module Pipeline (
     ibar_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].ibar_flush;
     priv_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].priv_flush;
     icacop_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].icacop_flush;
-    idel_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].idel_flush;
+    idle_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].idle_flush;
 
-    refetch_flush = ibar_flush | priv_flush | icacop_flush | idel_flush;
+    refetch_flush = ibar_flush | priv_flush | icacop_flush | idle_flush;
 
     global_flush = excp_flush | redirect_flush | ertn_flush | refetch_flush;
   end

@@ -48,7 +48,7 @@
     logic ibar_flush;      // IBAR指令
     logic priv_flush;      // 特权指令（csr_rd修改可撤回，不需要flush）
     logic icacop_flush;    // ICache操作
-    logic idel_flush;      // IDLE指令
+    logic idle_flush;      // IDLE指令
     // DEBUG
     logic is_tibfill;
     logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbfill_idx;
