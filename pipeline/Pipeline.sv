@@ -110,7 +110,7 @@ module Pipeline (
 
   logic [`COMMIT_WIDTH - 1:0] sche_fl_free_valid_i;
   logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_fl_free_preg_i;
-  
+
   logic [`PHY_REG_NUM - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_arch_free_list_i;
   logic [31:0][$clog2(`PHY_REG_NUM) - 1:0] sche_arch_rat_i;
 
@@ -703,7 +703,9 @@ module Pipeline (
 
     // 特权指令在成为最旧指令时才执行
     iblk_misc_wb_ready_i = rob_misc_wb_rsp.ready;
-    iblk_alu_wb_ready_i = rob_alu_wb_rsp.ready;
+    for (int i = 0; i < 2; i++) begin
+      iblk_alu_wb_ready_i[i] = rob_alu_wb_rsp[i].ready;
+    end
     iblk_mdu_wb_ready_i = rob_mdu_wb_rsp.ready;
   end
 
