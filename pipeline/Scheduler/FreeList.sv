@@ -102,7 +102,7 @@ parameter
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n || flush_i) begin
       free_list <= arch_free_list_i;
-      free_req_cnt <= PHY_REG_NUM;
+      free_list_cnt <= PHY_REG_NUM;
       tail <= '0;
       head <= '0;
     end else begin

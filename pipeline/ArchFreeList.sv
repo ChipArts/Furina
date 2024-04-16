@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : ArchFreeList.sv
 // Create  : 2024-04-14 20:47:43
-// Revise  : 2024-04-16 18:11:06
+// Revise  : 2024-04-16 18:12:46
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -79,7 +79,8 @@ parameter
       for (int i = 0; i < PHY_REG_NUM; i++) begin
       	free_list[i] <= i;
       end
-      tail <= PHY_REG_NUM - 1;
+      free_list_cnt <= PHY_REG_NUM;
+      tail <= '0;
       head <= '0;
     end else begin
       // 释放过程不会阻塞
