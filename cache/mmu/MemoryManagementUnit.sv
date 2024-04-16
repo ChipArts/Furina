@@ -242,20 +242,35 @@ module MemoryManagementUnit (
     tlbsrch_idx_o = tlb_search_rsp[2].idx;
   end
 
-  for (genvar i = 0; i < 3; i++) begin
+  for (genvar i = 0; i < 2; i++) begin
+    // 用于ICache和DCache的地址转换
     TranslationLookasideBuffer U_TranslationLookasideBuffer (
       .clk            (clk),
       .a_rst_n        (rst_n),
       .tlb_search_req (tlb_search_req[i]),
       .tlb_search_rsp (tlb_search_rsp[i]),
-      .tlb_read_req   (tlb_read_req),
-      .tlb_read_rsp   (tlb_read_rsp),
+      .tlb_read_req   ('0),
+      .tlb_read_rsp   (),
       .tlb_write_req  (tlb_write_req),
       .tlb_write_rsp  (tlb_write_rsp),
-      .tlb_inv_req     (tlb_inv_req),
-      .tlb_inv_rsp     (tlb_inv_rsp)
+      .tlb_inv_req    (tlb_inv_req),
+      .tlb_inv_rsp    (tlb_inv_rsp)
     );
   end
+
+  // 实现tlbsrch和tlbrd
+  TranslationLookasideBuffer U_TranslationLookasideBuffer (
+    .clk            (clk),
+    .a_rst_n        (rst_n),
+    .tlb_search_req (tlb_search_req[2]),
+    .tlb_search_rsp (tlb_search_rsp[2]),
+    .tlb_read_req   (tlb_read_req),
+    .tlb_read_rsp   (tlb_read_rsp),
+    .tlb_write_req  (tlb_write_req),
+    .tlb_write_rsp  (tlb_write_rsp),
+    .tlb_inv_req    (tlb_inv_req),
+    .tlb_inv_rsp    (tlb_inv_rsp)
+  );
   
 endmodule : MemoryManagementUnit
 

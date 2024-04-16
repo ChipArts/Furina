@@ -49,7 +49,7 @@ typedef struct packed {
 } TlbSearchReqSt;
 
 typedef struct packed {
-  logic valid;  // 查询结果有效
+  logic valid;  // 查询结果有效（ppn表项有效）
   logic ready;  // TLB 可以进行查询操作
 
   logic found;   // TLB 查询结果命中
