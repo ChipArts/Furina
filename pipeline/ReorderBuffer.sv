@@ -166,7 +166,7 @@ module ReorderBuffer (
         rob_n[alu_wb_req[i].base.rob_idx].ibar_flush = '0;
         rob_n[alu_wb_req[i].base.rob_idx].priv_flush = '0;
         rob_n[alu_wb_req[i].base.rob_idx].icacop_flush = '0;
-        rob_n[alu_wb_req[i].base.rob_idx].idel_flush = '0;
+        rob_n[alu_wb_req[i].base.rob_idx].idle_flush = '0;
 `ifdef DEBUG
         // DEBUG
         rob_n[alu_wb_req[i].base.rob_idx].is_tibfill = '0;
@@ -203,7 +203,7 @@ module ReorderBuffer (
       rob_n[mdu_wb_req.base.rob_idx].ibar_flush = '0;
       rob_n[mdu_wb_req.base.rob_idx].priv_flush = '0;
       rob_n[mdu_wb_req.base.rob_idx].icacop_flush = '0;
-      rob_n[mdu_wb_req.base.rob_idx].idel_flush = '0;
+      rob_n[mdu_wb_req.base.rob_idx].idle_flush = '0;
 `ifdef DEBUG
       // DEBUG
       rob_n[mdu_wb_req.base.rob_idx].is_tibfill = '0;
@@ -242,7 +242,7 @@ module ReorderBuffer (
       rob_n[mem_wb_req.base.rob_idx].ibar_flush = mem_wb_req.mem_op == `MEM_IBAR;
       rob_n[mem_wb_req.base.rob_idx].priv_flush = '0;
       rob_n[mem_wb_req.base.rob_idx].icacop_flush = mem_wb_req.icacop;
-      rob_n[mem_wb_req.base.rob_idx].idel_flush = '0;
+      rob_n[mem_wb_req.base.rob_idx].idle_flush = '0;
 `ifdef DEBUG
       // DEBUG
       rob_n[mem_wb_req.base.rob_idx].is_tibfill = '0;
