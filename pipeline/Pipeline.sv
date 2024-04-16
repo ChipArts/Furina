@@ -104,14 +104,19 @@ module Pipeline (
   ScheduleRspSt sche_rsp;
   RobAllocReqSt sche_rob_alloc_req;
   RobAllocRspSt sche_rob_alloc_rsp;
-  logic sche_csr_has_int_i,
-  logic [1:0] sche_csr_plv_i,
+
+  logic sche_csr_has_int_i;
+  logic [1:0] sche_csr_plv_i;
+
   logic [`COMMIT_WIDTH - 1:0] sche_fl_free_valid_i;
   logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_fl_free_preg_i;
-  logic [`PHY_REG_NUM - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_arch_free_list_i,
+  
+  logic [`PHY_REG_NUM - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_arch_free_list_i;
   logic [31:0][$clog2(`PHY_REG_NUM) - 1:0] sche_arch_rat_i;
+
   logic [`WB_WIDTH - 1:0] sche_wb_pdest_valid_i;
   logic [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_wb_pdest_i;
+
   MiscIssueSt sche_misc_issue_o;
   logic sche_misc_ready_i;
   AluIssueSt [1:0] sche_alu_issue_o;
