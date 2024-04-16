@@ -27,14 +27,15 @@ parameter
   string       CLOCKING_MODE    = "common_clock",
   string       WRITE_MODE       = "write_first",
   string       MEMORY_PRIMITIVE = "auto",
-localparam
+  // don't change the following parameters
   int unsigned ADDR_WIDTH       = $clog2(DATA_DEPTH),
   int unsigned MEMORY_SIZE      = DATA_WIDTH * DATA_DEPTH
 )(
 	// Port A
   input clk_a,
   input en_a_i,
-  input [DATA_WIDTH / BYTE_WRITE_WIDTH - 1:0] we_a_i,
+  // input [DATA_WIDTH / BYTE_WRITE_WIDTH - 1:0] we_a_i,
+  input we_a_i,
   input [ADDR_WIDTH - 1:0] addr_a_i,
   input [DATA_WIDTH - 1:0] data_a_i,
   // Port B

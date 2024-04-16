@@ -69,8 +69,8 @@ module TranslationLookasideBuffer (
                  (tlb_search_req.vpn[`PROC_VALEN - 1:22] == 
                   tlb_entries[i].vppn[`PROC_VALEN - 1:22]));  // VPPN 匹配
       if (match[i]) begin
-        matched_entry |= tlb_entries[i];
-        matched_idx |= i;
+        matched_entry = tlb_entries[i];
+        matched_idx = i;
       end
     end
     found = |match;

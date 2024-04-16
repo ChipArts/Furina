@@ -85,13 +85,13 @@ parameter
   end
 
   generate
-    for(genvar i = 0 ; i < BANK; i += 1) begin
+    for(genvar i = 0 ; i < BANK; i += 1) begin : gen_multi_fifo_ctrl
       // 指针更新策略
       always_ff @(posedge clk) begin : proc_port_read_index
         if(~rst_n || flush_i) begin
           port_read_index[i] <= i[$clog2(BANK) - 1 : 0];
         end else begin
-          if(read_ready_i)
+          if(|read_ready_i)
             port_read_index[i] <= port_read_index[i] - read_num[$clog2(BANK) - 1 : 0];
         end
       end
@@ -99,14 +99,14 @@ parameter
         if(~rst_n || flush_i) begin
           port_write_index[i] <= i[$clog2(BANK) - 1 : 0];
         end else begin
-          if(write_valid_i & write_ready_o)
+          if(|write_valid_i & write_ready_o)
             port_write_index[i] <= port_write_index[i] - write_num[$clog2(BANK) - 1 : 0];
         end
       end
 
       // FIFO 控制信号
-      assign fifo_pop[i] = read_ready_i & (port_read_index[i] < read_num);
-      assign fifo_push[i] = write_valid_i & write_ready_o & (port_write_index[i] < write_num);
+      assign fifo_pop[i] = |read_ready_i & (port_read_index[i] < read_num);
+      assign fifo_push[i] = |write_valid_i & write_ready_o & (port_write_index[i] < write_num);
       assign data_in[i] = write_data_i[port_write_index[i][$clog2(WPORTS_NUM) - 1: 0]];
 
       // FIFO 生成
@@ -123,7 +123,7 @@ parameter
         .push_i        (fifo_push[i]),
         .data_i        (data_in[i]),
         .data_o        (data_out[i]),
-        .empty_o       (fifo_empty),
+        .empty_o       (fifo_empty[i]),
         .full_o        (fifo_full[i]),
         .usage_o       (/* not used */)
       );
@@ -133,7 +133,7 @@ parameter
 
   // 输出部分
   generate
-    for(genvar i = 0 ; i < RPORTS_NUM; i+= 1) begin
+    for(genvar i = 0 ; i < RPORTS_NUM; i+= 1) begin : gen_multi_fifo_ouput
       // 指针更新策略
       always_ff @(posedge clk) begin : proc_read_index
         if(~rst_n || flush_i) begin

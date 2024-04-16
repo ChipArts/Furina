@@ -350,7 +350,7 @@ module ICache (
 
 
 /*================================ ICache Memory ===============================*/
-  for (genvar i = 0; i < `ICACHE_WAY_NUM; i++) begin
+  for (genvar i = 0; i < `ICACHE_WAY_NUM; i++) begin : gen_icache_memory
       SimpleDualPortRAM #(
           .DATA_DEPTH(2 ** `ICACHE_IDX_WIDTH),
           .DATA_WIDTH(`ICACHE_BLOCK_SIZE * 8),

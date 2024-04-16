@@ -180,4 +180,4 @@ function ExeBaseSt is2exe(IssueBaseSt is, logic valid, logic[31:0] src1, logic[3
 endfunction : is2exe
 
 
-`endif
+`endif // __PIPELINE_SVH__

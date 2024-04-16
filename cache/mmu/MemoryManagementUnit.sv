@@ -242,7 +242,7 @@ module MemoryManagementUnit (
     tlbsrch_idx_o = tlb_search_rsp[2].idx;
   end
 
-  for (genvar i = 0; i < 2; i++) begin
+  for (genvar i = 0; i < 2; i++) begin : gen_addr_trans_tlb
     // 用于ICache和DCache的地址转换
     TranslationLookasideBuffer U_TranslationLookasideBuffer (
       .clk            (clk),

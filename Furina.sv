@@ -168,6 +168,7 @@ module Furina (
     .s01_axi_rready   (dcache_axi4_mst.r_ready),
 
     .m00_axi_awid     (axi4_mst.aw_id),
+    .m00_axi_awregion (axi4_mst.aw_region),
     .m00_axi_awaddr   (axi4_mst.aw_addr),
     .m00_axi_awlen    (axi4_mst.aw_len),
     .m00_axi_awsize   (axi4_mst.aw_size),
@@ -191,6 +192,7 @@ module Furina (
     .m00_axi_bvalid   (axi4_mst.b_valid),
     .m00_axi_bready   (axi4_mst.b_ready),
     .m00_axi_arid     (axi4_mst.ar_id),
+    .m00_axi_arregion (axi4_mst.ar_region),
     .m00_axi_araddr   (axi4_mst.ar_addr),
     .m00_axi_arlen    (axi4_mst.ar_len),
     .m00_axi_arsize   (axi4_mst.ar_size),
@@ -212,7 +214,7 @@ module Furina (
   );
 
 `ifdef DEBUG
-  for (genvar i = 0; i < `COMMIT_WIDTH; i++) begin
+  for (genvar i = 0; i < `COMMIT_WIDTH; i++) begin : gen_commit_diff
     DifftestInstrCommit DifftestInstrCommit(
         .clock              (clk            ),
         .coreid             (0              ),
@@ -265,7 +267,7 @@ module Furina (
       .storeData          (U_Pipeline.rob_cmt_o.rob_entry[0].store_data)
   );
 
-  for (genvar i = 0; i < `COMMIT_WIDTH; i++) begin
+  for (genvar i = 0; i < `COMMIT_WIDTH; i++) begin : gen_load_diff
     DifftestLoadEvent DifftestLoadEvent(
         .clock              (clk           ),
         .coreid             (0              ),

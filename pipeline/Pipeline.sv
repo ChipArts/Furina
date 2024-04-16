@@ -170,6 +170,8 @@ module Pipeline (
   logic mblk_exe_ready_o;
   MmuAddrTransReqSt mblk_addr_trans_req;
   MmuAddrTransRspSt mblk_addr_trans_rsp;
+  IcacopReqSt mblk_icacop_req;
+  IcacopRspSt mblk_icacop_rsp;
   MemWbSt mblk_wb_o;
   logic mblk_wb_ready_i;
 
@@ -374,7 +376,7 @@ module Pipeline (
     icache_req.vaddr = bpu_rsp.pc;
     icache_addr_trans_rsp = mmu_addr_trans_rsp[0];
 
-    icacop_req.valid = 0;
+    icacop_req = mblk_icacop_req;
   end
 
   ICache inst_ICache
@@ -401,7 +403,7 @@ module Pipeline (
   end
   
   // TODO: 实现分支预测的pre检查
-  for (genvar i = 0; i < `FETCH_WIDTH; i++) begin
+  for (genvar i = 0; i < `FETCH_WIDTH; i++) begin : gen_pre_decoder
     PreDecoder inst_PreDecoder (.instr_i(icache_rsp_buffer.instr[i]), .pre_option_code_o(pre_option_code_o));
   end
 
@@ -449,7 +451,7 @@ module Pipeline (
 
 /*================================== Decoder ==================================*/
   // 对控制相关信息解码
-  for (genvar i = 0; i < `DECODE_WIDTH; i++) begin
+  for (genvar i = 0; i < `DECODE_WIDTH; i++) begin : gen_decoder
     Decoder inst_Decoder (.instr_i(ibuf_read_data_o[i].instr), .option_code_o(decoder_option_code_o[i]));
   end
 
@@ -759,6 +761,8 @@ module Pipeline (
 
     mblk_addr_trans_rsp = mmu_addr_trans_rsp[1];
 
+    mblk_icacop_rsp = icache_rsp;
+
     mblk_wb_ready_i = rob_misc_wb_rsp.ready;
   end
 
@@ -771,6 +775,8 @@ module Pipeline (
     .exe_ready_o    (mblk_exe_ready_o),
     .addr_trans_req (mblk_addr_trans_req),
     .addr_trans_rsp (mblk_addr_trans_rsp),
+    .icacop_req     (mblk_icacop_req),
+    .icacop_rsp     (mblk_icacop_rsp),
     .axi4_mst       (dcache_axi4_mst),
     .wb_o           (mblk_wb_o),
     .wb_ready_i     (mblk_wb_ready_i)

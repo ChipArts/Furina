@@ -35,7 +35,7 @@ parameter
   string       WRITE_MODE_A     = "write_first",
   string       WRITE_MODE_B     = "write_first",
   string       MEMORY_PRIMITIVE = "auto",
-localparam
+  // don't change the following parameters
   int unsigned ADDR_WIDTH       = $clog2(DATA_DEPTH),
   int unsigned MEMORY_SIZE      = DATA_WIDTH * DATA_DEPTH
 )(
@@ -43,7 +43,8 @@ localparam
   input clk_a,
   input rsta_n,
   input en_a_i,
-  input [DATA_WIDTH / BYTE_WRITE_WIDTH - 1:0] we_a_i,
+  // input [DATA_WIDTH / BYTE_WRITE_WIDTH - 1:0] we_a_i,
+  input we_a_i,
   input [ADDR_WIDTH - 1:0] addr_a_i,
   input [DATA_WIDTH - 1:0] data_a_i,
   output [DATA_WIDTH - 1:0] data_a_o,
@@ -51,7 +52,8 @@ localparam
   input clk_b,
   input rstb_n,
   input en_b_i,
-  input [DATA_WIDTH / BYTE_WRITE_WIDTH - 1:0] we_b_i,
+  // input [DATA_WIDTH / BYTE_WRITE_WIDTH - 1:0] we_b_i,
+  input we_b_i,
   input [ADDR_WIDTH - 1:0] addr_b_i,
   input [DATA_WIDTH - 1:0] data_b_i,
   output [DATA_WIDTH - 1:0] data_b_o
@@ -78,7 +80,7 @@ end
                   addr_a_i == addr_b_i;
 
     if (WRITE_MODE_A == "write_first") begin
-      if (en_a_i && we_a_i) begin
+      if (en_a_i && we_a_i != 0) begin
         rdata_a_n = data_a_i;
       end else if (en_b_i && we_b_i && addr_a_i == addr_b_i) begin
         rdata_a_n = data_b_i;
@@ -111,7 +113,7 @@ end
         rdata_a_q <= rdata_a_n;
       end
 
-      if (en_b_i && we_b_i && !(we_confilct && WRITE_MODE_A == "no_change")) begin
+      if (en_b_i && we_b_i != 0 && !(we_confilct && WRITE_MODE_A == "no_change")) begin
         ram[addr_a_i] <= data_a_i;
       end
     end

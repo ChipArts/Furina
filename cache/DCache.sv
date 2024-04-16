@@ -60,7 +60,7 @@ module DCache (
   logic s0_ready, s1_ready, s2_ready;
 
   /* Memory Ctrl */
-  logic [`DCACHE_WAY_NUM - 1:0][`DCACHE_BLOCK_SIZE - 1:0] data_ram_we;
+  logic [`DCACHE_WAY_NUM - 1:0] data_ram_we;
   logic [`DCACHE_IDX_WIDTH - 1:0] data_ram_waddr;
   logic [`DCACHE_BLOCK_SIZE / 4 - 1:0][31:0] data_ram_wdata;
   logic [`DCACHE_IDX_WIDTH - 1:0] data_ram_raddr;
@@ -586,25 +586,26 @@ module DCache (
     end else begin
       // hit时的写入： 指令有效 & hit(s2_ready) & store指令有效 & store指令可以执行（rob最旧指令）
       if (s2_valid && s2_store_valid && s2_ready) begin
-        case (s2_align_op)
-          `ALIGN_B : 
-            data_ram_we[s2_matched_way][`DCACHE_OFS_OF(s2_vaddr) + 0] = '1;
-          `ALIGN_H : begin 
-            data_ram_we[s2_matched_way][`DCACHE_OFS_OF(s2_vaddr) + 0] = '1;
-            data_ram_we[s2_matched_way][`DCACHE_OFS_OF(s2_vaddr) + 1] = '1;
-          end
-          `ALIGN_W : begin
-            data_ram_we[s2_matched_way][`DCACHE_OFS_OF(s2_vaddr) + 0] = '1;
-            data_ram_we[s2_matched_way][`DCACHE_OFS_OF(s2_vaddr) + 1] = '1;
-            data_ram_we[s2_matched_way][`DCACHE_OFS_OF(s2_vaddr) + 2] = '1;
-            data_ram_we[s2_matched_way][`DCACHE_OFS_OF(s2_vaddr) + 3] = '1;
-          end
-          default : data_ram_we[s2_matched_way] = '0;
-        endcase
+        data_ram_we[s2_matched_way] = '1;
       end
 
-      data_ram_wdata = '0;
-      data_ram_wdata[s2_vaddr[`DCACHE_IDX_OFFSET - 1:2]] |= s2_wdata;
+      data_ram_wdata = cache_line;
+      case (s2_align_op)
+        `ALIGN_B : 
+          data_ram_wdata[`DCACHE_OFS_OF(s2_vaddr) + 0] = s2_wdata[7:0];
+        `ALIGN_H : begin 
+          data_ram_wdata[`DCACHE_OFS_OF(s2_vaddr) + 0] = s2_wdata[7:0];
+          data_ram_wdata[`DCACHE_OFS_OF(s2_vaddr) + 1] = s2_wdata[15:8];
+        end
+        `ALIGN_W : begin
+          data_ram_wdata[`DCACHE_OFS_OF(s2_vaddr) + 0] = s2_wdata[7:0];
+          data_ram_wdata[`DCACHE_OFS_OF(s2_vaddr) + 1] = s2_wdata[15:8];
+          data_ram_wdata[`DCACHE_OFS_OF(s2_vaddr) + 2] = s2_wdata[23:16];
+          data_ram_wdata[`DCACHE_OFS_OF(s2_vaddr) + 3] = s2_wdata[31:24];
+        end
+        default : data_ram_wdata = cache_line;
+      endcase
+
     end
     data_ram_raddr = `DCACHE_IDX_OF(s1_vaddr);
     // tag ram
@@ -641,11 +642,11 @@ module DCache (
   end
 
   // Data Memory: 每路 1 个单端口RAM
-  for (genvar i = 0; i < `DCACHE_WAY_NUM; i++) begin
+  for (genvar i = 0; i < `DCACHE_WAY_NUM; i++) begin : gen_dcache_data_ram
     SimpleDualPortRAM #(
       .DATA_DEPTH(2 ** `DCACHE_IDX_WIDTH),
       .DATA_WIDTH(`DCACHE_BLOCK_SIZE * 8),
-      .BYTE_WRITE_WIDTH(8),
+      .BYTE_WRITE_WIDTH(`DCACHE_BLOCK_SIZE * 8),
       .CLOCKING_MODE("common_clock"),
       .WRITE_MODE("write_first")
     ) U_DCacheDataRAM (
@@ -662,7 +663,7 @@ module DCache (
     );
   end
 
-  for (genvar i = 0; i < `DCACHE_WAY_NUM; i++) begin
+  for (genvar i = 0; i < `DCACHE_WAY_NUM; i++) begin : gen_dcache_tag_meta_ram
     // Tag Memory
     SimpleDualPortRAM #(
       .DATA_DEPTH(2 ** `DCACHE_IDX_WIDTH),

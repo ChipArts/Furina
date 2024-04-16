@@ -94,7 +94,7 @@ module IntegerBlock (
   );
 /*==================================== ALU ====================================*/
 
-  for (genvar i = 0; i < 2; i++) begin
+  for (genvar i = 0; i < 2; i++) begin : gen_alu
     AluPipe inst_AluPipe
     (
       .clk         (clk),
