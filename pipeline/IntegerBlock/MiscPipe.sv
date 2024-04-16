@@ -61,8 +61,8 @@ module MiscPipe (
   always_comb begin
     s0_ready = s1_ready;
     ready_o = s0_ready;
-    tlbsrch_valid_o = exe_i.base.valid & exe_i.misc_oc.instr_type == `MISC_INSTR & exe_i.misc_oc.misc_op == `PRIV_TLBSRCH;
-    tlbrd_valid_o = exe_i.base.valid & exe_i.misc_oc.instr_type == `MISC_INSTR & exe_i.misc_oc.misc_op == `PRIV_TLBRD;
+    tlbsrch_valid_o = exe_i.base.valid & exe_i.misc_oc.instr_type == `MISC_INSTR & exe_i.misc_oc.priv_op == `PRIV_TLBSRCH;
+    tlbrd_valid_o = exe_i.base.valid & exe_i.misc_oc.instr_type == `MISC_INSTR & exe_i.misc_oc.priv_op == `PRIV_TLBRD;
   end
 
 /*================================== stage1 ===================================*/
@@ -122,9 +122,9 @@ module MiscPipe (
     src0 = s1_exe.base.src0;
     src1 = s1_exe.base.src1;
 
-    csr_we = misc_op == `PRIV_CSR_WRITE | misc_op == `PRIV_CSR_XCHG;
+    csr_we = priv_op == `PRIV_CSR_WRITE | priv_op == `PRIV_CSR_XCHG;
     csr_waddr = s1_exe.base.imm[13:0];
-    csr_wdata = misc_op == `PRIV_CSR_XCHG ? src0 & src1 : src0;
+    csr_wdata = priv_op == `PRIV_CSR_XCHG ? src0 & src1 : src0;
 
     invtlb_asid = src0[9:0];
 
@@ -135,7 +135,7 @@ module MiscPipe (
             instr_type == `PRIV_INSTR ? s1_csr_rdata  :
             instr_type == `MISC_INSTR && misc_op == `MISC_RDCNTVL ? s1_timer_64[31:0]  : 
             instr_type == `MISC_INSTR && misc_op == `MISC_RDCNTVH ? s1_timer_64[63:32] :
-            instr_type == `MISC_INSTR && misc_op == `MISC_RDCNTID ? s1_timer_id : '0;
+            instr_type == `MISC_INSTR && misc_op == `MISC_RDCNTID ? s1_timer_id        : '0;
   end
   
   BranchUnit U_BranchUnit

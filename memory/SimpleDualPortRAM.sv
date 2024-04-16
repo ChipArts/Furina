@@ -27,7 +27,7 @@ parameter
   string       CLOCKING_MODE    = "common_clock",
   string       WRITE_MODE       = "write_first",
   string       MEMORY_PRIMITIVE = "auto",
-  // don't change the following parameters
+localparam
   int unsigned ADDR_WIDTH       = $clog2(DATA_DEPTH),
   int unsigned MEMORY_SIZE      = DATA_WIDTH * DATA_DEPTH
 )(

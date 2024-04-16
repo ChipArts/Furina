@@ -80,7 +80,10 @@ parameter
       end
     end
 
-    wr_ready_o = $countones(free) >= BANK_NUM;
+    for (int i = 0; i < BANK_NUM; i++) begin
+      wr_ready_o[i] = $countones(free) >= i + 1;
+    end
+    
 
     // write logic
     for (int i = 0; i < BANK_NUM; i++) begin
@@ -92,7 +95,7 @@ parameter
         end
       end
       
-      if (wr_ready_o && wr_valid_i[i]) begin
+      if (wr_ready_o[i] && wr_valid_i[i]) begin
         rs_mem_n[i][write_idx[i]].base = rs_base_i[i];
         rs_mem_n[i][write_idx[i]].oc = option_code_i[i];
       end

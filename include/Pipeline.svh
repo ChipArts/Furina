@@ -116,7 +116,7 @@ typedef struct packed {
 
   logic tlbsrch_en;
   logic tlbsrch_found;
-  logic [`TLB_ENTRY_NUM - 1:0] tlbsrch_idx;
+  logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbsrch_idx;
 
   logic tlbrd_en;
   logic [31:0] tlbrd_ehi;

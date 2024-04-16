@@ -49,7 +49,7 @@ module AluPipe (
 
 /*================================== stage1 ===================================*/
   AluExeSt s1_exe;
-  logic alu_res;
+  logic [31:0] alu_res;
   always_comb begin
     // 没有要处理的任务 或 信息可以向下一级流动
     // 没有需握手的FU

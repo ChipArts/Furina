@@ -62,7 +62,7 @@ module DCache (
   /* Memory Ctrl */
   logic [`DCACHE_WAY_NUM - 1:0] data_ram_we;
   logic [`DCACHE_IDX_WIDTH - 1:0] data_ram_waddr;
-  logic [`DCACHE_BLOCK_SIZE / 4 - 1:0][31:0] data_ram_wdata;
+  logic [`DCACHE_BLOCK_SIZE - 1:0][7:0] data_ram_wdata;
   logic [`DCACHE_IDX_WIDTH - 1:0] data_ram_raddr;
   logic [`DCACHE_WAY_NUM - 1:0][`DCACHE_BLOCK_SIZE / 4 - 1:0][31:0] data_ram_rdata;
 
@@ -531,13 +531,11 @@ module DCache (
     // input: axi4_mst.aw_ready
 
     axi4_mst.w_id   = '0;
-    axi4_mst.w_data = data_ram_rdata[axi_wdata_idx];
+    axi4_mst.w_data = data_ram_rdata[s2_repl_way][axi_wdata_idx];
     axi4_mst.w_strb = '1;
     axi4_mst.w_last = axi_wdata_idx == `DCACHE_BLOCK_SIZE / 4 - 1;
     axi4_mst.w_user = '0;
-    axi4_mst.w_valid = cache_state == WRITE_BACK &
-                       meta_ram_rdata[repl_way].valid &
-                       meta_ram_rdata[repl_way].dirty;
+    axi4_mst.w_valid = cache_state == WRITE_BACK;
     // input: axi4_mst.w_ready
 
     // input: axi4_mst.b_id
@@ -582,7 +580,6 @@ module DCache (
       // 触发重填时的写入：axi读有效 & axi最后一个数据 & 不是uncache操作 (不触发axi读取则一定不写入)
       data_ram_we[repl_way] = axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache;
       data_ram_wdata = {axi_rdata_buffer[`DCACHE_BLOCK_SIZE / 4 - 1:1], axi4_mst.r_data};
-      data_ram_wdata[s2_vaddr[`DCACHE_IDX_OFFSET - 1:2]] = s2_wdata;
     end else begin
       // hit时的写入： 指令有效 & hit(s2_ready) & store指令有效 & store指令可以执行（rob最旧指令）
       if (s2_valid && s2_store_valid && s2_ready) begin
