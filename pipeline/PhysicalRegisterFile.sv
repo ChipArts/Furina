@@ -36,13 +36,12 @@ module PhysicalRegisterFile #(
   output logic [READ_PORT_NUM - 1:0][DATA_WIDTH - 1:0] data_o
 );
 
-  `RESET_LOGIC(clk, a_rst_n, s_rst_n)
+  `RESET_LOGIC(clk, a_rst_n, rst_n)
 
   logic [PHY_REG_NUM - 1:0][DATA_WIDTH - 1:0] reg_file;
-  always @(posedge clk or negedge s_rst_n) begin
-    if (!s_rst_n) begin
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
       // reg_file <= '0;  // 逻辑上可以不复位寄存器堆
-      data_o <= '0;
     end
     else begin
       foreach (waddr_i[i]) begin

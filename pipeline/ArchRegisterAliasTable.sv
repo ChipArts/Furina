@@ -58,7 +58,7 @@ parameter
     register_alias_table_n = register_alias_table;
     foreach (wen[i]) begin
       if (wen[i]) begin
-        register_alias_table[dest_i[i]] <= preg_i;
+        register_alias_table_n[dest_i[i]] = preg_i;
       end
     end
 

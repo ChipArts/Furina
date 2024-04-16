@@ -108,7 +108,7 @@ parameter
     end else begin
       // 释放过程不会阻塞
       free_list <= free_list_n;
-      free_req_cnt <= free_list_cnt_n;
+      free_list_cnt <= free_list_cnt_n;
       head <= head_n;
       tail <= tail_n;
     end

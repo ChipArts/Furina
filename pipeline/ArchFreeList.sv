@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : ArchFreeList.sv
 // Create  : 2024-04-14 20:47:43
-// Revise  : 2024-04-14 22:06:29
+// Revise  : 2024-04-16 18:11:06
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -84,7 +84,7 @@ parameter
     end else begin
       // 释放过程不会阻塞
       free_list <= free_list_n;
-      free_req_cnt <= free_list_cnt_n;
+      free_list_cnt <= free_list_cnt_n;
       head <= head_n;
       tail <= tail_n;
     end
