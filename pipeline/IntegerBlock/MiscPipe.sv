@@ -121,7 +121,6 @@ module MiscPipe (
     priv_op = s1_exe.misc_oc.priv_op;
     src0 = s1_exe.base.src0;
     src1 = s1_exe.base.src1;
-    imm = s1_exe.base.imm;
 
     csr_we = misc_op == `PRIV_CSR_WRITE | misc_op == `PRIV_CSR_XCHG;
     csr_waddr = s1_exe.base.imm[13:0];

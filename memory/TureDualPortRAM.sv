@@ -108,7 +108,7 @@ end
       rdata_a_q <= '0;
     end else begin
       if (en_a_i) begin
-        raddr_a_q <= rdata_a_n;
+        rdata_a_q <= rdata_a_n;
       end
 
       if (en_b_i && we_b_i && !(we_confilct && WRITE_MODE_A == "no_change")) begin

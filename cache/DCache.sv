@@ -133,7 +133,7 @@ module DCache (
   logic write_back;  // 是否需要写回
   logic cacop_mode0;
   logic cacop_mode1;
-  // logic cacop_mode2;
+  logic cacop_mode2;
   logic cacop_mode2_hit;
   logic read_require; // 是否需要从axi读取数据
   logic refill;  // 可以修改cache状态（包装一些逻辑，简化mem控制）
@@ -316,7 +316,7 @@ module DCache (
   MemOpType s2_mem_op;
   logic s2_micro;
   logic s2_llbit;
-  // logic [4:0] s2_code;
+  logic [4:0] s2_code;
   AlignOpType s2_align_op;
   logic s2_pdest_valid;
   logic [$clog2(`PHY_REG_NUM) - 1:0] s2_pdest;

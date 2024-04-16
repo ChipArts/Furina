@@ -61,7 +61,7 @@ localparam
 
   always_ff @(posedge clk_a or negedge rstb_n) begin
     if(~rstb_n) begin
-       rdata <= '0;
+       rdata_q <= '0;
     end else begin
       if (en_a_i && we_a_i) begin
         ram[addr_a_i] <= data_a_i;
