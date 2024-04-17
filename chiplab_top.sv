@@ -103,7 +103,8 @@ module core_top(
     assign arlock  = axi4.ar_lock;
     assign arcache = axi4.ar_cache;
     assign arprot  = axi4.ar_prot;
-    assign axi4.ar_valid = arvalid;
+    assign arvalid = axi4.ar_valid;
+    assign axi4.ar_ready = arready;
 
     assign axi4.r_id = rid;
     assign axi4.r_data = rdata;
