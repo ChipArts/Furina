@@ -166,7 +166,8 @@ module Scheduler (
                        s1_sche_req.option_code[i].misc_op == `MISC_BREAK;
 
     end
-    excp = '0;  
+
+    excp = '0;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       if (csr_has_int_i) begin
         excp[i].valid = '1;
@@ -177,10 +178,6 @@ module Scheduler (
       end else if(s1_sche_req.option_code[i].invalid_inst) begin
         excp[i].valid = '1;
         excp[i].ecode = `ECODE_INE;
-        excp[i].sub_ecode = `ESUBCODE_ADEF;
-      end else if (schedule_req.option_code[i].invalid_inst) begin
-        excp[i].valid = '1;
-        excp[i].ecode = `ECODE_IPE;
         excp[i].sub_ecode = `ESUBCODE_ADEF;
       end else if (priv_instr[i] && csr_plv_i == 2'b11) begin
         excp[i].valid = '1;
@@ -194,6 +191,8 @@ module Scheduler (
         excp[i].valid = '1;
         excp[i].ecode = `ECODE_BRK;
         excp[i].sub_ecode = `ESUBCODE_ADEF;
+      end else begin
+        excp[i] = '0;
       end
     end
 
