@@ -419,6 +419,8 @@ module Pipeline (
     ibuf_flush_i = global_flush;
 
     ibuf_idx = '0;
+    ibuf_write_valid_i = '0;
+    ibuf_write_data_i = '0;
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
       if (icache_rsp_buffer.valid[i]) begin
         ibuf_write_valid_i[ibuf_idx] = 1'b1;
