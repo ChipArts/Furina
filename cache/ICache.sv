@@ -92,9 +92,7 @@ module ICache (
   logic [$clog2(`ICACHE_WAY_NUM) - 1:0] replaced_way;
   logic [$clog2(`ICACHE_WAY_NUM) - 1:0] matched_way;
   logic [`ICACHE_WAY_NUM - 1:0] matched_way_oh;  // one hot
-  // tag、valid在refill时需要转发，确保下一周期不会触发miss
-  logic [`ICACHE_WAY_NUM - 1:0][`ICACHE_TAG_WIDTH - 1:0] tag;
-  logic [`ICACHE_WAY_NUM - 1:0] valid;
+  logic [$clog2(`FETCH_WIDTH) - 1:0] last_valid_idx;  // 最后一条有效指令的idx
   // 按照取指宽度重新划分cache行
   logic [(`ICACHE_BLOCK_SIZE / 4) - 1:0][31:0] cache_line;
 
@@ -122,6 +120,7 @@ module ICache (
 
 /*=================================== Stage1 ==================================*/
   logic [`PROC_VALEN - 1:0] s1_vaddr;
+  logic [`PROC_VALEN - 1:0] s1_npc;
   logic s1_adef;
 
   logic [`FETCH_WIDTH - 1:0] s1_fetch_en;
@@ -130,18 +129,19 @@ module ICache (
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n || flush_i) begin
       s1_fetch_en <= '0;
-      s1_vaddr <= '0;
-      s1_adef  <= '0;
       s1_cacop_en <= '0;
+      s1_vaddr <= '0;
+      s1_npc <= '0;
+      s1_adef  <= '0;
       s1_cacop_mode <= '0;
     end else begin
       if (s1_ready) begin
         s1_fetch_en <= icache_req.valid;
-
         s1_cacop_en <= icacop_req.valid;
         s1_cacop_mode <= icacop_req.cacop_mode;
 
         s1_vaddr <= icacop_req.valid ? icacop_req.vaddr : icache_req.vaddr;
+        s1_npc <= icache_req.npc;
         s1_adef  <= adef;
       end
     end
@@ -205,6 +205,10 @@ module ICache (
       icache_rsp.vaddr[i] = {s1_vaddr[`PROC_VALEN - 1:FETCH_OFS],  {FETCH_OFS{1'b0}}} + (i << 2);
       icache_rsp.instr[i] = cache_line[s1_vaddr[`ICACHE_IDX_OFFSET - 1:2]];
     end
+
+    // TODO: 参数化这个操作
+    icache_rsp.npc[0] = !s1_fetch_en[1] ? s1_npc : icache_rsp.vaddr[0] + 4;
+    icache_rsp.npc[1] = s1_npc;
 
     // cacop输出
     icacop_rsp.valid = s1_cacop_en;

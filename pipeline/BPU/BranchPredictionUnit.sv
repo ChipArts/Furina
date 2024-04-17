@@ -58,6 +58,7 @@ module BranchPredictionUnit (
         bpu_rsp.valid[i] = '0;
       end
     end
+    bpu_rsp.npc = npc;
   end
 
   always @(posedge clk or negedge rst_n) begin

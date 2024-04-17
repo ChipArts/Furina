@@ -35,6 +35,7 @@ typedef struct packed {
 
 typedef struct packed {
   logic [31:0] pc;
+  logic [31:0] npc;  // 最后一条有效指令的下一个pc
   logic [`FETCH_WIDTH - 1:0] valid;  // 表明pc~pc+7中哪几个是有效的
 } BpuRspSt;
 
