@@ -181,11 +181,11 @@ typedef struct packed {
     MiscOpType misc_op;
     AluOpType alu_op;
     ImmOpType imm_op;
-    ImmType imm_type;
     PrivOpType priv_op;
-    AlignOpType align_op;
-    MemOpType mem_op;
     InstrType instr_type;
+    MemOpType mem_op;
+    ImmType imm_type;
+    AlignOpType align_op;
     InvalidInstType invalid_inst;
 } OptionCodeSt;
 
