@@ -374,6 +374,7 @@ module Pipeline (
 
     icache_req.valid = bpu_rsp.valid;
     icache_req.vaddr = bpu_rsp.pc;
+    icache_req.ready = ibuf_write_ready_o;
     icache_addr_trans_rsp = mmu_addr_trans_rsp[0];
 
     icacop_req = mblk_icacop_req;
@@ -398,7 +399,9 @@ module Pipeline (
     if(~rst_n || global_flush) begin
       icache_rsp_buffer <= 0;
     end else begin
-      icache_rsp_buffer <= icache_rsp;
+      if (ibuf_write_ready_o) begin
+        icache_rsp_buffer <= icache_rsp;
+      end
     end
   end
   
