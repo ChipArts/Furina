@@ -156,14 +156,14 @@ module Scheduler (
     // 在此处检查INT、INE、IPE、SYS、BRK异常
     // 优先级：INT > INE > IPE = SYS = BRK
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      priv_instr[i] =  schedule_req.option_code[i].instr_type == `PRIV_INSTR |
-                      (schedule_req.option_code[i].instr_type == `MEM_INSTR &
-                       schedule_req.option_code[i].mem_op == `MEM_CACOP &
-                       schedule_req.src[1][4:3] != 2'b10);
-      syscall_instr[i] = schedule_req.option_code[i].instr_type == `MISC_INSTR &
-                         schedule_req.option_code[i].misc_op == `MISC_SYSCALL ;
-      break_instr[i] = schedule_req.option_code[i].instr_type == `MISC_INSTR &
-                       schedule_req.option_code[i].misc_op == `MISC_BREAK;
+      priv_instr[i] =  s1_sche_req.option_code[i].instr_type == `PRIV_INSTR |
+                      (s1_sche_req.option_code[i].instr_type == `MEM_INSTR &
+                       s1_sche_req.option_code[i].mem_op == `MEM_CACOP &
+                       s1_sche_req.src[1][4:3] != 2'b10);
+      syscall_instr[i] = s1_sche_req.option_code[i].instr_type == `MISC_INSTR &
+                         s1_sche_req.option_code[i].misc_op == `MISC_SYSCALL ;
+      break_instr[i] = s1_sche_req.option_code[i].instr_type == `MISC_INSTR &
+                       s1_sche_req.option_code[i].misc_op == `MISC_BREAK;
 
     end
     excp = '0;  
