@@ -46,36 +46,6 @@ prog = "func/func_lab19"
 # 进入CHIPLAB_HOME/sims/verilator/run_prog目录
 os.chdir("%s/sims/verilator/run_prog" % chiplab_home)
 
-# 修改Makefile_run
-with open("Makefile_run", "w") as f:
-	f.write(
-"""
-DUMP_DELAY=0
-DUMP_WAVEFORM=1
-TIME_LIMIT=0
-BUS_DELAY=y
-BUS_DELAY_RANDOM_SEED=5570815 
-END_PC=1c000010
-SAVE_BP_TIME=0
-RAM_SAVE_BP_FILE=#pwd#
-TOP_SAVE_BP_FILE=
-RESTORE_BP_TIME=0
-RAM_RESTORE_BP_FILE=
-TOP_RESTORE_BP_FILE=
-
-ifeq ('${BUS_DELAY}', 'y')
-RUN_FLAG += --simu-bus-delay
-RUN_FLAG += --simu-bus-delay-random-seed $(BUS_DELAY_RANDOM_SEED)
-endif
-
-golden_trace_make:
-	python3 ./qemu_log_helper.py --asm test.s --log single.log --dump-rftrace golden_trace.txt 
-simulation_run_prog:
-	../output ${RUN_FLAG} --dump-delay $(DUMP_DELAY) --dump-waveform $(DUMP_WAVEFORM) --time-limit $(TIME_LIMIT) --save-bp-time $(SAVE_BP_TIME) --ram-save-bp-file $(RAM_SAVE_BP_FILE) --top-save-bp-file $(TOP_SAVE_BP_FILE) --restore-bp-time $(RESTORE_BP_TIME) --ram-restore-bp-file $(RAM_RESTORE_BP_FILE) --top-restore-bp-file $(TOP_RESTORE_BP_FILE) --end-pc $(END_PC) 
-
-
-""")
-
 # 执行chiplab命令
 os.system(f"./configure.sh --run {prog} --tail-waveform --waveform-tail-size 2000 --tail-simu-trace --trace-tail-size 2000")
 os.system("make clean")
