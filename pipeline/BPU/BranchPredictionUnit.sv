@@ -45,8 +45,10 @@ module BranchPredictionUnit (
 
     if (bpu_req.redirect) begin
       npc = bpu_req.target;
-    end else begin
+    end else if (bpu_req.next) begin
       npc = {pc[31:NPC_OFS] + 1, {NPC_OFS{1'b0}}};
+    end begin
+      npc = pc;
     end
 
     bpu_rsp.pc = pc;

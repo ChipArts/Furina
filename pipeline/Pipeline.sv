@@ -316,21 +316,21 @@ module Pipeline (
   logic [31:0]  csr_pgdh_diff;
 
 /*=========================== Branch Prediction Unit ==========================*/
-  logic idel_lock;
+  logic idle_lock;
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
-      idel_lock <= 0;
+      idle_lock <= 0;
     end else begin
       if (idle_flush && !csr_has_int) begin
-        idel_lock <= '1;
+        idle_lock <= '1;
       end else if (csr_has_int) begin
-        idel_lock <= '0;
+        idle_lock <= '0;
       end
     end
   end
   
   always_comb begin
-    bpu_req.next = icache_rsp.ready & ~idel_lock;
+    bpu_req.next = icache_rsp.ready & ~idle_lock;
     bpu_req.redirect = global_flush;
     bpu_req.target = tlbrefill_flush ? csr_tlbrentry_out :
                      excp_flush      ? csr_eentry_out :

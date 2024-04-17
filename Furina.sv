@@ -80,7 +80,7 @@ module Furina (
     .M00_SECURE (1'b0)
   ) inst_axi_interconnect_wrap_2x1 (
     .clk              (clk),
-    .rst              (a_rst_n),
+    .rst              (~a_rst_n),
     .s00_axi_awid     (icache_axi4_mst.aw_id),
     .s00_axi_awaddr   (icache_axi4_mst.aw_addr),
     .s00_axi_awlen    (icache_axi4_mst.aw_len),
