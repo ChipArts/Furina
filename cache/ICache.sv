@@ -227,7 +227,7 @@ module ICache (
         IDEL : if (miss && |s1_fetch_en && !s1_cacop_en) cache_state <= MISS;
         MISS : if (axi4_mst.ar_ready) cache_state <= REFILL;
         REFILL : begin
-          if (axi4_mst.r_last) begin
+          if (axi4_mst.r_last && axi4_mst.r_valid) begin
             if (addr_trans_rsp.uncache) begin
               cache_state <= UNCACHE;
             end else begin
