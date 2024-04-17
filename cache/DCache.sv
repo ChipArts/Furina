@@ -579,7 +579,7 @@ module DCache (
     if (cache_state == REFILL) begin
       // 触发重填时的写入：axi读有效 & axi最后一个数据 & 不是uncache操作 (不触发axi读取则一定不写入)
       data_ram_we[repl_way] = axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache;
-      data_ram_wdata = {axi_rdata_buffer[`DCACHE_BLOCK_SIZE / 4 - 1:1], axi4_mst.r_data};
+      data_ram_wdata = {axi4_mst.r_data, axi_rdata_buffer[`DCACHE_BLOCK_SIZE / 4 - 2:1]};
     end else begin
       // hit时的写入： 指令有效 & hit(s2_ready) & store指令有效 & store指令可以执行（rob最旧指令）
       if (s2_valid && s2_store_valid && s2_ready) begin
@@ -609,7 +609,7 @@ module DCache (
     tag_ram_we = '0;
     tag_ram_we[s2_repl_way] = refill;  // 事实上cacop(code == 1,2)不需要写入，但是写入也不会产生错误
     tag_ram_waddr = `DCACHE_IDX_OF(s2_vaddr);
-    tag_ram_wdata = cacop_mode0 ? '0 : `DCACHE_TAG_OF(paddr);
+    tag_ram_wdata = cacop_mode0 ? '0 : `DCACHE_TAG_OF(s2_paddr);
     tag_ram_raddr = s1_ready ? `DCACHE_IDX_OF(dcache_req.vaddr) :  `DCACHE_IDX_OF(s1_vaddr);
     // meta ram
     meta_ram_we = '0;
@@ -677,7 +677,7 @@ module DCache (
       .clk_b    (clk),
       .rstb_n   (rst_n),
       .en_b_i   ('1),
-      .addr_b_i (tag_ram_raddr[i]),
+      .addr_b_i (tag_ram_raddr),
       .data_b_o (tag_ram_rdata[i])
     );
 
@@ -697,7 +697,7 @@ module DCache (
       .clk_b    (clk),
       .rstb_n   (rst_n),
       .en_b_i   ('1),
-      .addr_b_i (meta_ram_raddr[i]),
+      .addr_b_i (meta_ram_raddr),
       .data_b_o (meta_ram_rdata[i])
     );
   end

@@ -24,7 +24,7 @@
 // Component : Decoder
 // Git hash  : 1fd7c320186dfe928dc2ec7e5d196e8b0d36e7db
 
-`timescale 1ns/1ps
+// `timescale 1ns/1ps
 
 module PreDecoder (
   input  wire [31:0]   instr_i,

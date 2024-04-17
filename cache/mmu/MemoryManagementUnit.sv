@@ -125,11 +125,11 @@ module MemoryManagementUnit (
     // search req
     tlb_search_req[0].valid = addr_trans_req[0].valid;
     tlb_search_req[0].asid  = csr_asid_i;
-    tlb_search_req[0].vpn   = addr_trans_req[0].vaddr[`PROC_VALEN:12];
+    tlb_search_req[0].vpn   = addr_trans_req[0].vaddr[`PROC_VALEN - 1:12];
 
     tlb_search_req[1].valid = addr_trans_req[1].valid;
     tlb_search_req[1].asid  = csr_asid_i;
-    tlb_search_req[1].vpn   = addr_trans_req[1].vaddr[`PROC_VALEN:12];
+    tlb_search_req[1].vpn   = addr_trans_req[1].vaddr[`PROC_VALEN - 1:12];
 
     tlb_search_req[2].valid = tlbsrch_en_i;
     tlb_search_req[2].asid  = csr_asid_i;

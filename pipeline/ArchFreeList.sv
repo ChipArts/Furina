@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : ArchFreeList.sv
 // Create  : 2024-04-14 20:47:43
-// Revise  : 2024-04-16 21:42:05
+// Revise  : 2024-04-17 11:06:00
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -43,7 +43,7 @@ parameter
 
   logic [PHY_REG_NUM - 1:0][$clog2(PHY_REG_NUM) - 1:0] free_list, free_list_n;
   logic [$clog2(PHY_REG_NUM) - 1:0] tail, head, tail_n, head_n;
-  logic [$clog2(PHY_REG_NUM + 1):0] free_list_cnt, free_list_cnt_n;  // free list使用计数器
+  logic [$clog2(PHY_REG_NUM):0] free_list_cnt, free_list_cnt_n;  // free list使用计数器
 
   // read/write logic
   logic [$clog2(`COMMIT_WIDTH + 1) - 1:0] alloc_req_cnt;

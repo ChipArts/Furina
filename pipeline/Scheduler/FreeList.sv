@@ -44,15 +44,15 @@ parameter
 
   // 要保证PHY_REG_NUM是2的幂
 
-  logic [PHY_REG_NUM - 1:0][$clog2(PHY_REG_NUM) - 1:0] free_list, free_list_n;
+  logic [PHY_REG_NUM - 1:0][$clog2(PHY_REG_NUM) - 1:0] free_list_q, free_list_n;
   logic [$clog2(PHY_REG_NUM) - 1:0] tail, head, tail_n, head_n;
-  logic [$clog2(PHY_REG_NUM + 1):0] free_list_cnt, free_list_cnt_n;  // free list使用计数器
+  logic [$clog2(PHY_REG_NUM):0] free_list_cnt, free_list_cnt_n;  // free list使用计数器
 
   // read/write logic
   logic [$clog2(`DECODE_WIDTH + 1) - 1:0] alloc_req_cnt;
   logic [$clog2(`COMMIT_WIDTH + 1) - 1:0] free_req_cnt;
-  logic [$clog2(`DECODE_WIDTH) - 1:0] rd_preg_idx;
-  logic [$clog2(`COMMIT_WIDTH) - 1:0] wr_preg_idx;
+  logic [$clog2(`PHY_REG_NUM) - 1:0] rd_preg_idx;
+  logic [$clog2(`PHY_REG_NUM) - 1:0] wr_preg_idx;
 
 
   always_comb begin
@@ -74,7 +74,7 @@ parameter
     rd_preg_idx = head;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       if (alloc_valid_i[i]) begin
-        preg_o[i] = free_list[rd_preg_idx];
+        preg_o[i] = free_list_q[rd_preg_idx];
         rd_preg_idx = rd_preg_idx < PHY_REG_NUM - 1 ? rd_preg_idx + 1 : 0;
       end else begin
         preg_o[i] = '0;
@@ -82,7 +82,7 @@ parameter
     end
 
     // 根据Free信号更新freelist
-    free_list_n = free_list;
+    free_list_n = free_list_q;
     wr_preg_idx = tail;
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
       if (free_valid_i[i]) begin
@@ -101,13 +101,13 @@ parameter
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n || flush_i) begin
-      free_list <= arch_free_list_i;
+      free_list_q <= arch_free_list_i;
       free_list_cnt <= PHY_REG_NUM;
       tail <= '0;
       head <= '0;
     end else begin
       // 释放过程不会阻塞
-      free_list <= free_list_n;
+      free_list_q <= free_list_n;
       free_list_cnt <= free_list_cnt_n;
       head <= head_n;
       tail <= tail_n;

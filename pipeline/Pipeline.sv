@@ -404,7 +404,7 @@ module Pipeline (
   
   // TODO: 实现分支预测的pre检查
   for (genvar i = 0; i < `FETCH_WIDTH; i++) begin : gen_pre_decoder
-    PreDecoder inst_PreDecoder (.instr_i(icache_rsp_buffer.instr[i]), .pre_option_code_o(pre_option_code_o));
+    PreDecoder inst_PreDecoder (.instr_i(icache_rsp_buffer.instr[i]), .pre_option_code_o(pre_option_code_o[i]));
   end
 
 
@@ -422,7 +422,7 @@ module Pipeline (
         ibuf_write_data_i[ibuf_idx].pc = icache_rsp_buffer.vaddr[i];
         ibuf_write_data_i[ibuf_idx].npc = icache_rsp_buffer.npc[i];
         ibuf_write_data_i[ibuf_idx].instr = icache_rsp_buffer.instr[i];
-        ibuf_write_data_i[ibuf_idx].excp = icache_rsp_buffer.excp[i];
+        ibuf_write_data_i[ibuf_idx].excp = icache_rsp_buffer.excp;
         ibuf_write_data_i[ibuf_idx].pre_oc = pre_option_code_o[i];
         ibuf_idx = ibuf_idx + 1;
       end
@@ -460,11 +460,11 @@ module Pipeline (
   always_comb begin
     // 三个CSR特权指令
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      if (decoder_option_code_o[i].misc_op == `PRIV_CSR_XCHG) begin
+      if (decoder_option_code_o[i].priv_op == `PRIV_CSR_XCHG) begin
         case (ibuf_read_data_o[i].instr[9:5])
-          5'b0 : decoder_option_code_o[i].misc_op = `PRIV_CSR_READ;
-          5'b1 : decoder_option_code_o[i].misc_op = `PRIV_CSR_WRITE;
-          default : decoder_option_code_o[i].misc_op = `PRIV_CSR_XCHG;
+          5'b0 : decoder_option_code_o[i].priv_op = `PRIV_CSR_READ;
+          5'b1 : decoder_option_code_o[i].priv_op = `PRIV_CSR_WRITE;
+          default : decoder_option_code_o[i].priv_op = `PRIV_CSR_XCHG;
         endcase
       end
     end
@@ -761,7 +761,7 @@ module Pipeline (
 
     mblk_addr_trans_rsp = mmu_addr_trans_rsp[1];
 
-    mblk_icacop_rsp = icache_rsp;
+    mblk_icacop_rsp = icacop_rsp;
 
     mblk_wb_ready_i = rob_misc_wb_rsp.ready;
   end
@@ -998,7 +998,7 @@ module Pipeline (
 /*======================= CSR(Control/Status Register) ========================*/
   always_comb begin
     // csr读写
-    csr_rd_addr = sche_misc_issue_o.base_info.src[23:10];
+    // csr_rd_addr = sche_misc_issue_o.base_info.src[23:10]; 在read rf处
     csr_wr_en = iblk_misc_wb_o.base.valid &
                 iblk_misc_wb_ready_i&
                 iblk_misc_wb_o.csr_we;

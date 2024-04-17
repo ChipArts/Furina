@@ -53,7 +53,7 @@
     logic is_tibfill;
     logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbfill_idx;
     logic csr_rstat;
-    logic csr_rdata;
+    logic [31:0] csr_rdata;
     logic is_cnt_instr;
     logic [63:0] timer_64;
     logic [31:0] instr;

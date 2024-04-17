@@ -28,9 +28,9 @@ parameter
   input clk,      // Clock
   input a_rst_n,  // Asynchronous reset active low
 
-  input [`DECODE_WIDTH - 1:0] restore_i,    // 映射状态恢复
-  input [`DECODE_WIDTH - 1:0] allocaion_i,  // 状态保存(暂不实现)
-  input [`DECODE_WIDTH - 1:0] free_i,       // 释放映射状态（指令顺利提交）
+  input restore_i,    // 映射状态恢复
+  // input [`DECODE_WIDTH - 1:0] allocaion_i,  // 状态保存(暂不实现)
+  // input [`DECODE_WIDTH - 1:0] free_i,       // 释放映射状态（指令顺利提交）
   input logic [31:0][$clog2(PHY_REG_NUM) - 1:0] arch_rat,
 
   // 输入逻辑寄存器编号
@@ -48,7 +48,7 @@ parameter
   `RESET_LOGIC(clk, a_rst_n, rst_n);
 
   // Main Bit Cell
-  logic [31:0][$clog2(PHY_REG_NUM) - 1:0] register_alias_table;  // reg
+  logic [31:0][$clog2(PHY_REG_NUM) - 1:0] rat_q, rat_n;  // reg
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc0;
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc1;
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] ppdst;
@@ -56,8 +56,8 @@ parameter
   always_comb begin
     // 处理RAW相关性
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      psrc0[i] = register_alias_table[src0_i[i]];
-      psrc1[i] = register_alias_table[src1_i[i]];
+      psrc0[i] = rat_q[src0_i[i]];
+      psrc1[i] = rat_q[src1_i[i]];
       for (int j = 0; j < i; j++) begin
         psrc0[i] = (src0_i[i] == dest_i[j]) ? preg_i[j] : psrc0[i];
         psrc1[i] = (src1_i[i] == dest_i[j]) ? preg_i[j] : psrc1[i];
@@ -74,9 +74,20 @@ parameter
     end
     // ROB写入
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      ppdst[i] = register_alias_table[dest_i[i]];
+      ppdst[i] = rat_q[dest_i[i]];
       for (int j = 0; j < i; j++) begin
         ppdst[i] = (dest_i[i] == dest_i[j]) ? preg_i[j] : ppdst[i];
+      end
+    end
+
+    if (restore_i) begin
+      rat_n = arch_rat;
+    end else begin
+      rat_n = rat_q;
+      for (int i = 0; i < `DECODE_WIDTH; i++) begin
+        if (wen[i]) begin
+          rat_n[dest_i[i]] = preg_i[i];
+        end
       end
     end
 
@@ -90,17 +101,9 @@ parameter
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
-      register_alias_table <= '0;
+      rat_q <= '0;
     end else begin
-      if (restore_i) begin
-        register_alias_table <= arch_rat;
-      end else begin
-        foreach (wen[i]) begin
-          if (wen[i]) begin
-            register_alias_table[dest_i[i]] <= preg_i;
-          end
-        end
-      end
+      rat_q <= rat_n;
     end
   end
   

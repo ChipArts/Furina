@@ -40,7 +40,7 @@ parameter
   `RESET_LOGIC(clk, a_rst_n, rst_n);
 
   // Main Bit Cell
-  logic [31:0][$clog2(PHY_REG_NUM) - 1:0] register_alias_table, register_alias_table_n;  // reg
+  logic [31:0][$clog2(PHY_REG_NUM) - 1:0] rat_q, rat_n;  // reg
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc0;
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc1;
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] ppdst;
@@ -55,21 +55,21 @@ parameter
       end
     end
 
-    register_alias_table_n = register_alias_table;
+    rat_n = rat_q;
     foreach (wen[i]) begin
       if (wen[i]) begin
-        register_alias_table_n[dest_i[i]] = preg_i;
+        rat_n[dest_i[i]] = preg_i[i];
       end
     end
 
-    arch_rat_o = register_alias_table_n;
+    arch_rat_o = rat_n;
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
-      register_alias_table <= '0;
+      rat_q <= '0;
     end else begin
-      register_alias_table <= register_alias_table_n;
+      rat_q <= rat_n;
     end
   end
   

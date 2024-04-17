@@ -160,18 +160,18 @@ module Scheduler (
                       (schedule_req.option_code[i].instr_type == `MEM_INSTR &
                        schedule_req.option_code[i].mem_op == `MEM_CACOP &
                        schedule_req.src[1][4:3] != 2'b10);
-      syscall_instr = schedule_req.option_code[i].instr_type == `MISC_INSTR &
-                      schedule_req.option_code[i].misc_op == `MISC_SYSCALL ;
-      break_instr = schedule_req.option_code[i].instr_type == `MISC_INSTR &
-                    schedule_req.option_code[i].misc_op == `MISC_BREAK;
+      syscall_instr[i] = schedule_req.option_code[i].instr_type == `MISC_INSTR &
+                         schedule_req.option_code[i].misc_op == `MISC_SYSCALL ;
+      break_instr[i] = schedule_req.option_code[i].instr_type == `MISC_INSTR &
+                       schedule_req.option_code[i].misc_op == `MISC_BREAK;
 
     end
     excp = '0;  
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       if (csr_has_int_i) begin
         excp[i].valid = '1;
-        excp[i].ecode = `ESUBCODE_ADEF;
-        excp[i].sub_ecode = '0;
+        excp[i].ecode = `ECODE_INT;
+        excp[i].sub_ecode = `ESUBCODE_ADEF;
       end else if (s1_sche_req.excp[i].valid) begin
         excp[i] = s1_sche_req.excp[i];
       end else if(s1_sche_req.option_code[i].invalid_inst) begin
@@ -186,11 +186,11 @@ module Scheduler (
         excp[i].valid = '1;
         excp[i].ecode = `ECODE_IPE;
         excp[i].sub_ecode = `ESUBCODE_ADEF;
-      end else if (syscall_instr) begin
+      end else if (syscall_instr[i]) begin
         excp[i].valid = '1;
         excp[i].ecode = `ECODE_SYS;
         excp[i].sub_ecode = `ESUBCODE_ADEF;
-      end else if (break_instr) begin
+      end else if (break_instr[i]) begin
         excp[i].valid = '1;
         excp[i].ecode = `ECODE_BRK;
         excp[i].sub_ecode = `ESUBCODE_ADEF;
@@ -229,7 +229,7 @@ module Scheduler (
         dq_wdata[dq_write_idx].dest = s1_fl_alloc_preg[i];
         dq_wdata[dq_write_idx].oc = s1_sche_req.option_code[i];
         dq_wdata[dq_write_idx].position_bit = rob_alloc_rsp.position_bit[i];
-        dq_wdata[dq_write_idx].excp = s1_sche_req.excp;
+        dq_wdata[dq_write_idx].excp = s1_sche_req.excp[i];
         dq_wdata[dq_write_idx].rob_idx = rob_alloc_rsp.rob_idx[i];
         dq_write_idx += 1;
       end
@@ -242,8 +242,8 @@ module Scheduler (
     .clk         (clk),
     .a_rst_n     (rst_n),
     .restore_i   (flush_i),
-    .allocaion_i (/* TODO: checkpoint */),
-    .free_i      (/* TODO: checkpoint */),
+    // .allocaion_i (/* TODO: checkpoint */),
+    // .free_i      (/* TODO: checkpoint */),
     .arch_rat    (arch_rat_i),
     // 查询
     .dest_valid_i(rat_dest_valid),

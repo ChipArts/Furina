@@ -76,10 +76,11 @@ module ICache (
   typedef enum logic [1:0] {
     IDEL,  // ICache正常工作
     MISS,  // ICache miss，Cache的访存请求发出，等待axi的rd_ready信号
-    REFILL  // 等待axi的r_valid/r_last信号，重启流水线
-  } AxiState;
+    REFILL,  // 等待axi的r_valid/r_last信号，重启流水线
+    UNCACHE  // 读出UNCACHE结果
+  } CacheState;
 
-  AxiState axi_state;
+  CacheState cache_state;
   logic [(`ICACHE_BLOCK_SIZE / 4) - 1:0][31:0] axi_rdata_buffer;
   logic [$clog2(`ICACHE_BLOCK_SIZE) - 1:0] axi_rdata_ofs;
 
@@ -91,8 +92,11 @@ module ICache (
   logic [$clog2(`ICACHE_WAY_NUM) - 1:0] replaced_way;
   logic [$clog2(`ICACHE_WAY_NUM) - 1:0] matched_way;
   logic [`ICACHE_WAY_NUM - 1:0] matched_way_oh;  // one hot
+  // tag、valid在refill时需要转发，确保下一周期不会触发miss
+  logic [`ICACHE_WAY_NUM - 1:0][`ICACHE_TAG_WIDTH - 1:0] tag;
+  logic [`ICACHE_WAY_NUM - 1:0] valid;
   // 按照取指宽度重新划分cache行
-  logic [(`ICACHE_BLOCK_SIZE / 4 / `FETCH_WIDTH) - 1:0][31:0] cache_line;
+  logic [(`ICACHE_BLOCK_SIZE / 4) - 1:0][31:0] cache_line;
 
 /*=================================== Stage0 ==================================*/
   // 接收 取指令 虚拟地址
@@ -103,40 +107,42 @@ module ICache (
   // 使用虚拟地址查询 tlb
   // 使用虚拟地址查询 data
   always_comb begin
-    s0_ready = s1_ready & addr_trans_rsp.ready & ~icacop_req.valid;
+    s0_ready = s1_ready & addr_trans_rsp.ready;
     adef = icache_req.vaddr[1:0] != 0;
-    icache_rsp.ready = s0_ready;
-    addr_trans_req.valid = icache_req.valid & s1_ready;
+
+    addr_trans_req.valid = (|icache_req.valid | icacop_req.valid) & s1_ready;
     addr_trans_req.ready = '1;
     addr_trans_req.vaddr = icache_req.vaddr;
     addr_trans_req.mem_type = MMU_FETCH;
-    addr_trans_req.cacop_direct = '0;
+    addr_trans_req.cacop_direct = icacop_req.valid & (icacop_req.cacop_mode == 2'b00 | icacop_req.cacop_mode == 2'b01);
 
-    // for cacop
-    icacop_rsp.ready = s1_ready & addr_trans_rsp.ready;
+    icacop_rsp.ready = s0_ready; // CACOP优先
+    icache_rsp.ready = s0_ready & ~icacop_req.valid;
   end
 
 /*=================================== Stage1 ==================================*/
-  logic [`FETCH_WIDTH - 1:0] s1_fetch_valid;
   logic [`PROC_VALEN - 1:0] s1_vaddr;
   logic s1_adef;
-  // for cacop
+
+  logic [`FETCH_WIDTH - 1:0] s1_fetch_en;
   logic s1_cacop_en;
   logic [4:3] s1_cacop_mode;
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n || flush_i) begin
-      s1_fetch_valid <= '0;
+      s1_fetch_en <= '0;
       s1_vaddr <= '0;
       s1_adef  <= '0;
       s1_cacop_en <= '0;
       s1_cacop_mode <= '0;
     end else begin
       if (s1_ready) begin
-        s1_fetch_valid <= icache_req.valid;
-        s1_vaddr <= icacop_req.valid ? icache_req.vaddr : icache_req.vaddr;
-        s1_adef  <= adef;
+        s1_fetch_en <= icache_req.valid;
+
         s1_cacop_en <= icacop_req.valid;
         s1_cacop_mode <= icacop_req.cacop_mode;
+
+        s1_vaddr <= icacop_req.valid ? icacop_req.vaddr : icache_req.vaddr;
+        s1_adef  <= adef;
       end
     end
   end
@@ -148,37 +154,15 @@ module ICache (
   // 6 生成新的plru信息
   // 7 生成 inst 输出
 
+  assign s1_ready = !s1_fetch_en && !s1_cacop_en ? '1 :  // 无操作
+                     s1_fetch_en && (!miss || cache_state == UNCACHE) && icache_rsp.ready ? '1 :  // fetch hit ready
+                     s1_cacop_en && icacop_rsp.ready ? '1 :  // cacop ready
+                     cache_state == IDEL || cache_state == UNCACHE;  // 确保flash后axi完成读操作（不进行refill）
+
   always_comb begin
-    s1_ready = !s1_fetch_valid && !s1_cacop_en ? '1 : 
-                s1_fetch_valid && !miss && icache_rsp.ready ? '1 : 
-                s1_cacop_en    && icacop_rsp.ready ? '1 : 
-                axi_state == IDEL;  // 确保flash后axi完成读操作（不进行refill）
     paddr = addr_trans_rsp.paddr;
 
-    // 进行 tag 匹配
-    matched_way_oh = '0;
-    for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
-      matched_way_oh[i] = `DCACHE_TAG_OF(paddr) == tag_ram_rdata[i] & valid_ram_rdata;
-      matched_way = matched_way_oh[i] ? i : '0;
-    end
-
-    // 判断 cache 访问是否命中
-    miss = 1'b1 & ~icache_rsp.excp.valid;  // 出现异常则不会触发miss
-    for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
-      miss &= ~matched_way_oh[i];
-    end
-
-    // 获得 plru 信息, 选出替换 way
-    replaced_way = plru_ram_rdata;  // TODO: 真正实现PLRU
-    // 生成新的plru信息
-    // 生成 inst 输出
-    icache_rsp.valid = s1_fetch_valid & ~{`FETCH_WIDTH{miss}};
-    cache_line = addr_trans_rsp.uncache ? axi_rdata_buffer : data_ram_rdata[matched_way];
-    for (int i = 0; i < `FETCH_WIDTH; i++) begin
-      icache_rsp.vaddr[i] = {s1_vaddr[`PROC_VALEN - 1:FETCH_OFS], {FETCH_OFS{1'b0}}} + (i << 2);
-    end
-    icache_rsp.instr = cache_line[s1_vaddr[`ICACHE_IDX_OFFSET - 1:FETCH_OFS]];
-
+    // fetch异常检查
     icache_rsp.excp.valid = s1_adef | addr_trans_rsp.tlbr | addr_trans_rsp.pif | addr_trans_rsp.ppi;
     icache_rsp.excp.ecode =  s1_adef             ? `ECODE_ADE  :
                              addr_trans_rsp.tlbr ? `ECODE_TLBR : 
@@ -186,8 +170,7 @@ module ICache (
                              addr_trans_rsp.ppi  ? `ECODE_PPI  : '0;
     icache_rsp.excp.sub_ecode = `ESUBCODE_ADEF;
 
-    // for cacop
-    icacop_rsp.valid = s1_cacop_en;
+    // cacop异常检查
     icacop_rsp.excp.valid = s1_cacop_mode == 2'b10 &  // 只有在示采用查询索引方式维护Cache一致性时产生mmu异常
                             (addr_trans_rsp.tlbr |
                              addr_trans_rsp.pif  |
@@ -196,25 +179,64 @@ module ICache (
                              addr_trans_rsp.pif  ? `ECODE_PIF  :
                              addr_trans_rsp.ppi  ? `ECODE_PPI  : '0;
     icacop_rsp.excp.sub_ecode = `ESUBCODE_ADEF;
+
+    // 进行 tag 匹配
+    for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
+      matched_way_oh[i] = `DCACHE_TAG_OF(paddr) == tag_ram_rdata[i] & valid_ram_rdata;
+      matched_way = matched_way_oh[i] ? i : '0;
+    end
+
+    // 判断 cache 访问是否命中
+    miss = 1'b1;
+    for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
+      miss &= ~matched_way_oh[i];
+    end
+
+    // 获得 plru 信息, 选出替换 way
+    replaced_way = plru_ram_rdata;  // TODO: 真正实现PLRU
+    // 生成新的plru信息
+
+    // fetch 输出
+    for (int i = 0; i < `FETCH_WIDTH; i++) begin
+      icache_rsp.valid[i] = s1_fetch_en[i] & (~miss | cache_state == UNCACHE);
+    end
+    cache_line = addr_trans_rsp.uncache ? axi_rdata_buffer : data_ram_rdata[matched_way];
+    for (int i = 0; i < `FETCH_WIDTH; i++) begin
+      icache_rsp.vaddr[i] = {s1_vaddr[`PROC_VALEN - 1:FETCH_OFS],  {FETCH_OFS{1'b0}}} + (i << 2);
+      icache_rsp.instr[i] = cache_line[s1_vaddr[`ICACHE_IDX_OFFSET - 1:2]];
+    end
+
+    // cacop输出
+    icacop_rsp.valid = s1_cacop_en;
     icacop_rsp.vaddr = s1_vaddr;
   end
 
   // AXI FSM
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
-      axi_state <= IDEL;
+      cache_state <= IDEL;
       axi_rdata_ofs <= '0;
       axi_rdata_buffer <= '0;
     end else begin
-      case (axi_state)
+      case (cache_state)
         // cache操作不会引起重填
-        IDEL : if (miss && |s1_fetch_valid && !s1_cacop_en) axi_state <= MISS;
-        MISS : if (axi4_mst.r_ready) axi_state <= REFILL;
-        REFILL : if (axi4_mst.r_last) axi_state <= IDEL;
+        IDEL : if (miss && |s1_fetch_en && !s1_cacop_en) cache_state <= MISS;
+        MISS : if (axi4_mst.ar_ready) cache_state <= REFILL;
+        REFILL : begin
+          if (axi4_mst.r_last) begin
+            if (addr_trans_rsp.uncache) begin
+              cache_state <= UNCACHE;
+            end else begin
+              cache_state <= IDEL;
+            end
+          end
+        end
+        UNCACHE: if (icache_req.ready) cache_state <= IDEL;
         default : /* default */;
       endcase
+
       // axi读数据缓存
-      if (axi_state == REFILL) begin
+      if (cache_state == REFILL) begin
         if (axi4_mst.r_valid && axi4_mst.r_ready) begin
           axi_rdata_buffer[axi_rdata_ofs] <= axi4_mst.r_data;
           axi_rdata_ofs <= axi_rdata_ofs + 1;
@@ -266,7 +288,7 @@ module ICache (
     axi4_mst.ar_qos = '0;
     axi4_mst.ar_region = '0;
     axi4_mst.ar_user = '0;
-    axi4_mst.ar_valid = axi_state == MISS;
+    axi4_mst.ar_valid = cache_state == MISS;
     // input: axi4_mst.ar_ready
 
     // input: axi4_mst.r_id
@@ -275,21 +297,21 @@ module ICache (
     // input: axi4_mst.r_last
     // input: axi4_mst.r_user
     // input: axi4_mst.r_valid
-    axi4_mst.r_ready = axi_state == REFILL;
+    axi4_mst.r_ready = cache_state == REFILL;
   end
 
   /* Memory Ctrl */
   always_comb begin
     // data ram
     for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
-      data_ram_we[i] = axi_state == REFILL &
+      data_ram_we[i] = cache_state == REFILL &
                        replaced_way == i &
                        axi4_mst.r_last &
-                      |s1_fetch_valid &
+                      |s1_fetch_en &            // fulsh后不refill
                       ~addr_trans_rsp.uncache;  // uncache请求不refill
     end
     data_ram_waddr = `ICACHE_IDX_OF(s1_vaddr);
-    data_ram_wdata = {axi_rdata_buffer[(`ICACHE_BLOCK_SIZE / 4) - 1:1], axi4_mst.r_data};
+    data_ram_wdata = {axi4_mst.r_data, axi_rdata_buffer[(`ICACHE_BLOCK_SIZE / 4) - 2:1]};
     if (s1_ready) begin
       data_ram_raddr = `ICACHE_IDX_OF(icache_req.vaddr);
     end else begin
@@ -301,7 +323,7 @@ module ICache (
       if (s1_cacop_en) begin
         tag_ram_we[i] = s1_cacop_mode == 2'b00 & s1_vaddr[$clog2(`ICACHE_WAY_NUM) - 1:0] == i & icacop_rsp.ready;
       end else begin
-        tag_ram_we[i] = |s1_fetch_valid & axi_state == REFILL & replaced_way == i & axi4_mst.r_last;
+        tag_ram_we[i] = |s1_fetch_en & cache_state == REFILL & replaced_way == i & axi4_mst.r_last;
       end
     end
     tag_ram_waddr = `ICACHE_IDX_OF(s1_vaddr);
@@ -326,7 +348,7 @@ module ICache (
           default : valid_ram_we[i] = '0;
         endcase
       end else begin
-        valid_ram_we[i] = |s1_fetch_valid & axi_state == REFILL & replaced_way == i & axi4_mst.r_last;
+        valid_ram_we[i] = |s1_fetch_en & cache_state == REFILL & replaced_way == i & axi4_mst.r_last;
       end
     end
     valid_ram_waddr = `ICACHE_IDX_OF(s1_vaddr);
@@ -338,7 +360,7 @@ module ICache (
     end
 
     // plru ram
-    plru_ram_we = |s1_fetch_valid & ~miss;
+    plru_ram_we = |s1_fetch_en & ~miss;
     plru_ram_waddr = `ICACHE_IDX_OF(s1_vaddr);
     plru_ram_wdata = plru_ram_rdata == matched_way ? ~plru_ram_rdata : plru_ram_rdata;
     if (s1_ready) begin
@@ -362,11 +384,11 @@ module ICache (
           .en_a_i   ('1),
           .we_a_i   (data_ram_we[i]),
           .addr_a_i (data_ram_waddr),
-          .data_a_i (data_ram_wdata[i]),
+          .data_a_i (data_ram_wdata),
           .clk_b    (clk),
           .rstb_n   (rst_n),
           .en_b_i   ('1),
-          .addr_b_i (data_ram_raddr[i]),
+          .addr_b_i (data_ram_raddr),
           .data_b_o (data_ram_rdata[i])
         );
 
@@ -385,7 +407,7 @@ module ICache (
           .clk_b    (clk),
           .rstb_n   (rst_n),
           .en_b_i   ('1),
-          .addr_b_i (tag_ram_raddr[i]),
+          .addr_b_i (tag_ram_raddr),
           .data_b_o (tag_ram_rdata[i])
         );
         
@@ -404,7 +426,7 @@ module ICache (
           .clk_b    (clk),
           .rstb_n   (rst_n),
           .en_b_i   ('1),
-          .addr_b_i (valid_ram_raddr[i]),
+          .addr_b_i (valid_ram_raddr),
           .data_b_o (valid_ram_rdata[i])
         );
     end

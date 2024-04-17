@@ -51,7 +51,7 @@ module ReorderBuffer (
   // reg
   RobEntrySt [`ROB_DEPTH - 1:0] rob, rob_n;
   logic [$clog2(`ROB_DEPTH):0] head_ptr, tail_ptr, head_ptr_n, tail_ptr_n;
-  logic [$clog2(`ROB_DEPTH):0] cnt, cnt_n;
+  logic [$clog2(`ROB_DEPTH):0] rob_cnt_q, rob_cnt_n;
   // wire
   logic [$clog2(`ROB_DEPTH) - 1:0] head_idx, tail_idx;
   logic [$clog2(`DECODE_WIDTH):0] alloc_cnt;
@@ -68,6 +68,7 @@ module ReorderBuffer (
   logic [`COMMIT_WIDTH - 1:0] exc_mask;       // 异常后面的指令不允许提交
   logic [`COMMIT_WIDTH - 1:0] pre_exist_br;   // 之前是否有分支指令
   logic [`COMMIT_WIDTH - 1:0] br_mask;        // 仅允许一条分支指令提交（BPU只有一个写口）
+  logic [`COMMIT_WIDTH - 1:0] valid_mask;     // 是一条有效的ROB表项
   logic [`COMMIT_WIDTH - 1:0] commit_mask;    // 屏蔽后续指令的退休
   logic [`COMMIT_WIDTH - 1:0] commit_valid;   // 本次可退休得指令
 
@@ -76,13 +77,13 @@ module ReorderBuffer (
     rob_n = rob;
     head_ptr_n = head_ptr;
     tail_ptr_n = tail_ptr;
-    cnt_n = cnt;
+    rob_cnt_n = rob_cnt_q;
     head_idx = head_ptr[$clog2(`ROB_DEPTH) - 1:0];
     tail_idx = tail_ptr[$clog2(`ROB_DEPTH) - 1:0];
 
     /* alloc logic */
     alloc_cnt = $countones(alloc_req.valid);
-    alloc_rsp.ready = cnt <= `ROB_DEPTH - `DECODE_WIDTH;
+    alloc_rsp.ready = rob_cnt_q <= `ROB_DEPTH - `DECODE_WIDTH;
     if (alloc_rsp.ready & alloc_req.ready) begin
       tail_ptr_n = tail_ptr + alloc_cnt;
     end
@@ -115,7 +116,7 @@ module ReorderBuffer (
     // misc write back
     // 除了PRIV_CSR_READ其余特权指令写回都会彻底改变处理器状态
     misc_psc = misc_wb_req.instr_type == `PRIV_INSTR & misc_wb_req.misc_op > 4'd0;  
-    misc_wb_rsp.ready = ~misc_psc | misc_wb_req.base.rob_idx == rob[head_idx];
+    misc_wb_rsp.ready = ~misc_psc | misc_wb_req.base.rob_idx == head_idx;
     if (misc_wb_req.base.valid && misc_wb_rsp.ready) begin
       rob_n[misc_wb_req.base.rob_idx].complete = 1;
       // 分支预测失败处理
@@ -228,7 +229,7 @@ module ReorderBuffer (
     // 除了load（非原子）、preld指令，其他mem指令都要等待成为最旧的指令
     mem_wb_rsp.ready = (mem_wb_req.mem_op == `MEM_LOAD & ~mem_wb_req.micro) |
                        mem_wb_req.mem_op == `MEM_PRELD |
-                       mem_wb_req.base.rob_idx == rob[head_idx];
+                       mem_wb_req.base.rob_idx == head_idx;
     if (mem_wb_req.base.valid && mem_wb_rsp.ready) begin
       rob_n[mem_wb_req.base.rob_idx].complete = 1;
       // 分支预测失败处理
@@ -272,11 +273,14 @@ module ReorderBuffer (
     br_mask[0] = '1;
     // 第二条指令
     // BR恢复需要抽干流水线
-    redirect_mask[1] = redirect_mask[0] & ~rob[head_idx + 1].br_redirect;
+    redirect_mask[1] = ~rob[head_idx + 1].br_redirect;
     // excp恢复需要抽干流水线
-    exc_mask[1]      = exc_mask[0] & ~rob[head_idx + 1].excp.valid;
+    exc_mask[1]      = ~rob[head_idx + 1].excp.valid;
     // 仅允许一条分支指令提交（BPU更新只有一个写口）
-    br_mask[1]       = br_mask[0] & rob[head_idx].instr_type != `BR_INSTR;
+    br_mask[1]       = rob[head_idx].instr_type != `BR_INSTR;
+
+    valid_mask[0] = rob_cnt_q > 0;
+    valid_mask[1] = rob_cnt_q > 1;
 
 
     commit_mask = br_mask & redirect_mask & exc_mask;
@@ -293,9 +297,9 @@ module ReorderBuffer (
     end
 
     if (alloc_rsp.ready) begin
-      cnt_n = cnt + alloc_cnt - commit_cnt;
+      rob_cnt_n = rob_cnt_q + alloc_cnt - commit_cnt;
     end else begin
-      cnt_n = cnt - commit_cnt;
+      rob_cnt_n = rob_cnt_q - commit_cnt;
     end
 
   end
@@ -306,12 +310,12 @@ module ReorderBuffer (
     if (~rst_n || flush_i) begin
       head_ptr <= '0;
       tail_ptr <= '0;
-      cnt <= '0;
+      rob_cnt_q <= '0;
       // rob <= '0; rob真的需要复位吗？
     end else begin
       head_ptr <= head_ptr_n;
       tail_ptr <= tail_ptr_n;
-      cnt <= cnt_n;
+      rob_cnt_q <= rob_cnt_n;
       rob <= rob_n;
     end
   end
