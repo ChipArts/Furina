@@ -82,7 +82,7 @@ module ICache (
 
   CacheState cache_state;
   logic [(`ICACHE_BLOCK_SIZE / 4) - 1:0][31:0] axi_rdata_buffer;
-  logic [$clog2(`ICACHE_BLOCK_SIZE) - 1:0] axi_rdata_ofs;
+  logic [$clog2(`ICACHE_BLOCK_SIZE / 4) - 1:0] axi_rdata_ofs;
 
   /* stage 0 */
   logic adef;  // fetch address error
