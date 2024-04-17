@@ -125,8 +125,11 @@ parameter
               (rs_mem[i][0].base.valid & ~rs_mem[i][0].base.issued) &
               (rs_mem[i][0].base.psrc0_ready | ~rs_mem[i][0].base.psrc0_valid) &
               (rs_mem[i][0].base.psrc1_ready | ~rs_mem[i][0].base.psrc1_valid);
+      issue_base_o[i] = rs2is(rs_mem[i][0].base);
+      issue_oc_o[i] = rs_mem[i][0].oc;
       position_bit[i] = rs_mem[i][0].base.position_bit;
       rob_idx[i] = rs_mem[i][0].base.rob_idx;
+      issue_idx[i] = 0;
     end
 
     for (int i = 0; i < BANK_NUM; i++) begin
@@ -138,9 +141,10 @@ parameter
             (rs_mem[i][j].base.psrc1_ready || !rs_mem[i][j].base.psrc1_valid)) begin
           // 是一条更老的指令
           if ((rs_mem[i][j].base.position_bit == position_bit[i] &&
-               rs_mem[i][j].base.rob_idx > rob_idx[i]) || 
+               rs_mem[i][j].base.rob_idx < rob_idx[i]) || 
               (rs_mem[i][j].base.position_bit != position_bit[i] &&
-               rs_mem[i][j].base.rob_idx < rob_idx[i])) begin
+               rs_mem[i][j].base.rob_idx > rob_idx[i])) begin
+            issue_valid_o[i] = '1;
             issue_base_o[i] = rs2is(rs_mem[i][j].base);
             issue_oc_o[i] = rs_mem[i][j].oc;
 
