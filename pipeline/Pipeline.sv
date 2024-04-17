@@ -374,6 +374,7 @@ module Pipeline (
 
     icache_req.valid = bpu_rsp.valid;
     icache_req.vaddr = bpu_rsp.pc;
+    icache_req.npc   = bpu_rsp.npc;
     icache_req.ready = ibuf_write_ready_o;
     icache_addr_trans_rsp = mmu_addr_trans_rsp[0];
 

@@ -41,8 +41,6 @@ module BranchPredictionUnit (
   logic [31:0] pc, npc;
 
   always_comb begin
-    npc = pc;
-
     if (bpu_req.redirect) begin
       npc = bpu_req.target;
     end else if (bpu_req.next) begin
