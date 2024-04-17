@@ -154,10 +154,10 @@ module ICache (
   // 6 生成新的plru信息
   // 7 生成 inst 输出
 
-  assign s1_ready = !s1_fetch_en && !s1_cacop_en ? '1 :  // 无操作
-                     s1_fetch_en && (!miss || cache_state == UNCACHE) && icache_rsp.ready ? '1 :  // fetch hit ready
-                     s1_cacop_en && icacop_rsp.ready ? '1 :  // cacop ready
-                     cache_state == IDEL || cache_state == UNCACHE;  // 确保flash后axi完成读操作（不进行refill）
+  assign s1_ready = ~|s1_fetch_en && !s1_cacop_en ? '1 :  // 无操作
+                     |s1_fetch_en ? (!miss || cache_state == UNCACHE) && icache_rsp.ready :  // fetch hit ready
+                      s1_cacop_en ? icacop_rsp.ready :  // cacop ready
+                      cache_state == IDEL || cache_state == UNCACHE;  // 确保flash后axi完成读操作（不进行refill）
 
   always_comb begin
     paddr = addr_trans_rsp.paddr;
