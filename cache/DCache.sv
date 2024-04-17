@@ -518,7 +518,7 @@ module DCache (
   always_comb begin
     axi4_mst.aw_id = '0;
     axi4_mst.aw_addr = s2_repl_paddr;
-    axi4_mst.aw_len = `DCACHE_BLOCK_SIZE / 4;
+    axi4_mst.aw_len = `DCACHE_BLOCK_SIZE / 4 - 1;
     axi4_mst.aw_size = 3'b010;  // 4 bytes
     axi4_mst.aw_burst = 2'b01;  // Incrementing-address burst
     axi4_mst.aw_lock = '0;
@@ -542,11 +542,11 @@ module DCache (
     // input: axi4_mst.b_resp
     // input: axi4_mst.b_user
     // input: axi4_mst.b_valid
-    axi4_mst.b_ready = '0;
+    axi4_mst.b_ready = '1;
 
     axi4_mst.ar_id = '0;
     axi4_mst.ar_addr = s2_paddr;
-    axi4_mst.ar_len = `DCACHE_BLOCK_SIZE / 4;
+    axi4_mst.ar_len = `DCACHE_BLOCK_SIZE / 4 - 1;
     axi4_mst.ar_size = 3'b010;  // 4 bytes;
     axi4_mst.ar_burst = 2'b01;  // Incrementing-address burst
     axi4_mst.ar_lock = '0;
