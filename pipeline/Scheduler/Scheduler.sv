@@ -227,6 +227,7 @@ module Scheduler (
     end
 
     dq_wdata = '0;
+    dq_write_valid = '0;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       if (s1_sche_req.valid[i] && !excp[i].valid) begin
         dq_write_valid[dq_write_idx[i]] = '1;
