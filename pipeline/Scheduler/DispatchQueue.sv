@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : DispatchQueue.sv
 // Create  : 2024-04-18 18:26:24
-// Revise  : 2024-04-18 20:39:08
+// Revise  : 2024-04-18 22:24:37
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -111,10 +111,12 @@ parameter
 			queue_q <= 0;
 			head_q <= 0;
 			tail_q <= 0;
+			cnt_q <= '0;
 		end else begin
 			queue_q <= queue_n;
 			head_q <= head_n;
 			tail_q <= tail_n;
+			cnt_q <= cnt_n;
 		end
 	end
 
