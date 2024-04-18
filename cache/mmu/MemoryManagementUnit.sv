@@ -117,7 +117,11 @@ module MemoryManagementUnit (
     if(~rst_n) begin
       addr_trans_req_buffer <= '0;
     end else begin
-      addr_trans_req_buffer <= addr_trans_req;
+      for (int i = 0; i < 2; i++) begin
+        if (addr_trans_req[i].valid) begin
+          addr_trans_req_buffer[i] <= addr_trans_req[i];
+        end
+      end
     end
   end
 
