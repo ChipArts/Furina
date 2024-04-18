@@ -384,7 +384,7 @@ module Pipeline (
   ICache inst_ICache
   (
     .clk            (clk),
-    .a_rst_n        (a_rst_n),
+    .a_rst_n        (rst_n),
     .flush_i        (icache_flush_i),
     .icache_req     (icache_req),
     .icache_rsp     (icache_rsp),
@@ -720,7 +720,7 @@ module Pipeline (
   IntegerBlock inst_IntegerBlock
   (
     .clk             (clk),
-    .a_rst_n         (a_rst_n),
+    .a_rst_n         (rst_n),
     .flush_i         (iblk_flush_i),
     /* exe */
     .misc_exe_i      (iblk_misc_exe_i),
@@ -775,7 +775,7 @@ module Pipeline (
   MemoryBlock inst_MemoryBlock
   (
     .clk            (clk),
-    .a_rst_n        (a_rst_n),
+    .a_rst_n        (rst_n),
     .flush_i        (mblk_flush_i),
     .exe_i          (mblk_exe_i),
     .exe_ready_o    (mblk_exe_ready_o),
@@ -961,7 +961,7 @@ module Pipeline (
   MemoryManagementUnit inst_MemoryManagementUnit
   (
     .clk            (clk),
-    .a_rst_n        (a_rst_n),
+    .a_rst_n        (rst_n),
     // from csr
     .csr_asid_i     (mmu_csr_asid_i),
     .csr_dmw0_i     (mmu_csr_dmw0_i),
