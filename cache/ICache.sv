@@ -203,7 +203,7 @@ module ICache (
     cache_line = addr_trans_rsp.uncache ? axi_rdata_buffer : data_ram_rdata[matched_way];
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
       icache_rsp.vaddr[i] = {s1_vaddr[`PROC_VALEN - 1:FETCH_OFS],  {FETCH_OFS{1'b0}}} + (i << 2);
-      icache_rsp.instr[i] = cache_line[s1_vaddr[`ICACHE_IDX_OFFSET - 1:2]];
+      icache_rsp.instr[i] = cache_line[s1_vaddr[`ICACHE_IDX_OFFSET - 1:2] + i];
     end
 
     // TODO: 参数化这个操作
