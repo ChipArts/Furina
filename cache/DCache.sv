@@ -517,7 +517,7 @@ module DCache (
 
   always_comb begin
     axi4_mst.aw_id = '0;
-    axi4_mst.aw_addr = s2_repl_paddr;
+    axi4_mst.aw_addr = {s2_repl_paddr[`PROC_PALEN - 1:`DCACHE_IDX_OFFSET], {`DCACHE_IDX_OFFSET{1'b0}}};  // 以cache行为单位
     axi4_mst.aw_len = `DCACHE_BLOCK_SIZE / 4 - 1;
     axi4_mst.aw_size = 3'b010;  // 4 bytes
     axi4_mst.aw_burst = 2'b01;  // Incrementing-address burst
@@ -545,7 +545,7 @@ module DCache (
     axi4_mst.b_ready = '1;
 
     axi4_mst.ar_id = '0;
-    axi4_mst.ar_addr = s2_paddr;
+    axi4_mst.ar_addr = {s2_paddr[`PROC_PALEN - 1:`DCACHE_IDX_OFFSET], {`DCACHE_IDX_OFFSET{1'b0}}};  // 以cache行为单位;
     axi4_mst.ar_len = `DCACHE_BLOCK_SIZE / 4 - 1;
     axi4_mst.ar_size = 3'b010;  // 4 bytes;
     axi4_mst.ar_burst = 2'b01;  // Incrementing-address burst
