@@ -32,7 +32,7 @@
 
 /** 处理器规格/设计方案(暂时不支持参数修改) **/
 // RESET
-`define DIST_DRIVE_RESET  // 分布式驱动复位，在每一个模块中添加异步复位同步释放逻辑
+// `define DIST_DRIVE_RESET  // 分布式驱动复位，在每一个模块中添加异步复位同步释放逻辑
 // Processor
 `define FETCH_WIDTH 2    // 取指令的宽度
 `define DECODE_WIDTH 2   // 解码宽度
