@@ -42,7 +42,7 @@ parameter
   output logic wr_ready_o,
 
   /* wake up */
-  input logic [`WB_WIDTH - 1:0] wb_pdest_valid_i,
+  input logic [`WB_WIDTH - 1:0] wb_i,
   input logic [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] wb_pdest_i,
 
   /* issue */
@@ -105,7 +105,7 @@ parameter
       // wake up
       for (int i = 0; i < RS_SIZE; i++) begin
         for (int j = 0; j < `WB_WIDTH; j++) begin
-          if (wb_pdest_valid_i[j]) begin
+          if (wb_i[j]) begin
             if (mem_q[i].base.valid &&
                 mem_q[i].base.psrc0 == wb_pdest_i[j]) begin
               mem_n[i].base.psrc0_ready = '1;

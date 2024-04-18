@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : DispatchQueue.sv
 // Create  : 2024-04-18 18:26:24
-// Revise  : 2024-04-18 19:44:01
+// Revise  : 2024-04-18 20:39:08
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -50,6 +50,8 @@ parameter
 	logic [$clog2(QUEUE_DEPTH + 1) - 1:0] cnt_q, cnt_n;
 
 	logic [$clog2(QUEUE_DEPTH + 1) - 1:0] write_cnt, read_cnt;
+	logic [`DECODE_WIDTH - 1:0][$clog2(QUEUE_DEPTH) - 1:0] wr_ptr;
+	logic [`DISPATCH_WIDTH - 1:0][$clog2(QUEUE_DEPTH) - 1:0] rd_ptr;
 
 	always_comb begin
 		for (int i = 0; i < `DISPATCH_WIDTH; i++) begin
@@ -100,7 +102,7 @@ parameter
 				end
 			end
 		end
-		
+
 	end
 
 

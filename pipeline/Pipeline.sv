@@ -6,8 +6,12 @@
 // Create  : 2024-03-11 14:53:30
 // Revise  : 2024-04-01 23:06:08
 // Description :
-//   ...
-//   ...
+//   执行单元的排序（所有的代码排序遵循此顺序）
+//   [0] misc
+//   [1] alu[0]
+//   [2] alu[1]
+//   [3] mdu
+//   [4] mem
 // Parameter   :
 //   ...
 //   ...
@@ -108,11 +112,12 @@ module Pipeline (
   logic sche_csr_has_int_i;
   logic [1:0] sche_csr_plv_i;
 
-  logic [`COMMIT_WIDTH - 1:0] sche_fl_free_valid_i;
-  logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_fl_free_preg_i;
-
-  logic [`PHY_REG_NUM - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_arch_free_list_i;
-  logic [31:0][$clog2(`PHY_REG_NUM) - 1:0] sche_arch_rat_i;
+  logic [$clog2(`PHY_REG_NUM) - 1:0] sche_fl_arch_heah;
+  logic [$clog2(`PHY_REG_NUM) - 1:0] sche_fl_arch_tail;
+  logic [$clog2(`PHY_REG_NUM + 1) - 1:0] sche_fl_arch_cnt;
+  logic [`COMMIT_WIDTH - 1:0] sche_free_valid_i;
+  logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_free_preg_i;
+  logic [`PHY_REG_NUM - 1:0] sche_rat_arch_valid_i;
 
   logic [`WB_WIDTH - 1:0] sche_wb_i;
   logic [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_wb_pdest_i;
@@ -175,7 +180,7 @@ module Pipeline (
   MemWbSt mblk_wb_o;
   logic mblk_wb_ready_i;
 
-  /* Reorder Buffer */
+  /* Reorder Buffer (Write Back) */
   logic rob_flush_i;
   RobAllocReqSt rob_alloc_req;
   RobAllocRspSt rob_alloc_rsp;
@@ -189,13 +194,23 @@ module Pipeline (
   RobWbRspSt rob_mem_wb_rsp;
   RobCmtSt rob_cmt_o;
 
+  // 写回信号
+  logic [`WB_WIDTH - 1:0] write_back_valid;
+  logic [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] write_back_pdest;
+
   /* commit */
-  logic [31:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_o;
+  logic [`COMMIT_WIDTH - 1:0] free_valid;
+  logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] free_preg;
+
+  logic [`PHY_REG_NUM - 1:0] arch_rat_valid_o;
   logic [`COMMIT_WIDTH - 1:0] arch_rat_dest_valid_i;
   logic [`COMMIT_WIDTH - 1:0][4:0] arch_rat_dest_i;
   logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_preg_i;
 
-  logic [`PHY_REG_NUM - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_free_list_o;
+  
+  logic [$clog2(`PHY_REG_NUM) - 1:0] arch_fl_head_o;
+  logic [$clog2(`PHY_REG_NUM) - 1:0] arch_fl_tail_o;
+  logic [$clog2(`PHY_REG_NUM + 1) - 1:0] arch_fl_cnt_o;
   logic [`COMMIT_WIDTH - 1:0] arch_fl_alloc_valid_i;
   logic [`COMMIT_WIDTH - 1:0] arch_fl_free_valid_i;
   logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_fl_free_preg_i;
@@ -414,23 +429,26 @@ module Pipeline (
 
 /*============================ Instruction Buffer =============================*/
   // 在此处进行队列压缩，剔除无效的指令
-  logic [$clog2(`FETCH_WIDTH) - 1:0] ibuf_idx;
+  logic [`FETCH_WIDTH - 1:0][$clog2(`FETCH_WIDTH) - 1:0] ibuf_idx;
   always_comb begin
     ibuf_flush_i = global_flush;
 
-    ibuf_idx = '0;
+    ibuf_idx[0] = '0;
+    for (int i = 0; i < `FETCH_WIDTH; i++) begin
+      ibuf_idx[i] = ibuf_idx[i - 1] + icache_rsp_buffer.valid[i];
+    end
+
     ibuf_write_valid_i = '0;
     ibuf_write_data_i = '0;
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
       if (icache_rsp_buffer.valid[i]) begin
-        ibuf_write_valid_i[ibuf_idx] = 1'b1;
-        ibuf_write_data_i[ibuf_idx].valid = 1'b1;
-        ibuf_write_data_i[ibuf_idx].pc = icache_rsp_buffer.vaddr[i];
-        ibuf_write_data_i[ibuf_idx].npc = icache_rsp_buffer.npc[i];
-        ibuf_write_data_i[ibuf_idx].instr = icache_rsp_buffer.instr[i];
-        ibuf_write_data_i[ibuf_idx].excp = icache_rsp_buffer.excp;
-        ibuf_write_data_i[ibuf_idx].pre_oc = pre_option_code_o[i];
-        ibuf_idx = ibuf_idx + 1;
+        ibuf_write_valid_i[ibuf_idx[i]] = 1'b1;
+        ibuf_write_data_i[ibuf_idx[i]].valid = 1'b1;
+        ibuf_write_data_i[ibuf_idx[i]].pc = icache_rsp_buffer.vaddr[i];
+        ibuf_write_data_i[ibuf_idx[i]].npc = icache_rsp_buffer.npc[i];
+        ibuf_write_data_i[ibuf_idx[i]].instr = icache_rsp_buffer.instr[i];
+        ibuf_write_data_i[ibuf_idx[i]].excp = icache_rsp_buffer.excp;
+        ibuf_write_data_i[ibuf_idx[i]].pre_oc = pre_option_code_o[i];
       end
     end
 
@@ -534,23 +552,18 @@ module Pipeline (
     sche_csr_plv_i = csr_plv_out;
 
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
-      sche_fl_free_valid_i[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0;
-      sche_fl_free_preg_i[i] = rob_cmt_o.rob_entry[i].old_phy_reg;
+      sche_free_valid_i[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0;
+      sche_free_preg_i[i] = rob_cmt_o.rob_entry[i].old_phy_reg;
     end
-    sche_arch_free_list_i = arch_free_list_o;  // 用于恢复freelist
-    sche_arch_rat_i = arch_rat_o;  // 用于恢复RAT
+    sche_fl_arch_heah = arch_fl_head_o;
+    sche_fl_arch_tail = arch_fl_tail_o;
+    sche_fl_arch_cnt = arch_fl_cnt_o;
+    sche_rat_arch_valid_i = arch_rat_valid_o;
 
-    sche_wb_pdest_i[0] = iblk_misc_wb_o.base.pdest;
-    sche_wb_pdest_i[1] = iblk_alu_wb_o[0].base.pdest;
-    sche_wb_pdest_i[2] = iblk_alu_wb_o[1].base.pdest;
-    sche_wb_pdest_i[3] = iblk_mdu_wb_o.base.pdest;
-    sche_wb_pdest_i[4] = mblk_wb_o.base.pdest;
 
-    sche_wb_i[0] = iblk_misc_wb_o.base.valid & iblk_misc_wb_o.base.we & iblk_misc_wb_ready_i;
-    sche_wb_i[1] = iblk_alu_wb_o[0].base.valid & iblk_alu_wb_o[0].base.we & iblk_alu_wb_ready_i[0];
-    sche_wb_i[2] = iblk_alu_wb_o[1].base.valid & iblk_alu_wb_o[1].base.we & iblk_alu_wb_ready_i[1];
-    sche_wb_i[3] = iblk_mdu_wb_o.base.valid & iblk_mdu_wb_o.base.we & iblk_mdu_wb_ready_i;
-    sche_wb_i[4] = mblk_wb_o.base.valid & mblk_wb_o.base.we & mblk_wb_ready_i;
+
+    sche_wb_i = write_back_valid;
+    sche_wb_pdest_i = write_back_pdest;
 
     sche_misc_ready_i = iblk_misc_ready_o;
     sche_alu_ready_i = iblk_alu_ready_o;
@@ -559,7 +572,7 @@ module Pipeline (
 
   end
 
-  Scheduler inst_Scheduler
+  Scheduler U_Scheduler
   (
     .clk              (clk),
     .a_rst_n          (rst_n),
@@ -570,10 +583,12 @@ module Pipeline (
     .rob_alloc_rsp    (sche_rob_alloc_rsp),
     .csr_has_int_i    (sche_csr_has_int_i),
     .csr_plv_i        (sche_csr_plv_i),
-    .fl_free_valid_i  (sche_fl_free_valid_i),
-    .fl_free_preg_i   (sche_fl_free_preg_i),
-    .arch_free_list_i (sche_arch_free_list_i),
-    .arch_rat_i       (sche_arch_rat_i),
+    .fl_arch_heah     (sche_fl_arch_heah),
+    .fl_arch_tail     (sche_fl_arch_tail),
+    .fl_arch_cnt      (sche_fl_arch_cnt),
+    .free_valid_i     (sche_free_valid_i),
+    .free_preg_i      (sche_free_preg_i),
+    .rat_arch_valid_i (sche_rat_arch_valid_i),
     .wb_i             (sche_wb_i),
     .wb_pdest_i       (sche_wb_pdest_i),
     .misc_issue_o     (sche_misc_issue_o),
@@ -585,6 +600,7 @@ module Pipeline (
     .mem_issue_o      (sche_mem_issue_o),
     .mem_ready_i      (sche_mem_ready_i)
   );
+
 
 
 /*================================= RegFile ===================================*/
@@ -613,17 +629,8 @@ module Pipeline (
     rf_raddr_i[8] = sche_mem_issue_o.base_info.psrc0;
     rf_raddr_i[9] = sche_mem_issue_o.base_info.psrc1;
 
-    rf_we_i[0] = iblk_misc_wb_o.base.valid & iblk_misc_wb_o.base.we;
-    rf_we_i[1] = iblk_alu_wb_o[0].base.valid & iblk_alu_wb_o[0].base.we;
-    rf_we_i[2] = iblk_alu_wb_o[1].base.valid & iblk_alu_wb_o[1].base.we;
-    rf_we_i[3] = iblk_mdu_wb_o.base.valid & iblk_mdu_wb_o.base.we;
-    rf_we_i[4] = mblk_wb_o.base.valid & mblk_wb_o.base.we;
-
-    rf_waddr_i[0] = iblk_misc_wb_o.base.pdest;
-    rf_waddr_i[1] = iblk_alu_wb_o[0].base.pdest;
-    rf_waddr_i[2] = iblk_alu_wb_o[1].base.pdest;
-    rf_waddr_i[3] = iblk_mdu_wb_o.base.pdest;
-    rf_waddr_i[4] = mblk_wb_o.base.pdest;
+    rf_we_i = write_back_valid;
+    rf_waddr_i = write_back_pdest;
 
     rf_wdata_i[0] = iblk_misc_wb_o.base.wdata;
     rf_wdata_i[1] = iblk_alu_wb_o[0].base.wdata;
@@ -800,6 +807,18 @@ module Pipeline (
     rob_mdu_wb_req = iblk_mdu_wb_o;
     rob_mem_wb_req = mblk_wb_o;
 
+    write_back_valid[0] = iblk_misc_wb_o.base.valid & iblk_misc_wb_o.base.we & rob_misc_wb_rsp.ready;
+    write_back_valid[1] = iblk_alu_wb_o[0].base.valid & iblk_alu_wb_o[0].base.we & rob_alu_wb_rsp[0].ready;
+    write_back_valid[2] = iblk_alu_wb_o[1].base.valid & iblk_alu_wb_o[1].base.we & rob_alu_wb_rsp[0].ready;
+    write_back_valid[3] = iblk_mdu_wb_o.base.valid & iblk_mdu_wb_o.base.we & rob_mdu_wb_rsp.ready;
+    write_back_valid[4] = mblk_wb_o.base.valid & mblk_wb_o.base.we & rob_mem_wb_rsp.ready;
+
+    write_back_pdest[0] = iblk_misc_wb_o.base.pdest;
+    write_back_pdest[1] = iblk_alu_wb_o[0].base.pdest;
+    write_back_pdest[2] = iblk_alu_wb_o[1].base.pdest;
+    write_back_pdest[3] = iblk_mdu_wb_o.base.pdest;
+    write_back_pdest[4] = mblk_wb_o.base.pdest;
+
   end
 
   ReorderBuffer inst_ReorderBuffer
@@ -856,39 +875,46 @@ module Pipeline (
 
   always_comb begin
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
+      free_valid[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0;
+      free_preg[i] = rob_cmt_o.rob_entry[i].old_phy_reg;
+
       arch_rat_dest_valid_i[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0;
       arch_rat_dest_i[i] = rob_cmt_o.rob_entry[i].arch_reg;
       arch_rat_preg_i[i] = rob_cmt_o.rob_entry[i].phy_reg;
 
       arch_fl_alloc_valid_i[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0;
-      arch_fl_free_valid_i[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0;
-      arch_fl_free_preg_i[i] = rob_cmt_o.rob_entry[i].old_phy_reg;
+      arch_fl_free_valid_i[i] = free_valid[i];
+      arch_fl_free_preg_i[i] = free_preg[i];
     end
   end
 
-
   ArchRegisterAliasTable #(
     .PHY_REG_NUM(`PHY_REG_NUM)
-  ) inst_ArchRegisterAliasTable (
+  ) inst_RegisterAliasTable (
     .clk          (clk),
-    .a_rst_n      (rst_n),
-    .arch_rat_o   (arch_rat_o),
+    .rst_n        (rst_n),
+    .free_i       (arch_rat_dest_valid_i),
+    .old_preg_i   (arch_fl_free_preg_i),
     .dest_valid_i (arch_rat_dest_valid_i),
     .dest_i       (arch_rat_dest_i),
-    .preg_i       (arch_rat_preg_i)
+    .preg_i       (arch_rat_preg_i),
+    .arch_valid_o (arch_valid_o)
   );
 
   ArchFreeList #(
     .PHY_REG_NUM(`PHY_REG_NUM)
-  ) inst_ArchFreeList (
-    .clk              (clk),
-    .a_rst_n          (rst_n),
-    .flush_i          ('0),
-    .arch_free_list_o (arch_free_list_o),
-    .alloc_valid_i    (arch_fl_alloc_valid_i),
-    .free_valid_i     (arch_fl_free_valid_i),
-    .free_preg_i      (arch_fl_free_preg_i)
+  ) U_ArchFreeList (
+    .clk           (clk),
+    .rst_n         (rst_n),
+    .flush_i       ('0),
+    .arch_head_o   (arch_fl_head_o),
+    .arch_tail_o   (arch_fl_tail_o),
+    .arch_cnt_o    (arch_fl_cnt_o),
+    .alloc_valid_i (arch_fl_alloc_valid_i),
+    .free_valid_i  (arch_fl_free_valid_i),
+    .free_preg_i   (arch_fl_free_preg_i)
   );
+
 
 
 `ifdef DEBUG

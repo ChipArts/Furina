@@ -42,11 +42,16 @@ module Scheduler (
   input logic csr_has_int_i,
   input logic [1:0] csr_plv_i,
   // freelist
-  input logic [`COMMIT_WIDTH - 1:0] fl_free_valid_i,
-  input logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] fl_free_preg_i,
-  input logic [`PHY_REG_NUM - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_free_list_i,
+  input logic [$clog2(`PHY_REG_NUM) - 1:0] fl_arch_heah,
+  input logic [$clog2(`PHY_REG_NUM) - 1:0] fl_arch_tail,
+  input logic [$clog2(`PHY_REG_NUM + 1) - 1:0] fl_arch_cnt,
+
+
+  input logic [`COMMIT_WIDTH - 1:0] free_valid_i,
+  input logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] free_preg_i,
+  
   // rat
-  input logic [31:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_i,
+  input logic [`PHY_REG_NUM - 1:0] rat_arch_valid_i,
   // wake up
   input logic [`WB_WIDTH - 1:0] wb_i,
   input logic [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] wb_pdest_i,
@@ -96,18 +101,21 @@ module Scheduler (
   // FreeList comb 输出
   FreeList #(
     .PHY_REG_NUM(`PHY_REG_NUM)
-  ) inst_FreeList (
+  ) U_FreeList (
     .clk           (clk),
-    .a_rst_n       (rst_n),
+    .rst_n         (rst_n),
     .flush_i       (flush_i),
-    .arch_free_list_i(arch_free_list_i),
+    .arch_head     (fl_arch_heah),
+    .arch_tail     (fl_arch_tail),
+    .arch_cnt      (fl_arch_cnt),
     .alloc_valid_i (fl_alloc_valid),
     .alloc_ready_o (fl_alloc_ready),
-    .free_valid_i  (fl_free_valid_i),
+    .preg_o        (fl_alloc_preg),
+    .free_valid_i  (free_valid_i),
     .free_ready_o  (/* not used */),
-    .free_preg_i   (fl_free_preg_i),
-    .preg_o        (fl_alloc_preg)
+    .free_preg_i   (free_preg_i)
   );
+
 
 /*================================== stage1 ===================================*/
   /* 缓存指令和解码信息 */
@@ -139,7 +147,7 @@ module Scheduler (
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_psrc1;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_ppdst;
 
-  logic [$clog2(`DECODE_WIDTH) - 1:0] dq_write_idx;
+  logic [`DECODE_WIDTH - 1:0][$clog2(`DECODE_WIDTH) - 1:0] dq_write_idx;
   logic dq_write_ready;
   logic [`DECODE_WIDTH - 1:0] dq_write_valid;
   DqEntrySt [`DECODE_WIDTH - 1:0] dq_wdata;
@@ -213,28 +221,40 @@ module Scheduler (
     end
 
     // 写入分发队列（剔除产生异常的指令）
-    dq_write_idx = '0;
+    dq_write_idx[0] = '0;
+    for (int i = 1; i < `DECODE_WIDTH; i++) begin
+      dq_write_idx = dq_write_idx[i - 1] + (s1_sche_req.valid[i - 1] & !excp[i - 1].valid);
+    end
+
     dq_wdata = '0;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       if (s1_sche_req.valid[i] && !excp[i].valid) begin
-        dq_write_valid[dq_write_idx] = '1;
-        dq_wdata[dq_write_idx].valid = '1;
-        dq_wdata[dq_write_idx].pc = s1_sche_req.pc[i];
-        dq_wdata[dq_write_idx].npc = s1_sche_req.npc[i];
-        dq_wdata[dq_write_idx].src = s1_sche_req.src[i];
-        dq_wdata[dq_write_idx].src0_valid = s1_sche_req.arch_src0[i] != 5'b0;
-        dq_wdata[dq_write_idx].src0_ready = rat_src0_ready;
-        dq_wdata[dq_write_idx].src1_valid = s1_sche_req.arch_src1[i] != 5'b0;
-        dq_wdata[dq_write_idx].src1_ready = rat_src1_ready;
-        dq_wdata[dq_write_idx].dest_valid = s1_sche_req.arch_dest[i] != 5'b0;
-        dq_wdata[dq_write_idx].src0 = rat_psrc0[i];
-        dq_wdata[dq_write_idx].src1 = rat_psrc1[i];
-        dq_wdata[dq_write_idx].dest = s1_fl_alloc_preg[i];
-        dq_wdata[dq_write_idx].oc = s1_sche_req.option_code[i];
-        dq_wdata[dq_write_idx].position_bit = rob_alloc_rsp.position_bit[i];
-        dq_wdata[dq_write_idx].excp = s1_sche_req.excp[i];
-        dq_wdata[dq_write_idx].rob_idx = rob_alloc_rsp.rob_idx[i];
-        dq_write_idx += 1;
+        dq_write_valid[dq_write_idx[i]] = '1;
+        dq_wdata[dq_write_idx[i]].valid = '1;
+        dq_wdata[dq_write_idx[i]].pc = s1_sche_req.pc[i];
+        dq_wdata[dq_write_idx[i]].npc = s1_sche_req.npc[i];
+        dq_wdata[dq_write_idx[i]].src = s1_sche_req.src[i];
+        dq_wdata[dq_write_idx[i]].src0_valid = s1_sche_req.arch_src0[i] != 5'b0;
+        dq_wdata[dq_write_idx[i]].src0_ready = rat_src0_ready;
+        dq_wdata[dq_write_idx[i]].src1_valid = s1_sche_req.arch_src1[i] != 5'b0;
+        dq_wdata[dq_write_idx[i]].src1_ready = rat_src1_ready;
+        dq_wdata[dq_write_idx[i]].dest_valid = s1_sche_req.arch_dest[i] != 5'b0;
+        dq_wdata[dq_write_idx[i]].src0 = rat_psrc0[i];
+        dq_wdata[dq_write_idx[i]].src1 = rat_psrc1[i];
+        dq_wdata[dq_write_idx[i]].dest = s1_fl_alloc_preg[i];
+        dq_wdata[dq_write_idx[i]].oc = s1_sche_req.option_code[i];
+        dq_wdata[dq_write_idx[i]].position_bit = rob_alloc_rsp.position_bit[i];
+        dq_wdata[dq_write_idx[i]].excp = s1_sche_req.excp[i];
+        dq_wdata[dq_write_idx[i]].rob_idx = rob_alloc_rsp.rob_idx[i];
+        // wake up
+        for (int j = 0; j < `WB_WIDTH; j++) begin
+          if (rat_psrc0[i] == wb_pdest_i[j] && wb_i[j]) begin
+            dq_wdata[dq_write_idx[i]].src0_ready = '1;
+          end
+          if (rat_psrc1[i] == wb_pdest_i[j] && wb_i[j]) begin
+            dq_wdata[dq_write_idx[i]].src1_ready = '1;
+          end
+        end
       end
     end
   end
@@ -245,11 +265,11 @@ module Scheduler (
     .clk           (clk),
     .rst_n         (rst_n),
     // flush流水线恢复
-    .restore_i     (restore_i),
-    .arch_valid_i  (arch_valid_i),
+    .restore_i     (flush_i),
+    .arch_valid_i  (rat_arch_valid_i),
     // 释放旧的映射
-    .free_i        (wb_i),
-    .old_preg_i    (wb_pdest_i),
+    .free_i        (free_valid_i),
+    .old_preg_i    (free_preg_i),
     // 标记映射写回
     .wb_i          (wb_i),
     .wb_pdest_i    (wb_pdest_i),
@@ -333,42 +353,67 @@ module Scheduler (
   MiscOpCodeSt misc_issue_oc;
 
   always_comb begin
-    alu_cnt = '0;
-    misc_cnt = '0;
-    mem_cnt = '0;
+    // wake up
+    for (int i = 0; i < `DISPATCH_WIDTH; i++) begin
+      for (int j = 0; j < `WB_WIDTH; j++) begin
+        if (dq_rdata[i].src0 == wb_pdest_i[j] && wb_i[j]) begin
+          dq_rdata[i].src0_ready = '1;
+        end
+
+        if (dq_rdata[i].src1 == wb_pdest_i[j] && wb_i[j]) begin
+          dq_rdata[i].src1_ready = '1;
+        end
+      end
+    end
+
+    misc_cnt[0] = '0;
+    alu_cnt[0] = '0;
+    mdu_cnt[0] = '0;
+    mem_cnt[0] = '0;
 
     for (int i = 1; i < `DISPATCH_WIDTH; i++) begin
-      if (dq_rdata[i - 1].oc.instr_type == `ALU_INSTR) begin
-        alu_cnt[i] = alu_cnt[i - 1] + 1;
-      end
-      if (dq_rdata[i - 1].oc.instr_type == `MDU_INSTR) begin
-        mdu_cnt[i] = mdu_cnt[i - 1] + 1;
-      end
-      if (dq_rdata[i - 1].oc.instr_type == `MEM_INSTR) begin
-        mem_cnt[i] = mem_cnt[i - 1] + 1;
-      end
       if (dq_rdata[i - 1].oc.instr_type inside {`MISC_INSTR, `BR_INSTR, `PRIV_INSTR}) begin
         misc_cnt[i] = misc_cnt[i - 1] + 1;
+      end else begin
+        misc_cnt[i] = misc_cnt[i - 1];
+      end
+
+      if (dq_rdata[i - 1].oc.instr_type == `ALU_INSTR) begin
+        alu_cnt[i] = alu_cnt[i - 1] + 1;
+      end else begin
+        alu_cnt[i] = alu_cnt[i - 1];
+      end
+
+      if (dq_rdata[i - 1].oc.instr_type == `MDU_INSTR) begin
+        mdu_cnt[i] = mdu_cnt[i - 1] + 1;
+      end else begin
+        mdu_cnt[i] = mdu_cnt[i - 1];
+      end
+      
+      if (dq_rdata[i - 1].oc.instr_type == `MEM_INSTR) begin
+        mem_cnt[i] = mem_cnt[i - 1] + 1;
+      end else begin
+        mem_cnt[i] = mem_cnt[i - 1];
       end
     end
 
     // 判断是否可以分发
     if (dq_read_valid[0]) begin
         case (dq_rdata[0].oc.instr_type)
+          `MISC_INSTR, `BR_INSTR, `PRIV_INSTR : dq_read_ready[0] = misc_cnt[0] < $countones(misc_rs_wr_ready);
           `ALU_INSTR : dq_read_ready[0] = alu_cnt[0] < $countones(alu_rs_wr_ready);
           `MDU_INSTR : dq_read_ready[0] = mdu_cnt[0] < $countones(mdu_rs_wr_ready);
           `MEM_INSTR : dq_read_ready[0] = mem_cnt[0] < $countones(mem_rs_wr_ready);
-          `MISC_INSTR, `BR_INSTR, `PRIV_INSTR : dq_read_ready[0] = misc_cnt[0] < $countones(misc_rs_wr_ready);
           default : dq_read_ready[0] = '0;
         endcase
     end
     for (int i = 1; i < `DISPATCH_WIDTH; i++) begin
       if (dq_read_valid[i]) begin
         case (dq_rdata[i].oc.instr_type)
+          `MISC_INSTR, `BR_INSTR, `PRIV_INSTR : dq_read_ready[i] = misc_cnt[i] < $countones(misc_rs_wr_ready) & dq_read_ready[i - 1];
           `ALU_INSTR : dq_read_ready[i] = alu_cnt[i] < $countones(alu_rs_wr_ready) & dq_read_ready[i - 1];
           `MDU_INSTR : dq_read_ready[i] = mdu_cnt[i] < $countones(mdu_rs_wr_ready) & dq_read_ready[i - 1];
           `MEM_INSTR : dq_read_ready[i] = mem_cnt[i] < $countones(mem_rs_wr_ready) & dq_read_ready[i - 1];
-          `MISC_INSTR, `BR_INSTR, `PRIV_INSTR : dq_read_ready[i] = misc_cnt[i] < $countones(misc_rs_wr_ready) & dq_read_ready[i - 1];
           default : dq_read_ready[i] = '0;
         endcase
       end
