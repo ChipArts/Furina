@@ -48,7 +48,7 @@ module Scheduler (
   // rat
   input logic [31:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_i,
   // wake up
-  input logic [`WB_WIDTH - 1:0] wb_pdest_valid_i,
+  input logic [`WB_WIDTH - 1:0] wb_i,
   input logic [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] wb_pdest_i,
 
   /* issue */
@@ -133,6 +133,8 @@ module Scheduler (
   logic [`DECODE_WIDTH - 1:0] break_instr;
 
   logic [`DECODE_WIDTH - 1:0] rat_dest_valid;
+  logic [`DECODE_WIDTH - 1:0] rat_src0_ready;
+  logic [`DECODE_WIDTH - 1:0] rat_src1_ready;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_psrc0;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_psrc1;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_ppdst;
@@ -221,7 +223,9 @@ module Scheduler (
         dq_wdata[dq_write_idx].npc = s1_sche_req.npc[i];
         dq_wdata[dq_write_idx].src = s1_sche_req.src[i];
         dq_wdata[dq_write_idx].src0_valid = s1_sche_req.arch_src0[i] != 5'b0;
+        dq_wdata[dq_write_idx].src0_ready = rat_src0_ready;
         dq_wdata[dq_write_idx].src1_valid = s1_sche_req.arch_src1[i] != 5'b0;
+        dq_wdata[dq_write_idx].src1_ready = rat_src1_ready;
         dq_wdata[dq_write_idx].dest_valid = s1_sche_req.arch_dest[i] != 5'b0;
         dq_wdata[dq_write_idx].src0 = rat_psrc0[i];
         dq_wdata[dq_write_idx].src1 = rat_psrc1[i];
@@ -237,42 +241,48 @@ module Scheduler (
 
   RegisterAliasTable #(
     .PHY_REG_NUM(`PHY_REG_NUM)
-  ) U_IntegerRegisterAliasTable (
-    .clk         (clk),
-    .a_rst_n     (rst_n),
-    .restore_i   (flush_i),
-    // .allocaion_i (/* TODO: checkpoint */),
-    // .free_i      (/* TODO: checkpoint */),
-    .arch_rat    (arch_rat_i),
+  ) U_RegisterAliasTable (
+    .clk           (clk),
+    .rst_n         (rst_n),
+    // flush流水线恢复
+    .restore_i     (restore_i),
+    .arch_valid_i  (arch_valid_i),
+    // 释放旧的映射
+    .free_i        (wb_i),
+    .old_preg_i    (wb_pdest_i),
+    // 标记映射写回
+    .wb_i          (wb_i),
+    .wb_pdest_i    (wb_pdest_i),
     // 查询
-    .dest_valid_i(rat_dest_valid),
-    .src0_i      (s1_sche_req.arch_src0),
-    .src1_i      (s1_sche_req.arch_src1),
-    .dest_i      (s1_sche_req.arch_dest),
-    .preg_i      (s1_fl_alloc_preg),
+    .dest_valid_i  (rat_dest_valid),
+    .src0_i        (s1_sche_req.arch_src0),
+    .src1_i        (s1_sche_req.arch_src1),
+    .dest_i        (s1_sche_req.arch_dest),
+    .preg_i        (s1_fl_alloc_preg),
     // 输出(comb)
-    .psrc0_o     (rat_psrc0),
-    .psrc1_o     (rat_psrc1),
-    .ppdst_o     (rat_ppdst)
+    .psrc0_ready_o (rat_src0_ready),
+    .psrc0_o       (rat_psrc0),
+    .psrc1_ready_o (rat_src1_ready),
+    .psrc1_o       (rat_psrc1),
+    .ppdst_o       (rat_ppdst)
   );
 
-  SyncMultiChannelFIFO #(
-    .FIFO_DEPTH(16),
-    .DATA_WIDTH($bits(DqEntrySt)),
-    .RPORTS_NUM(`DISPATCH_WIDTH),
-    .WPORTS_NUM(`DECODE_WIDTH),
-    .FIFO_MEMORY_TYPE("auto")
-  ) inst_DispatchQueue (
+
+  DispatchQueue #(
+    .QUEUE_DEPTH(8)
+  ) U_DispatchQueue (
     .clk           (clk),
-    .a_rst_n       (rst_n),
-    .flush_i       (flush_i),
+    .rst_n         (rst_n),
     .write_valid_i (dq_write_valid),
-    .write_ready_o (dq_write_ready),
     .write_data_i  (dq_wdata),
+    .write_ready_o (dq_write_ready),
     .read_valid_o  (dq_read_valid),
+    .read_data_o   (dq_rdata),
     .read_ready_i  (dq_read_ready),
-    .read_data_o   (dq_rdata)
+    .wb_i          (wb_i),
+    .wb_pdest_i    (wb_pdest_i)
   );
+
 
 /*================================== stage2 ===================================*/
   // 写入发射队列
@@ -343,7 +353,7 @@ module Scheduler (
     end
 
     // 判断是否可以分发
-    if (dq_rdata[0].valid) begin
+    if (dq_read_valid[0]) begin
         case (dq_rdata[0].oc.instr_type)
           `ALU_INSTR : dq_read_ready[0] = alu_cnt[0] < $countones(alu_rs_wr_ready);
           `MDU_INSTR : dq_read_ready[0] = mdu_cnt[0] < $countones(mdu_rs_wr_ready);
@@ -353,7 +363,7 @@ module Scheduler (
         endcase
     end
     for (int i = 1; i < `DISPATCH_WIDTH; i++) begin
-      if (dq_rdata[i].valid) begin
+      if (dq_read_valid[i]) begin
         case (dq_rdata[i].oc.instr_type)
           `ALU_INSTR : dq_read_ready[i] = alu_cnt[i] < $countones(alu_rs_wr_ready) & dq_read_ready[i - 1];
           `MDU_INSTR : dq_read_ready[i] = mdu_cnt[i] < $countones(mdu_rs_wr_ready) & dq_read_ready[i - 1];
@@ -420,7 +430,7 @@ module Scheduler (
     .option_code_i (misc_rs_oc),
     .wr_valid_i    (misc_rs_wr_valid),
     .wr_ready_o    (misc_rs_wr_ready),
-    .wb_pdest_valid_i(wb_pdest_valid_i),
+    .wb_i(wb_i),
     .wb_pdest_i    (wb_pdest_i),
     .issue_ready_i (misc_issue_ready),
     .issue_valid_o (misc_issue_valid),
@@ -442,7 +452,7 @@ module Scheduler (
     .option_code_i (alu_rs_oc),
     .wr_valid_i    (alu_rs_wr_valid),
     .wr_ready_o    (alu_rs_wr_ready),
-    .wb_pdest_valid_i(wb_pdest_valid_i),
+    .wb_i(wb_i),
     .wb_pdest_i    (wb_pdest_i),
     .issue_ready_i (alu_issue_ready),
     .issue_valid_o (alu_issue_valid),
@@ -464,7 +474,7 @@ module Scheduler (
     .option_code_i (mdu_rs_oc),
     .wr_valid_i    (mdu_rs_wr_valid),
     .wr_ready_o    (mdu_rs_wr_ready),
-    .wb_pdest_valid_i(wb_pdest_valid_i),
+    .wb_i(wb_i),
     .wb_pdest_i    (wb_pdest_i),
     .issue_ready_i (mdu_issue_ready),
     .issue_valid_o (mdu_issue_valid),
@@ -484,7 +494,7 @@ module Scheduler (
     .option_code_i (mem_rs_oc),
     .wr_valid_i    (mem_rs_wr_valid),
     .wr_ready_o    (mem_rs_wr_ready),
-    .wb_pdest_valid_i(wb_pdest_valid_i),
+    .wb_i(wb_i),
     .wb_pdest_i   (wb_pdest_i),
     .issue_ready_i (mem_issue_ready),
     .issue_valid_o (mem_issue_valid),
