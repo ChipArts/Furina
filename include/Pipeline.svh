@@ -164,6 +164,7 @@ function logic[31:0] imm_ext(logic[25:0] src, ImmType imm_type, logic[31:0] pc);
     `IMM_PC   : imm = pc + {{12{src[24]}}, src[24: 5]};
     default : imm = '0;
   endcase
+  return imm;
 endfunction : imm_ext
 
 function ExeBaseSt is2exe(IssueBaseSt is, logic valid, logic[31:0] src1, logic[31:0] src0);
