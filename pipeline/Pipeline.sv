@@ -114,7 +114,7 @@ module Pipeline (
   logic [`PHY_REG_NUM - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_arch_free_list_i;
   logic [31:0][$clog2(`PHY_REG_NUM) - 1:0] sche_arch_rat_i;
 
-  logic [`WB_WIDTH - 1:0] sche_wb_pdest_valid_i;
+  logic [`WB_WIDTH - 1:0] sche_wb_i;
   logic [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_wb_pdest_i;
 
   MiscIssueSt sche_misc_issue_o;
@@ -546,11 +546,11 @@ module Pipeline (
     sche_wb_pdest_i[3] = iblk_mdu_wb_o.base.pdest;
     sche_wb_pdest_i[4] = mblk_wb_o.base.pdest;
 
-    sche_wb_pdest_valid_i[0] = iblk_misc_wb_o.base.valid & iblk_misc_wb_o.base.we & iblk_misc_wb_ready_i;
-    sche_wb_pdest_valid_i[1] = iblk_alu_wb_o[0].base.valid & iblk_alu_wb_o[0].base.we & iblk_alu_wb_ready_i[0];
-    sche_wb_pdest_valid_i[2] = iblk_alu_wb_o[1].base.valid & iblk_alu_wb_o[1].base.we & iblk_alu_wb_ready_i[1];
-    sche_wb_pdest_valid_i[3] = iblk_mdu_wb_o.base.valid & iblk_mdu_wb_o.base.we & iblk_mdu_wb_ready_i;
-    sche_wb_pdest_valid_i[4] = mblk_wb_o.base.valid & mblk_wb_o.base.we & mblk_wb_ready_i;
+    sche_wb_i[0] = iblk_misc_wb_o.base.valid & iblk_misc_wb_o.base.we & iblk_misc_wb_ready_i;
+    sche_wb_i[1] = iblk_alu_wb_o[0].base.valid & iblk_alu_wb_o[0].base.we & iblk_alu_wb_ready_i[0];
+    sche_wb_i[2] = iblk_alu_wb_o[1].base.valid & iblk_alu_wb_o[1].base.we & iblk_alu_wb_ready_i[1];
+    sche_wb_i[3] = iblk_mdu_wb_o.base.valid & iblk_mdu_wb_o.base.we & iblk_mdu_wb_ready_i;
+    sche_wb_i[4] = mblk_wb_o.base.valid & mblk_wb_o.base.we & mblk_wb_ready_i;
 
     sche_misc_ready_i = iblk_misc_ready_o;
     sche_alu_ready_i = iblk_alu_ready_o;
@@ -574,7 +574,7 @@ module Pipeline (
     .fl_free_preg_i   (sche_fl_free_preg_i),
     .arch_free_list_i (sche_arch_free_list_i),
     .arch_rat_i       (sche_arch_rat_i),
-    .wb_pdest_valid_i (sche_wb_pdest_valid_i),
+    .wb_i             (sche_wb_i),
     .wb_pdest_i       (sche_wb_pdest_i),
     .misc_issue_o     (sche_misc_issue_o),
     .misc_ready_i     (sche_misc_ready_i),
