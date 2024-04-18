@@ -1073,7 +1073,8 @@ module Pipeline (
     csr_llbit_set_in = mblk_wb_o.base.valid & 
                        mblk_wb_o.micro &
                        (mblk_wb_o.mem_op == `MEM_LOAD |
-                       (mblk_wb_o.mem_op == `MEM_STORE & mblk_wb_o.llbit));
+                       (mblk_wb_o.mem_op == `MEM_STORE & mblk_wb_o.llbit)) &
+                       rob_mem_wb_rsp.ready;
 
     // 填写tlbrd结果
     csr_tlbrd_en = iblk_misc_wb_o.base.valid &
