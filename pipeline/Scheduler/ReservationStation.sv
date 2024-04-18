@@ -81,7 +81,7 @@ parameter
     end
 
     for (int i = 0; i < BANK_NUM; i++) begin
-      wr_ready_o[i] = $countones(free) >= i + 1;
+      wr_ready_o[i] = $countones(free[i]) > 0;
     end
     
 
