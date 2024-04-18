@@ -105,7 +105,7 @@ module ReorderBuffer (
         rob_n[alloc_ptr[i]].excp = alloc_req.excp[i];
         rob_n[alloc_ptr[i]].error_vaddr = alloc_req.pc[i];
 `ifdef DEBUG
-        rob_n[alloc_ptr[i]].instr = alloc_req.instr;
+        rob_n[alloc_ptr[i]].instr = alloc_req.instr[i];
 `endif
       end
     end
