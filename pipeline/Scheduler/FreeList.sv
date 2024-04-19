@@ -64,19 +64,21 @@ parameter
     alloc_ready_o = cnt_q >= `DECODE_WIDTH;
     free_ready_o = '1;
 
-    head_n = head + alloc_req_cnt;
+    
     if (alloc_ready_o) begin
-      tail_n = tail + free_req_cnt;
+      head_n = head + alloc_req_cnt;
     end else begin
-      tail_n = tail;
+      head_n = head;
     end
+
+    tail_n = tail + free_req_cnt;
     
 
     // 根据valid信号生成输出
     rd_idx[0] = head;
     for (int i = 1; i < `DECODE_WIDTH; i++) begin
       if (alloc_valid_i[i - 1]) begin
-        rd_idx[i] = rd_idx[i - 1] < PHY_REG_NUM - 1 ? rd_idx[i - 1] + 1 : '0;
+        rd_idx[i] = (rd_idx[i - 1] < PHY_REG_NUM - 1) ? rd_idx[i - 1] + 1 : '0;
       end
     end
 
@@ -92,7 +94,7 @@ parameter
     wr_idx[0] = tail;
     for (int i = 1; i < `COMMIT_WIDTH; i++) begin
       if (free_valid_i[i - 1]) begin
-        wr_idx[i] = wr_idx[i - 1] < PHY_REG_NUM - 1 ? wr_idx[i - 1] + 1 : 0;
+        wr_idx[i] = (wr_idx[i - 1] < PHY_REG_NUM - 1) ? wr_idx[i - 1] + 1 : 0;
       end
     end
 
