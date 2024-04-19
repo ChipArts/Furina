@@ -47,7 +47,7 @@ module BranchPredictionUnit (
 
   always_comb begin
 
-    bpu_rsp.pc = pc;
+    bpu_rsp.pc = {pc[31:NPC_OFS], {NPC_OFS{1'b0}}};
     bpu_rsp.npc = npc;
     bpu_rsp.valid = '1 & {`FETCH_WIDTH{bpu_req.next}};
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
