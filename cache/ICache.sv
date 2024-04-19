@@ -233,7 +233,8 @@ module ICache (
         MISS : if (axi4_mst.ar_ready) cache_state <= REFILL;
         REFILL : begin
           if (axi4_mst.r_last && axi4_mst.r_valid) begin
-            if (addr_trans_rsp.uncache) begin
+            // 在fetch有效的情况下进入UNCACHE状态完成UNCACHE读
+            if (addr_trans_rsp.uncache & |s1_fetch_en) begin 
               cache_state <= UNCACHE;
             end else begin
               cache_state <= IDEL;
