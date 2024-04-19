@@ -214,6 +214,8 @@ module Scheduler (
       rob_alloc_req.pc[i] = s1_sche_req.pc[i];
       rob_alloc_req.instr_type[i] = s1_sche_req.option_code[i].instr_type;
       rob_alloc_req.arch_reg[i] = s1_sche_req.arch_dest[i];
+      rob_alloc_req.phy_reg[i] = s1_fl_alloc_preg[i];
+      rob_alloc_req.old_phy_reg[i] = rat_ppdst[i];
       rob_alloc_req.excp[i] = excp[i];
 `ifdef DEBUG
       rob_alloc_req.instr[i] = s1_sche_req.option_code[i].debug_instr;

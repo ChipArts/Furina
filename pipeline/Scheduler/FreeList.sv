@@ -82,7 +82,7 @@ parameter
 
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       if (alloc_valid_i[i]) begin
-        preg_o[i] = free_list_q[rd_idx];
+        preg_o[i] = free_list_q[rd_idx[i]];
       end else begin
         preg_o[i] = '0;
       end
@@ -99,7 +99,7 @@ parameter
     free_list_n = free_list_q;
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
       if (free_valid_i[i]) begin
-        free_list_n[wr_idx] = free_preg_i[i];
+        free_list_n[wr_idx[i]] = free_preg_i[i];
       end
     end
 
