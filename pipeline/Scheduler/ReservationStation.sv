@@ -120,6 +120,7 @@ parameter
     end
 
     // select logic
+    issue_valid_o = '0;
     for (int i = 0; i < BANK_NUM; i++) begin
       issue_valid_o[i] =
               (rs_mem[i][0].base.valid & ~rs_mem[i][0].base.issued) &
