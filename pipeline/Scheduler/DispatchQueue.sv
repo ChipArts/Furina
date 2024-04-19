@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : DispatchQueue.sv
 // Create  : 2024-04-18 18:26:24
-// Revise  : 2024-04-18 22:24:37
+// Revise  : 2024-04-19 16:41:25
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -41,7 +41,7 @@ parameter
 
 	// wake up
 	input logic [`WB_WIDTH - 1:0] wb_i,
-	input logic [`WB_WIDTH - 1:0] wb_pdest_i
+	input logic [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] wb_pdest_i
 );
 
 

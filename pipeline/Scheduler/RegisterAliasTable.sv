@@ -74,12 +74,12 @@ parameter
       for (int j = 0; j < PHY_REG_NUM; j++) begin
         if (src0_i[i] == rat_q.arch_reg[j] && rat_q.valid[j]) begin
           psrc0[i] = j;
-          psrc0_ready = rat_q.ready[j];
+          psrc0_ready[i] = rat_q.ready[j];
         end
         
         if (src1_i[i] == rat_q.arch_reg[j] && rat_q.valid[j]) begin
           psrc1[i] = j;
-          psrc1_ready = rat_q.ready[j];
+          psrc1_ready[i] = rat_q.ready[j];
         end
       end
       // 处理RAW相关性（在本条指令之前有指令写入了rat）

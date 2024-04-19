@@ -194,6 +194,7 @@ function MiscOpCodeSt gen2misc(OptionCodeSt option_code);
   misc_op_code.signed_op = option_code.signed_op;
   misc_op_code.branch_op = option_code.branch_op;
   misc_op_code.misc_op = option_code.misc_op;
+  misc_op_code.priv_op = option_code.priv_op;
   misc_op_code.instr_type = option_code.instr_type;
   misc_op_code.indirect_br_op = option_code.indirect_br_op;
   return misc_op_code;

@@ -126,6 +126,7 @@ module ICache (
   logic [`FETCH_WIDTH - 1:0] s1_fetch_en;
   logic s1_cacop_en;
   logic [4:3] s1_cacop_mode;
+  logic [$clog2(`ROB_DEPTH) - 1:0] s1_rob_idx;
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n || flush_i) begin
       s1_fetch_en <= '0;
@@ -134,11 +135,13 @@ module ICache (
       s1_npc <= '0;
       s1_adef  <= '0;
       s1_cacop_mode <= '0;
+      s1_rob_idx <= '0;
     end else begin
       if (s1_ready) begin
         s1_fetch_en <= icache_req.valid;
         s1_cacop_en <= icacop_req.valid;
         s1_cacop_mode <= icacop_req.cacop_mode;
+        s1_rob_idx <= icacop_req.rob_idx;
 
         s1_vaddr <= icacop_req.valid ? icacop_req.vaddr : icache_req.vaddr;
         s1_npc <= icache_req.npc;
@@ -213,6 +216,7 @@ module ICache (
     // cacop输出
     icacop_rsp.valid = s1_cacop_en;
     icacop_rsp.vaddr = s1_vaddr;
+    icacop_rsp.rob_idx = s1_rob_idx;
   end
 
   // AXI FSM

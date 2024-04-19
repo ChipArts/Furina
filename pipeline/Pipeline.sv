@@ -947,6 +947,7 @@ module Pipeline (
     mmu_csr_dmw1_i = csr_dmw1_out;
     mmu_csr_datf_i = csr_datf_out;
     mmu_csr_datm_i = csr_datm_out;
+    mmu_csr_plv_i  = csr_plv_out;
     mmu_csr_da_i = csr_da_out;
     mmu_csr_pg_i = csr_pg_out;
 
