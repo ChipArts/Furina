@@ -66,12 +66,9 @@ parameter
 
   // FIFO 部分
   always_comb begin
-    count_full = '0;
-    for(int i = 0 ; i < BANK; i++) begin
-      count_full = count_full + {{($clog2(BANK + 1) - 1){1'b0}},fifo_full[i]};
-    end
+    count_full = $countones(fifo_full);
     // write_ready = count_full + WPORTS_NUM <= BANK;
-    write_ready_o = count_full <= (BANK[$clog2(BANK + 1) - 1 : 0] - WPORTS_NUM[$clog2(BANK + 1) - 1 : 0]);
+    write_ready_o = count_full <= BANK - WPORTS_NUM;
     
     write_num = '0;
     for (int i = 0; i < WPORTS_NUM; i++) begin
@@ -80,7 +77,7 @@ parameter
 
     read_num = '0;
     for (int i = 0; i < RPORTS_NUM; i++) begin
-      read_num += read_ready_i[i];
+      read_num += read_ready_i[i] & read_valid_o[i];
     end
   end
 
