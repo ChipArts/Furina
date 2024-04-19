@@ -29,9 +29,9 @@
   * tip: 注意这个宏会额外占用RST_N_r1, RST_N_r2两个名称，配合DIST_DRIVE_RESET宏定义使用
   */
 `define RESET_LOGIC(CLK, A_RST_N, RST_N) \
-`ifdef DIST_DRIVE_RESET \
   logic RST_N``_r1, RST_N``_r2; \
   logic RST_N; \
+`ifdef DIST_DRIVE_RESET \
   always @(posedge CLK or negedge A_RST_N) begin \
     if (!A_RST_N) begin \
       RST_N``_r1 <= 1'b0; \
