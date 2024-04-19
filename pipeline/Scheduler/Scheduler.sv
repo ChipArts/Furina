@@ -424,39 +424,53 @@ module Scheduler (
     end
 
     // 写入发射队列
-    dispatched = '0;
+    // dispatched = '0;
+    misc_rs_wr_valid = '0;
+    alu_rs_wr_valid = '0;
+    mdu_rs_wr_valid = '0;
+    mem_rs_wr_valid = '0;
+    
+    misc_rs_base = '0;
+    alu_rs_base = '0;
+    mdu_rs_base = '0;
+    mem_rs_base = '0;
+
+    
+    misc_rs_oc = '0;
+    alu_rs_oc = '0;
+    mdu_rs_oc = '0;
+    mem_rs_oc = '0;
     for (int i = 0; i < `DISPATCH_WIDTH; i++) begin
+      if ((dq_rdata[i].oc.instr_type inside {`MISC_INSTR, `BR_INSTR, `PRIV_INSTR}) && misc_cnt == 0) begin
+        misc_rs_wr_valid = dq_read_valid[i];
+        misc_rs_base = dq2rs(dq_rdata[i]);
+        misc_rs_oc = gen2misc(dq_rdata[i].oc);
+      end
       if (dq_rdata[i].oc.instr_type == `ALU_INSTR && alu_cnt[i] == 0) begin
         if (alu_rs_wr_ready[0]) begin
-          alu_rs_wr_valid[0] = dq_read_ready[i];
+          alu_rs_wr_valid[0] = dq_read_valid[i];
           alu_rs_base[0] = dq2rs(dq_rdata[i]);
           alu_rs_oc[0] = gen2alu(dq_rdata[i].oc);
         end else begin
-          alu_rs_wr_valid[1] = dq_read_ready[i];
+          alu_rs_wr_valid[1] = dq_read_valid[i];
           alu_rs_base[1] = dq2rs(dq_rdata[i]);
           alu_rs_oc[1] = gen2alu(dq_rdata[i].oc);
         end
       end
       if (dq_rdata[i].oc.instr_type == `ALU_INSTR && alu_cnt[i] == 1) begin
-        alu_rs_wr_valid[1] = dq_read_ready[i];
+        alu_rs_wr_valid[1] = dq_read_valid[i];
         alu_rs_base[1] = dq2rs(dq_rdata[i]);
         alu_rs_oc[1] = gen2alu(dq_rdata[i].oc);
       end
       if (dq_rdata[i].oc.instr_type == `MEM_INSTR && mem_cnt[i] == 0) begin
-        mem_rs_wr_valid = dq_read_ready[i];
+        mem_rs_wr_valid = dq_read_valid[i];
         mem_rs_base = dq2rs(dq_rdata[i]);
         mem_rs_oc = gen2mem(dq_rdata[i].oc);
       end
       if (dq_rdata[i].oc.instr_type == `MDU_INSTR && mdu_cnt[i] == 0) begin
-        mdu_rs_wr_valid = dq_read_ready[i];
+        mdu_rs_wr_valid = dq_read_valid[i];
         mdu_rs_base = dq2rs(dq_rdata[i]);
         mdu_rs_oc = gen2mdu(dq_rdata[i].oc);
-      end
-      if ((dq_rdata[i].oc.instr_type inside {`MISC_INSTR, `BR_INSTR, `PRIV_INSTR}) &&
-           misc_cnt == 0) begin
-        misc_rs_wr_valid = dq_read_ready[i];
-        misc_rs_base = dq2rs(dq_rdata[i]);
-        misc_rs_oc = gen2misc(dq_rdata[i].oc);
       end
     end
 
