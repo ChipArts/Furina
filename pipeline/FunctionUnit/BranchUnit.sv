@@ -64,7 +64,7 @@ module BranchUnit (
     endcase
 
     if (taken) begin
-      target = indirect_i ? src0_i + (imm_i << 2) : (imm_i << 2);
+      target = indirect_i ? src0_i + (imm_i << 2) : pc_i + (imm_i << 2);
     end else begin
       target = pc_i + 4;
     end
