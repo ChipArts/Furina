@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : ArchFreeList.sv
 // Create  : 2024-04-14 20:47:43
-// Revise  : 2024-04-19 11:42:25
+// Revise  : 2024-04-19 17:19:33
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -56,7 +56,7 @@ parameter
     head_n = head + alloc_req_cnt;
     tail_n = tail + free_req_cnt;
 
-    cnt_n = free_req_cnt + free_req_cnt - alloc_req_cnt;
+    cnt_n = cnt_q + free_req_cnt - alloc_req_cnt;
 
     arch_head_o = head_n;
     arch_tail_o = tail_n;
