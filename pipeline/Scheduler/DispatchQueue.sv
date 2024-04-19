@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : DispatchQueue.sv
 // Create  : 2024-04-18 18:26:24
-// Revise  : 2024-04-19 19:10:32
+// Revise  : 2024-04-19 22:32:52
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -31,6 +31,7 @@ parameter
 )(
 	input logic clk,    // Clock
 	input logic rst_n,  // Asynchronous reset active low
+	input logic flush_i,
 	input logic [`DECODE_WIDTH - 1:0] write_valid_i,  // 指令有效
 	input DqEntrySt [`DECODE_WIDTH - 1:0] write_data_i,
 	output logic write_ready_o,
@@ -107,7 +108,7 @@ parameter
 
 
 	always_ff @(posedge clk or negedge rst_n) begin
-		if(~rst_n) begin
+		if(!rst_n || flush_i) begin
 			queue_q <= 0;
 			head_q <= 0;
 			tail_q <= 0;

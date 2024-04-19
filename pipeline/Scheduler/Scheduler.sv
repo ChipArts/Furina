@@ -293,6 +293,7 @@ module Scheduler (
   ) U_DispatchQueue (
     .clk           (clk),
     .rst_n         (rst_n),
+    .flush_i       (flush_i),
     .write_valid_i (dq_write_valid),
     .write_data_i  (dq_wdata),
     .write_ready_o (dq_write_ready),
