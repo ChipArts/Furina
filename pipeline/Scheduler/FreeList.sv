@@ -64,9 +64,9 @@ parameter
     alloc_ready_o = cnt_q >= `DECODE_WIDTH;
     free_ready_o = '1;
 
-    head_n = head + free_req_cnt;
+    head_n = head + alloc_req_cnt;
     if (alloc_ready_o) begin
-      tail_n = tail + alloc_req_cnt;
+      tail_n = tail + free_req_cnt;
     end else begin
       tail_n = tail;
     end
