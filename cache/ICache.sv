@@ -92,9 +92,9 @@ module ICache (
   logic [$clog2(`ICACHE_WAY_NUM) - 1:0] replaced_way;
   logic [$clog2(`ICACHE_WAY_NUM) - 1:0] matched_way;
   logic [`ICACHE_WAY_NUM - 1:0] matched_way_oh;  // one hot
-  logic [$clog2(`FETCH_WIDTH) - 1:0] last_valid_idx;  // 最后一条有效指令的idx
   // 按照取指宽度重新划分cache行
   logic [(`ICACHE_BLOCK_SIZE / 4) - 1:0][31:0] cache_line;
+  logic [`ICACHE_IDX_OFFSET - 1:2] cache_line_base;
 
 /*=================================== Stage0 ==================================*/
   // 接收 取指令 虚拟地址
@@ -204,9 +204,10 @@ module ICache (
       icache_rsp.valid[i] = s1_fetch_en[i] & (~miss | cache_state == UNCACHE);
     end
     cache_line = addr_trans_rsp.uncache ? axi_rdata_buffer : data_ram_rdata[matched_way];
+    cache_line_base = s1_vaddr[`ICACHE_IDX_OFFSET - 1:2];
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
       icache_rsp.vaddr[i] = {s1_vaddr[`PROC_VALEN - 1:FETCH_OFS],  {FETCH_OFS{1'b0}}} + (i << 2);
-      icache_rsp.instr[i] = cache_line[s1_vaddr[`ICACHE_IDX_OFFSET - 1:2] + i];
+      icache_rsp.instr[i] = cache_line[cache_line_base + i];
     end
 
     // TODO: 参数化这个操作
