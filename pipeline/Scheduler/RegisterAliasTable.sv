@@ -68,7 +68,7 @@ parameter
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       // CAM 方式查找
       for (int j = 0; j < PHY_REG_NUM; j++) begin
-        if (src0_i[i] == rat_q.arch_reg[j] && rat_q.valid[i]) begin
+        if (src0_i[i] == rat_q.arch_reg[j] && rat_q.valid[j]) begin
           psrc0[i] = j;
           psrc0_ready = rat_q.ready[j];
         end else begin
@@ -76,7 +76,7 @@ parameter
           psrc0_ready = '1;
         end
         
-        if (src1_i[i] == rat_q.arch_reg[j] && rat_q.valid[i]) begin
+        if (src1_i[i] == rat_q.arch_reg[j] && rat_q.valid[j]) begin
           psrc1[i] = j;
           psrc1_ready = rat_q.ready[j];
         end else begin
@@ -98,7 +98,7 @@ parameter
     // CAM 方式查找旧的pdest映射
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       for (int j = 0; j < PHY_REG_NUM; j++) begin
-        if (dest_i[i] == rat_q.arch_reg[j] && rat_q.valid[i]) begin
+        if (dest_i[i] == rat_q.arch_reg[j] && rat_q.valid[j]) begin
           ppdst[i] = j;
         end else begin
           ppdst[i] = '0;
