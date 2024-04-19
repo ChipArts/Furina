@@ -103,6 +103,9 @@ module MemoryBlock (
                        s1_exe.mem_oc.mem_op == `MEM_CACOP & s1_exe.code[1:0] == 2'b00 & 
                        ~dcache_busy_o;
     icacop_req.ready = s2_ready;
+    icacop_req.vaddr = s1_exe.base.src0 + (s1_exe.base.imm << 2);
+    icacop_req.rob_idx = s1_exe.base.rob_idx;
+    icacop_req.cacop_mode = s1_exe.code[4:3];
     
     addr_trans_req = dcache_addr_trans_req;
     dcache_addr_trans_rsp = addr_trans_rsp;
