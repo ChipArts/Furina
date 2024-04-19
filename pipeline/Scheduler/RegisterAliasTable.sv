@@ -65,25 +65,22 @@ parameter
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] ppdst;
   always_comb begin
     /* src寄存器重命名 */
+    psrc0 = '0;
+    psrc0_ready = '1;
+    psrc1 = '0;
+    psrc1_ready = '1;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       // CAM 方式查找
       for (int j = 0; j < PHY_REG_NUM; j++) begin
         if (src0_i[i] == rat_q.arch_reg[j] && rat_q.valid[j]) begin
           psrc0[i] = j;
           psrc0_ready = rat_q.ready[j];
-        end else begin
-          psrc0[i] = '0;
-          psrc0_ready = '1;
         end
         
         if (src1_i[i] == rat_q.arch_reg[j] && rat_q.valid[j]) begin
           psrc1[i] = j;
           psrc1_ready = rat_q.ready[j];
-        end else begin
-          psrc1[i] = '0;
-          psrc1_ready = '1;
         end
-        
       end
       // 处理RAW相关性（在本条指令之前有指令写入了rat）
       for (int j = 0; j < i; j++) begin
@@ -96,12 +93,11 @@ parameter
 
     /* RAT更新（配合freelist） */
     // CAM 方式查找旧的pdest映射
+    ppdst = '0;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       for (int j = 0; j < PHY_REG_NUM; j++) begin
         if (dest_i[i] == rat_q.arch_reg[j] && rat_q.valid[j]) begin
           ppdst[i] = j;
-        end else begin
-          ppdst[i] = '0;
         end
       end
       // 处理WAW相关性
