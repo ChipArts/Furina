@@ -148,7 +148,7 @@ parameter
 
   // sequential process
   always_ff @(posedge clk or negedge rst_n) begin
-      if(~rst_n || flush_i) begin
+      if(~rst_n) begin
           read_pointer_q  <= '0;
           write_pointer_q <= '0;
           status_cnt_q    <= '0;

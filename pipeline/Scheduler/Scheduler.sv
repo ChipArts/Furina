@@ -147,7 +147,7 @@ module Scheduler (
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_psrc1;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_ppdst;
 
-  logic [`DECODE_WIDTH - 1:0][$clog2(`DECODE_WIDTH) - 1:0] dq_write_idx;
+  logic [`DECODE_WIDTH - 1:0][$clog2(`DECODE_WIDTH) - 1:0] dq_write_idx;  // 第[i]项写入dq_wdata的第dq_write_idx[i]项
   logic dq_write_ready;
   logic [`DECODE_WIDTH - 1:0] dq_write_valid;
   DqEntrySt [`DECODE_WIDTH - 1:0] dq_wdata;

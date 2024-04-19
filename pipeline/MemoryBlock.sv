@@ -54,6 +54,7 @@ module MemoryBlock (
   // regfile comb输出 数据缓存一拍
   always_comb begin
     s0_ready = s1_ready;
+    exe_ready_o = s0_ready;
   end
 
 
