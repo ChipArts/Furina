@@ -225,7 +225,7 @@ module Scheduler (
     // 写入分发队列（剔除产生异常的指令）
     dq_write_idx[0] = '0;
     for (int i = 1; i < `DECODE_WIDTH; i++) begin
-      dq_write_idx = dq_write_idx[i - 1] + (s1_sche_req.valid[i - 1] & !excp[i - 1].valid);
+      dq_write_idx[i] = dq_write_idx[i - 1] + (s1_sche_req.valid[i - 1] & !excp[i - 1].valid);
     end
 
     dq_wdata = '0;
