@@ -270,9 +270,6 @@ module Scheduler (
     // flush流水线恢复
     .restore_i     (flush_i),
     .arch_valid_i  (rat_arch_valid_i),
-    // 释放旧的映射
-    .free_i        (free_valid_i),
-    .old_preg_i    (free_preg_i),
     // 标记映射写回
     .wb_i          (wb_i),
     .wb_pdest_i    (wb_pdest_i),

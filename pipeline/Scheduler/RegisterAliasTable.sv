@@ -31,8 +31,8 @@ parameter
   input logic restore_i,                         // 映射状态恢复
   input logic [PHY_REG_NUM - 1:0] arch_valid_i,  // 映射状态恢复的valid
   // input [`DECODE_WIDTH - 1:0] allocaion_i,  // 状态保存（暂不实现checkpoint）
-  input logic [`DECODE_WIDTH - 1:0] free_i,                                 // 释放映射状态（指令顺利提交）
-  input logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] old_preg_i,  // 释放的物理寄存器编号
+  // input logic [`DECODE_WIDTH - 1:0] free_i,                                 // 释放映射状态（指令顺利提交）
+  // input logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] old_preg_i,  // 释放的物理寄存器编号
   input logic [`WB_WIDTH - 1:0] wb_i,           // 指令写回
   input logic [`WB_WIDTH - 1:0] wb_pdest_i,  // 指令写回的目的寄存器
 
@@ -63,7 +63,6 @@ parameter
   logic [`DECODE_WIDTH - 1:0] psrc1_ready;
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc1;
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] ppdst;
-  logic [`DECODE_WIDTH - 1:0] wen;
   always_comb begin
     /* src寄存器重命名 */
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
@@ -95,24 +94,14 @@ parameter
       end
     end
 
-    /* dst寄存器分配（配合freelist） */
-    // RAT写入
-    wen = dest_valid_i;
+    /* RAT更新（配合freelist） */
+    // CAM 方式查找旧的pdest映射
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      // 处理WAW相关性
-      for (int j = i + 1; j < `DECODE_WIDTH; j++) begin
-        wen[i] = wen[i] & (dest_i[i] != dest_i[j]);
-      end
-    end
-
-    // ROB写入
-    for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      // CAM 方式查找旧的pdest映射
       for (int j = 0; j < PHY_REG_NUM; j++) begin
         if (dest_i[i] == rat_q.arch_reg[j] && rat_q.valid[i]) begin
           ppdst[i] = j;
         end else begin
-          psrc0[i] = '0;
+          ppdst[i] = '0;
         end
       end
       // 处理WAW相关性
@@ -121,20 +110,18 @@ parameter
       end
     end
 
-    rat_n = rat_q;
+
     if (restore_i) begin
       rat_n.valid = arch_valid_i;
       rat_n.ready = '1;  // 此时ROB会被清空，显然所有的指令都已经写回
     end else begin
+      rat_n = rat_q;
       for (int i = 0; i < `DECODE_WIDTH; i++) begin
-        if (wen[i]) begin
+        if (dest_valid_i[i]) begin
           rat_n.arch_reg[preg_i[i]] = dest_i[i];
           rat_n.valid[preg_i[i]] = '1;
           rat_n.ready[preg_i[i]] = '0;
-        end
-
-        if (free_i[i]) begin
-          rat_n.valid[old_preg_i[i]] = '0;
+          rat_n.valid[ppdst[i]] = '0;  // 释放之前的映射
         end
       end
 

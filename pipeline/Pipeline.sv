@@ -893,12 +893,11 @@ module Pipeline (
   ) inst_RegisterAliasTable (
     .clk          (clk),
     .rst_n        (rst_n),
-    .free_i       (arch_rat_dest_valid_i),
-    .old_preg_i   (arch_fl_free_preg_i),
+    .old_preg_i   (free_preg),
     .dest_valid_i (arch_rat_dest_valid_i),
     .dest_i       (arch_rat_dest_i),
     .preg_i       (arch_rat_preg_i),
-    .arch_valid_o (arch_valid_o)
+    .arch_valid_o (arch_rat_valid_o)
   );
 
   ArchFreeList #(
