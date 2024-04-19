@@ -76,7 +76,7 @@ module ICache (
   typedef enum logic [1:0] {
     IDEL,  // ICache正常工作
     MISS,  // ICache miss，Cache的访存请求发出，等待axi的rd_ready信号
-    REFILL,  // 等待axi的r_valid/r_last信号，重启流水线
+    REFILL  // 等待axi的r_valid/r_last信号，重启流水线
     // UNCACHE  // 读出UNCACHE结果
   } CacheState;
 
