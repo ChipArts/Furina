@@ -68,7 +68,7 @@ parameter
   always_comb begin
     count_full = $countones(fifo_full);
     // write_ready = count_full + WPORTS_NUM <= BANK;
-    write_ready_o = count_full <= BANK - WPORTS_NUM;
+    write_ready_o = count_full <= (BANK[$clog2(BANK + 1) - 1 : 0] - WPORTS_NUM[$clog2(BANK + 1) - 1 : 0]);
     
     write_num = '0;
     for (int i = 0; i < WPORTS_NUM; i++) begin

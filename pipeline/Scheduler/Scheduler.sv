@@ -441,7 +441,7 @@ module Scheduler (
     mdu_rs_oc = '0;
     mem_rs_oc = '0;
     for (int i = 0; i < `DISPATCH_WIDTH; i++) begin
-      if ((dq_rdata[i].oc.instr_type inside {`MISC_INSTR, `BR_INSTR, `PRIV_INSTR}) && misc_cnt == 0) begin
+      if ((dq_rdata[i].oc.instr_type inside {`MISC_INSTR, `BR_INSTR, `PRIV_INSTR}) && misc_cnt[i] == 0) begin
         misc_rs_wr_valid = dq_read_valid[i];
         misc_rs_base = dq2rs(dq_rdata[i]);
         misc_rs_oc = gen2misc(dq_rdata[i].oc);
