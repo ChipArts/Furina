@@ -76,7 +76,7 @@ parameter
     rd_idx[0] = head;
     for (int i = 1; i < `DECODE_WIDTH; i++) begin
       if (alloc_valid_i[i - 1]) begin
-        rd_idx[i] = rd_idx < PHY_REG_NUM - 1 ? rd_idx + 1 : '0;
+        rd_idx[i] = rd_idx[i - 1] < PHY_REG_NUM - 1 ? rd_idx[i - 1] + 1 : '0;
       end
     end
 
@@ -92,7 +92,7 @@ parameter
     wr_idx[0] = tail;
     for (int i = 1; i < `COMMIT_WIDTH; i++) begin
       if (free_valid_i[i - 1]) begin
-        wr_idx = wr_idx < PHY_REG_NUM - 1 ? wr_idx + 1 : 0;
+        wr_idx[i] = wr_idx[i - 1] < PHY_REG_NUM - 1 ? wr_idx[i - 1] + 1 : 0;
       end
     end
 
