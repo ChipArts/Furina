@@ -77,7 +77,7 @@ module ICache (
     IDEL,  // ICache正常工作
     MISS,  // ICache miss，Cache的访存请求发出，等待axi的rd_ready信号
     REFILL,  // 等待axi的r_valid/r_last信号，重启流水线
-    UNCACHE  // 读出UNCACHE结果
+    // UNCACHE  // 读出UNCACHE结果
   } CacheState;
 
   CacheState cache_state;
@@ -95,6 +95,7 @@ module ICache (
   // 按照取指宽度重新划分cache行
   logic [(`ICACHE_BLOCK_SIZE / 4) - 1:0][31:0] cache_line;
   logic [`ICACHE_IDX_OFFSET - 1:2] cache_line_base;
+  logic uncache_hit;  // refill 之后uncache指令要标记此reg
 
 /*=================================== Stage0 ==================================*/
   // 接收 取指令 虚拟地址
@@ -136,6 +137,8 @@ module ICache (
       s1_adef  <= '0;
       s1_cacop_mode <= '0;
       s1_rob_idx <= '0;
+
+      uncache_hit <= '0;
     end else begin
       if (s1_ready) begin
         s1_fetch_en <= icache_req.valid;
@@ -146,6 +149,10 @@ module ICache (
         s1_vaddr <= icacop_req.valid ? icacop_req.vaddr : icache_req.vaddr;
         s1_npc <= icache_req.npc;
         s1_adef  <= adef;
+
+        uncache_hit <= '0;
+      end else begin 
+        uncache_hit <= cache_state == REFILL && axi4_mst.r_last && axi4_mst.r_valid && addr_trans_rsp.uncache;
       end
     end
   end
@@ -158,9 +165,9 @@ module ICache (
   // 7 生成 inst 输出
 
   assign s1_ready = ~|s1_fetch_en && !s1_cacop_en ? '1 :  // 无操作
-                     |s1_fetch_en ? (!miss || cache_state == UNCACHE) && icache_req.ready :  // fetch hit ready
+                     |s1_fetch_en ? (!miss || uncache_hit) && icache_req.ready :  // fetch (uncache)hit ready
                       s1_cacop_en ? icacop_req.ready :  // cacop ready
-                      cache_state == IDEL || cache_state == UNCACHE;  // 确保flash后axi完成读操作（不进行refill）
+                      cache_state == IDEL;  // 确保flash后axi完成读操作（不进行refill）
 
   always_comb begin
     paddr = addr_trans_rsp.paddr;
@@ -201,7 +208,7 @@ module ICache (
 
     // fetch 输出
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
-      icache_rsp.valid[i] = s1_fetch_en[i] & (~miss | cache_state == UNCACHE);
+      icache_rsp.valid[i] = s1_fetch_en[i] & (~miss | uncache_hit);
     end
     cache_line = addr_trans_rsp.uncache ? axi_rdata_buffer : data_ram_rdata[matched_way];
     cache_line_base = s1_vaddr[`ICACHE_IDX_OFFSET - 1:2];
@@ -229,19 +236,9 @@ module ICache (
     end else begin
       case (cache_state)
         // cache操作不会引起重填
-        IDEL : if (miss && |s1_fetch_en && !s1_cacop_en) cache_state <= MISS;
+        IDEL : if (miss && !uncache_hit && |s1_fetch_en && !s1_cacop_en) cache_state <= MISS;
         MISS : if (axi4_mst.ar_ready) cache_state <= REFILL;
-        REFILL : begin
-          if (axi4_mst.r_last && axi4_mst.r_valid) begin
-            // 在fetch有效的情况下进入UNCACHE状态完成UNCACHE读
-            if (addr_trans_rsp.uncache & |s1_fetch_en) begin 
-              cache_state <= UNCACHE;
-            end else begin
-              cache_state <= IDEL;
-            end
-          end
-        end
-        UNCACHE: if (icache_req.ready) cache_state <= IDEL;
+        REFILL : if (axi4_mst.r_last && axi4_mst.r_valid) cache_state <= IDEL;
         default : /* default */;
       endcase
 
