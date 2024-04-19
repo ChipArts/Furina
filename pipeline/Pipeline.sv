@@ -435,7 +435,7 @@ module Pipeline (
 
     ibuf_idx[0] = '0;
     for (int i = 1; i < `FETCH_WIDTH; i++) begin
-      ibuf_idx[i] = ibuf_idx[i - 1] + icache_rsp_buffer.valid[i];
+      ibuf_idx[i] = ibuf_idx[i - 1] + icache_rsp_buffer.valid[i - 1];
     end
 
     ibuf_write_valid_i = '0;
