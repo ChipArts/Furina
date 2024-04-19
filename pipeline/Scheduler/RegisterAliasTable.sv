@@ -34,7 +34,7 @@ parameter
   // input logic [`DECODE_WIDTH - 1:0] free_i,                                 // 释放映射状态（指令顺利提交）
   // input logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] old_preg_i,  // 释放的物理寄存器编号
   input logic [`WB_WIDTH - 1:0] wb_i,           // 指令写回
-  input logic [`WB_WIDTH - 1:0] wb_pdest_i,  // 指令写回的目的寄存器
+  input logic [`WB_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] wb_pdest_i,  // 指令写回的目的寄存器
 
   // 输入逻辑寄存器编号
   input logic [`DECODE_WIDTH - 1:0] dest_valid_i, // 标志指令使用DEST寄存器
