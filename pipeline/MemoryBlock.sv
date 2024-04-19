@@ -85,8 +85,8 @@ module MemoryBlock (
                ~s1_exe.base.valid;
 
     dcache_req.valid = s1_exe.base.valid & 
-                      ~(s1_exe.mem_oc.mem_op == `MEM_CACOP & s1_exe.code[1:0] == 2'b00) & 
-                      ~icacop_rsp.valid;  // icacop_rsp.valid 相当于 icache的busy信号
+                       ~(s1_exe.mem_oc.mem_op == `MEM_CACOP & s1_exe.code[1:0] == 2'b00) & 
+                       ~icacop_rsp.valid;  // icacop_rsp.valid 相当于 icache的busy信号
     dcache_req.ready = s2_ready;  // 确保store在成为最旧指令时写回
     dcache_req.vaddr = s1_exe.base.src0 + (s1_exe.base.imm << 2);
     dcache_req.wdata = s1_exe.base.src1;

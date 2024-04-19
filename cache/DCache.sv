@@ -394,7 +394,7 @@ module DCache (
     dcache_rsp.vaddr = s2_vaddr;
     dcache_rsp.paddr = s2_paddr;
     dcache_rsp.store_data = s2_wdata;
-    busy_o = ~(s1_valid | s2_valid);
+    busy_o = s1_valid | s2_valid;
 
     cache_line = s2_uncache ? axi_rdata_buffer : data_ram_rdata[s2_matched_way];
 
