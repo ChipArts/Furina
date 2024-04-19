@@ -73,7 +73,17 @@ parameter
   logic [BANK_NUM - 1:0][$clog2(`DECODE_WIDTH) - 1:0] issue_idx;
 
   always_comb begin
+    // defult assign
+    rs_mem_n = rs_mem;
     free = '0;
+    write_idx = '0;
+    position_bit = '0;
+    rob_idx = '0;
+    issue_idx = '0;
+    issue_valid_o = '0;
+    issue_base_o = '0;
+    issue_oc_o = '0;
+
     for (int i = 0; i < BANK_NUM; i++) begin
       for (int j = 0; j < BANK_SIZE; j++) begin
         free[i][j] = ~rs_mem[i][j].base.valid | rs_mem[i][j].base.issued;
@@ -120,7 +130,6 @@ parameter
     end
 
     // select logic
-    issue_valid_o = '0;
     for (int i = 0; i < BANK_NUM; i++) begin
       issue_valid_o[i] =
               ~free[i][0] &
@@ -160,8 +169,8 @@ parameter
     end
 
     for (int i = 0; i < BANK_NUM; i++) begin
-      if (issue_valid_o[i]) begin
-        rs_mem_n[i][issue_idx[i]].base.issued = issue_ready_i[i];
+      if (issue_valid_o[i] && issue_ready_i[i]) begin
+        rs_mem_n[i][issue_idx[i]].base.issued = '1;
       end
     end
 
