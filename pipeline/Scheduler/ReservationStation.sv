@@ -123,7 +123,7 @@ parameter
     issue_valid_o = '0;
     for (int i = 0; i < BANK_NUM; i++) begin
       issue_valid_o[i] =
-              (rs_mem[i][0].base.valid & ~rs_mem[i][0].base.issued) &
+              ~free[i][0] &
               (rs_mem[i][0].base.psrc0_ready | ~rs_mem[i][0].base.psrc0_valid) &
               (rs_mem[i][0].base.psrc1_ready | ~rs_mem[i][0].base.psrc1_valid);
       issue_base_o[i] = rs2is(rs_mem[i][0].base);
@@ -160,7 +160,9 @@ parameter
     end
 
     for (int i = 0; i < BANK_NUM; i++) begin
-      rs_mem_n[i][issue_idx[i]].base.issued = issue_valid_o[i] & issue_ready_i[i];
+      if (issue_valid_o[i]) begin
+        rs_mem_n[i][issue_idx[i]].base.issued = issue_ready_i[i];
+      end
     end
 
   end
