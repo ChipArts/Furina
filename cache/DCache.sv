@@ -311,7 +311,7 @@ module DCache (
     // cacop(code==0) (复用cache refill)
     // cacop(code==1) (复用cache writeback refill)
     // cacop(code==2) (当且仅当hit时 复用cache writeback refill)
-    idle2wait = s1_valid & ~s1_excp.valid & s2_ready &
+    idle2wait = s1_valid & ~excp.valid & s2_ready &
                 (
                   s1_mem_op == `MEM_LOAD  ? miss :
                   s1_mem_op == `MEM_STORE ? s1_store_valid & miss :
