@@ -41,9 +41,9 @@ typedef logic [1:0] SrcType;
 
 typedef logic [1:0] DestType;
 `define DEST_R0  (2'd0)
-`define DEST_RD  (2'd0)
-`define DEST_JD  (2'd1)  // 处理rdtime[l/h]指令
-`define DEST_RA  (2'd2)  // 返回地址寄存器
+`define DEST_RD  (2'd1)
+`define DEST_JD  (2'd2)  // 处理rdtime[l/h]指令
+`define DEST_RA  (2'd3)  // 返回地址寄存器
 
 typedef struct packed {
     SrcType src1_type;
