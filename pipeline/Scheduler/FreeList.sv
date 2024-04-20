@@ -123,7 +123,7 @@ parameter
   end
 
   always_ff @(posedge clk or negedge rst_n) begin
-    if(~rst_n) begin
+    if(!rst_n) begin
       for (int i = 0; i < PHY_REG_NUM; i++) begin
         free_list_q[i] <= i;
       end

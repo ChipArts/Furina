@@ -47,6 +47,7 @@ parameter
   output logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc0_o,
   output logic [`DECODE_WIDTH - 1:0]                            psrc1_ready_o,
   output logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc1_o,
+  output logic [`DECODE_WIDTH - 1:0]                            ppdst_valid_o,
   output logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] ppdst_o  // pre phy dest reg
 );
 
@@ -94,15 +95,20 @@ parameter
     /* RAT更新（配合freelist） */
     // CAM 方式查找旧的pdest映射
     ppdst = '0;
+    ppdst_valid_o = '0;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       for (int j = 0; j < PHY_REG_NUM; j++) begin
         if (dest_i[i] == rat_q.arch_reg[j] && rat_q.valid[j]) begin
           ppdst[i] = j;
+          ppdst_valid_o[i] = '1;
         end
       end
       // 处理WAW相关性
       for (int j = 0; j < i; j++) begin
-        ppdst[i] = (dest_i[i] == dest_i[j]) ? preg_i[j] : ppdst[i];
+        if (dest_i[i] == dest_i[j]) begin
+          ppdst[i] = preg_i[j];
+          ppdst_valid_o[i] = '1;
+        end
       end
     end
 

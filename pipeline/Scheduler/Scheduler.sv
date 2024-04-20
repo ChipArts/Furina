@@ -146,6 +146,7 @@ module Scheduler (
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_psrc0;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_psrc1;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_ppdst;
+  logic [`DECODE_WIDTH - 1:0]                             rat_ppdst_valid;
 
   logic [`DECODE_WIDTH - 1:0][$clog2(`DECODE_WIDTH) - 1:0] dq_write_idx;  // 第[i]项写入dq_wdata的第dq_write_idx[i]项
   logic dq_write_ready;
@@ -216,6 +217,7 @@ module Scheduler (
       rob_alloc_req.arch_reg[i] = s1_sche_req.arch_dest[i];
       rob_alloc_req.phy_reg[i] = s1_fl_alloc_preg[i];
       rob_alloc_req.old_phy_reg[i] = rat_ppdst[i];
+      rob_alloc_req.old_phy_reg_valid[i] = rat_ppdst_valid[i];
       rob_alloc_req.excp[i] = excp[i];
 `ifdef DEBUG
       rob_alloc_req.instr[i] = s1_sche_req.option_code[i].debug_instr;
@@ -284,7 +286,8 @@ module Scheduler (
     .psrc0_o       (rat_psrc0),
     .psrc1_ready_o (rat_src1_ready),
     .psrc1_o       (rat_psrc1),
-    .ppdst_o       (rat_ppdst)
+    .ppdst_o       (rat_ppdst),
+    .ppdst_valid_o (rat_ppdst_valid),
   );
 
 

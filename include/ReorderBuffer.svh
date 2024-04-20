@@ -37,6 +37,7 @@
     logic [4:0] arch_reg;
     logic [$clog2(`PHY_REG_NUM) - 1:0] phy_reg;
     logic [$clog2(`PHY_REG_NUM) - 1:0] old_phy_reg;
+    logic                              old_phy_reg_valid;
     // 分支预测失败处理
     logic br_redirect;
     logic [`PROC_VALEN - 1:0] br_target;
@@ -91,6 +92,7 @@ typedef struct packed {
   logic [`DECODE_WIDTH - 1:0][4:0] arch_reg;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] phy_reg;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] old_phy_reg;
+  logic [`DECODE_WIDTH - 1:0]                             old_phy_reg_valid;
   ExcpSt [`DECODE_WIDTH - 1:0] excp;
   // diff DEBUG
   logic [`DECODE_WIDTH - 1:0][31:0] instr;

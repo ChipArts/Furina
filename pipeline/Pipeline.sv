@@ -875,7 +875,7 @@ module Pipeline (
 
   always_comb begin
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
-      free_valid[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0;
+      free_valid[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0 & rob_cmt_o.rob_entry[i].old_phy_reg_valid;
       free_preg[i] = rob_cmt_o.rob_entry[i].old_phy_reg;
 
       arch_rat_dest_valid_i[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0;

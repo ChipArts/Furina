@@ -101,6 +101,7 @@ module ReorderBuffer (
         rob_n[alloc_ptr[i]].arch_reg = alloc_req.arch_reg[i];
         rob_n[alloc_ptr[i]].phy_reg = alloc_req.phy_reg[i];
         rob_n[alloc_ptr[i]].old_phy_reg = alloc_req.old_phy_reg[i];
+        rob_n[alloc_ptr[i]].old_phy_reg_valid = alloc_req.old_phy_reg_valid[i];
         // 异常、例外处理
         rob_n[alloc_ptr[i]].excp = alloc_req.excp[i];
         rob_n[alloc_ptr[i]].error_vaddr = alloc_req.pc[i];
