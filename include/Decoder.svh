@@ -75,11 +75,11 @@ typedef logic[2:0] MemOpType;
 `define MEM_LOAD  (3'd0)
 `define MEM_STORE (3'd1)
 `define MEM_CACOP (3'd2)
-`define MEM_PRELD (3'd3)
-`define MEM_IBAR  (3'd4)
-`define MEM_DBAR  (3'd5)
-// `define MEM_LL    (3'd3)
-// `define MEM_SC    (3'd4)
+`define MEM_IBAR  (3'd3)
+`define MEM_DBAR  (3'd4)
+
+typedef logic MicroOpType;  // 原子操作标记
+typedef logic PreldOpType;  // 预取指令标记
 
 
 
@@ -138,9 +138,8 @@ typedef logic [2:0] MiscOpType;
 
 typedef logic SignedOpType;
 typedef logic ImmOpType;
-typedef logic WriteBackOpType;
-typedef logic IndirectBrOpType;
-typedef logic MicroOpType;  // 原子操作
+typedef logic IndBrOpType;
+
 
 typedef logic [31:0] DebugInstrType;
 typedef logic InvalidInstType;
@@ -149,6 +148,7 @@ typedef struct packed {
   MemOpType mem_op;
   AlignOpType align_op;
   MicroOpType micro_op;
+  PreldOpType preld_op;
 } MemOpCodeSt;
 
 typedef struct packed {
@@ -168,12 +168,13 @@ typedef struct packed {
   PrivOpType priv_op;
   MiscOpType misc_op;
   SignedOpType signed_op;
-  IndirectBrOpType indirect_br_op;  // 特殊处理JILR指令
+  IndBrOpType ind_br_op;  // 特殊处理JILR指令
 } MiscOpCodeSt;
 
 typedef struct packed {
     DebugInstrType debug_instr;
-    IndirectBrOpType indirect_br_op;
+    PreldOpType preld_op;
+    IndBrOpType ind_br_op;
     MicroOpType micro_op;
     SignedOpType signed_op;
     BranchOpType branch_op;
@@ -196,7 +197,7 @@ function MiscOpCodeSt gen2misc(OptionCodeSt option_code);
   misc_op_code.misc_op = option_code.misc_op;
   misc_op_code.priv_op = option_code.priv_op;
   misc_op_code.instr_type = option_code.instr_type;
-  misc_op_code.indirect_br_op = option_code.indirect_br_op;
+  misc_op_code.ind_br_op = option_code.ind_br_op;
   return misc_op_code;
 endfunction : gen2misc
 
@@ -213,6 +214,7 @@ function MemOpCodeSt gen2mem(OptionCodeSt option_code);
   mem_op_code.mem_op = option_code.mem_op;
   mem_op_code.align_op = option_code.align_op;
   mem_op_code.micro_op = option_code.micro_op;
+  mem_op_code.preld_op = option_code.preld_op;
   return mem_op_code;
 
 endfunction : gen2mem

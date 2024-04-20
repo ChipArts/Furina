@@ -146,7 +146,7 @@ module MiscPipe (
     .imm_i       (s1_exe.base.imm),
     .src0_i      (s1_exe.base.src0),
     .src1_i      (s1_exe.base.src1),
-    .indirect_i  (s1_exe.misc_oc.indirect_br_op),
+    .indirect_i  (s1_exe.misc_oc.ind_br_op),
     .branch_op_i (s1_exe.misc_oc.branch_op),
     // output
     .redirect_o  (br_redirect),

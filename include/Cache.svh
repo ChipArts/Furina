@@ -106,6 +106,8 @@ typedef struct packed {
 `define DCACHE_IDX_OF(ADDR) ADDR[`DCACHE_TAG_OFFSET - 1:`DCACHE_IDX_OFFSET]
 `define DCACHE_TAG_OF(ADDR) ADDR[`PROC_VALEN - 1:`DCACHE_TAG_OFFSET]
 
+`define DCACHE_PADDR_ALIGN(PADDR) {PADDR[`PROC_PALEN - 1:`DCACHE_IDX_OFFSET], {`DCACHE_IDX_OFFSET{1'b0}}}
+
 typedef struct packed {
   logic valid;
   logic dirty;
@@ -118,6 +120,7 @@ typedef struct packed {
   logic [4:0]               code;  // for cacop and preld
   logic                     llbit;
   logic                     micro;
+  logic                     preld;
   logic [`PROC_VALEN - 1:0] vaddr;
   AlignOpType               align_op;
   logic [31:0]              wdata;

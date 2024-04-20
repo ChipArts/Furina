@@ -319,7 +319,7 @@ module ICache (
                       ~addr_trans_rsp.uncache;  // uncache请求不refill
     end
     data_ram_waddr = `ICACHE_IDX_OF(s1_vaddr);
-    data_ram_wdata = {axi4_mst.r_data, axi_rdata_buffer[(`ICACHE_BLOCK_SIZE / 4) - 2:1]};
+    data_ram_wdata = {axi4_mst.r_data, axi_rdata_buffer[(`ICACHE_BLOCK_SIZE / 4) - 2:0]};
     if (s1_ready) begin
       data_ram_raddr = `ICACHE_IDX_OF(icache_req.vaddr);
     end else begin

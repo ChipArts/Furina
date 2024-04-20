@@ -94,6 +94,7 @@ module MemoryBlock (
     dcache_req.align_op = s1_exe.mem_oc.align_op;
     dcache_req.mem_op = s1_exe.mem_oc.mem_op;
     dcache_req.micro = s1_exe.mem_oc.micro_op;
+    dcache_req.preld = s1_exe.mem_oc.preld_op;
     dcache_req.pdest = s1_exe.base.pdest;
     dcache_req.pdest_valid = s1_exe.base.pdest_valid;
     dcache_req.llbit = s1_exe.llbit;
