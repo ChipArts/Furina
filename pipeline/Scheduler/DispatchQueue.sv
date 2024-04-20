@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : DispatchQueue.sv
 // Create  : 2024-04-18 18:26:24
-// Revise  : 2024-04-20 16:55:02
+// Revise  : 2024-04-20 17:08:26
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -79,10 +79,9 @@ parameter
 		end
 
 		// 读出
-
 		for (int i = 0; i < `DISPATCH_WIDTH; i++) begin
 			rd_ptr[i] = {head_q + i}[$clog2(QUEUE_DEPTH) - 1:0];
-			read_data_o[i] = queue_q[rd_ptr];
+			read_data_o[i] = queue_q[rd_ptr[i]];
 		end
 
 		// 更新指针
