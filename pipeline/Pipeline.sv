@@ -551,17 +551,19 @@ module Pipeline (
     sche_csr_has_int_i = csr_has_int;
     sche_csr_plv_i = csr_plv_out;
 
-    for (int i = 0; i < `COMMIT_WIDTH; i++) begin
-      sche_free_valid_i[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0;
-      sche_free_preg_i[i] = rob_cmt_o.rob_entry[i].old_phy_reg;
-    end
+    // phy reg free
+    sche_free_valid_i = free_valid;
+    sche_free_preg_i = free_preg;
+
+    // free list flush
     sche_fl_arch_heah = arch_fl_head_o;
     sche_fl_arch_tail = arch_fl_tail_o;
     sche_fl_arch_cnt = arch_fl_cnt_o;
+
+    // rat flush
     sche_rat_arch_valid_i = arch_rat_valid_o;
 
-
-
+    // for wake up
     sche_wb_i = write_back_valid;
     sche_wb_pdest_i = write_back_pdest;
 
