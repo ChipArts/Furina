@@ -33,8 +33,9 @@ parameter
   // 输入逻辑寄存器编号
   input logic [`COMMIT_WIDTH - 1:0] dest_valid_i, // 标志指令使用DEST寄存器
   input logic [`COMMIT_WIDTH - 1:0][4:0] dest_i,
-  input logic [`COMMIT_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] old_preg_i,  // 释放的物理寄存器编号
   input logic [`COMMIT_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] preg_i,  // 从FreeList分配的空闲物理寄存器(已按照有效项分配)
+  input logic [`COMMIT_WIDTH - 1:0] ppdst_valid_i,
+  input logic [`COMMIT_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] ppdst_i,  // 释放的物理寄存器编号
   output logic [PHY_REG_NUM - 1:0] arch_valid_o
 );
 
@@ -51,7 +52,10 @@ parameter
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
       if (dest_valid_i[i]) begin
         rat_n.valid[preg_i[i]] = '1;
-        rat_n.valid[old_preg_i[i]] = '0;
+      end
+
+      if (ppdst_valid_i) begin
+        rat_n.valid[ppdst_i[i]] = '0;
       end
     end
 

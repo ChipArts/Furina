@@ -893,10 +893,11 @@ module Pipeline (
   ) inst_RegisterAliasTable (
     .clk          (clk),
     .rst_n        (rst_n),
-    .old_preg_i   (free_preg),
     .dest_valid_i (arch_rat_dest_valid_i),
     .dest_i       (arch_rat_dest_i),
     .preg_i       (arch_rat_preg_i),
+    .ppdst_valid_i(free_valid),
+    .ppdst_i      (free_preg),
     .arch_valid_o (arch_rat_valid_o)
   );
 

@@ -63,6 +63,7 @@ parameter
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc0;
   logic [`DECODE_WIDTH - 1:0] psrc1_ready;
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc1;
+  logic [`DECODE_WIDTH - 1:0] ppdst_valid;
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] ppdst;
   always_comb begin
     /* src寄存器重命名 */
@@ -95,19 +96,19 @@ parameter
     /* RAT更新（配合freelist） */
     // CAM 方式查找旧的pdest映射
     ppdst = '0;
-    ppdst_valid_o = '0;
+    ppdst_valid = '0;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       for (int j = 0; j < PHY_REG_NUM; j++) begin
         if (dest_i[i] == rat_q.arch_reg[j] && rat_q.valid[j]) begin
           ppdst[i] = j;
-          ppdst_valid_o[i] = '1;
+          ppdst_valid[i] = '1;
         end
       end
       // 处理WAW相关性
       for (int j = 0; j < i; j++) begin
         if (dest_i[i] == dest_i[j]) begin
           ppdst[i] = preg_i[j];
-          ppdst_valid_o[i] = '1;
+          ppdst_valid[i] = '1;
         end
       end
     end
@@ -123,7 +124,9 @@ parameter
           rat_n.arch_reg[preg_i[i]] = dest_i[i];
           rat_n.valid[preg_i[i]] = '1;
           rat_n.ready[preg_i[i]] = '0;
-          rat_n.valid[ppdst[i]] = '0;  // 释放之前的映射
+          if (ppdst_valid[i]) begin
+            rat_n.valid[ppdst[i]] = '0;  // 释放之前的映射
+          end
         end
       end
 
@@ -140,6 +143,7 @@ parameter
       psrc0_o[i] = psrc0[i];
       psrc1_ready_o[i] = psrc1_ready[i];
       psrc1_o[i] = psrc1[i];
+      ppdst_valid_o[i] = ppdst_valid[i];
       ppdst_o[i] = ppdst[i];
     end
   end
