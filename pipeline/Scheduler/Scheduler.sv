@@ -287,7 +287,7 @@ module Scheduler (
     .psrc1_ready_o (rat_src1_ready),
     .psrc1_o       (rat_psrc1),
     .ppdst_o       (rat_ppdst),
-    .ppdst_valid_o (rat_ppdst_valid),
+    .ppdst_valid_o (rat_ppdst_valid)
   );
 
 
