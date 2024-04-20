@@ -56,6 +56,7 @@ module ReorderBuffer (
   logic [$clog2(`ROB_DEPTH) - 1:0] head_idx, tail_idx;
   logic [$clog2(`DECODE_WIDTH):0] alloc_cnt;
   logic [`DECODE_WIDTH - 1:0][$clog2(`ROB_DEPTH):0] alloc_ptr;  // {pos, rob_idx}
+  logic [`DECODE_WIDTH - 1:0][$clog2(`ROB_DEPTH) - 1:0] alloc_idx;
 
   /* write back */
   // processor state change --> psc
@@ -89,24 +90,25 @@ module ReorderBuffer (
     end
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       alloc_ptr[i] = tail_ptr + i;
+      alloc_idx[i] = alloc_ptr[i][$clog2(`ROB_DEPTH) - 1:0];
       alloc_rsp.position_bit[i] = alloc_ptr[i][$clog2(`ROB_DEPTH)];
       alloc_rsp.rob_idx[i] = alloc_ptr[i][$clog2(`ROB_DEPTH) - 1:0];
 
       // set rob entry
-      rob_n[alloc_ptr[i]] = '0;
+      rob_n[alloc_idx[i]] = '0;
       if (alloc_req.valid[i]) begin
-        rob_n[alloc_ptr[i]].complete = alloc_req.excp[i].valid;  // 如果有异常，视为完成执行
-        rob_n[alloc_ptr[i]].pc = alloc_req.pc[i];
-        rob_n[alloc_ptr[i]].instr_type = alloc_req.instr_type[i];
-        rob_n[alloc_ptr[i]].arch_reg = alloc_req.arch_reg[i];
-        rob_n[alloc_ptr[i]].phy_reg = alloc_req.phy_reg[i];
-        rob_n[alloc_ptr[i]].old_phy_reg = alloc_req.old_phy_reg[i];
-        rob_n[alloc_ptr[i]].old_phy_reg_valid = alloc_req.old_phy_reg_valid[i];
+        rob_n[alloc_idx[i]].complete = alloc_req.excp[i].valid;  // 如果有异常，视为完成执行
+        rob_n[alloc_idx[i]].pc = alloc_req.pc[i];
+        rob_n[alloc_idx[i]].instr_type = alloc_req.instr_type[i];
+        rob_n[alloc_idx[i]].arch_reg = alloc_req.arch_reg[i];
+        rob_n[alloc_idx[i]].phy_reg = alloc_req.phy_reg[i];
+        rob_n[alloc_idx[i]].old_phy_reg = alloc_req.old_phy_reg[i];
+        rob_n[alloc_idx[i]].old_phy_reg_valid = alloc_req.old_phy_reg_valid[i];
         // 异常、例外处理
-        rob_n[alloc_ptr[i]].excp = alloc_req.excp[i];
-        rob_n[alloc_ptr[i]].error_vaddr = alloc_req.pc[i];
+        rob_n[alloc_idx[i]].excp = alloc_req.excp[i];
+        rob_n[alloc_idx[i]].error_vaddr = alloc_req.pc[i];
 `ifdef DEBUG
-        rob_n[alloc_ptr[i]].instr = alloc_req.instr[i];
+        rob_n[alloc_idx[i]].instr = alloc_req.instr[i];
 `endif
       end
     end
