@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : DispatchQueue.sv
 // Create  : 2024-04-18 18:26:24
-// Revise  : 2024-04-19 22:32:52
+// Revise  : 2024-04-20 16:55:02
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -71,17 +71,18 @@ parameter
 		end
 
 		// 写入
-		if (write_ready_o) begin
-			for (int i = 0; i < `DECODE_WIDTH; i++) begin
-				if (write_valid_i[i]) begin
-					queue_n[tail_q + i] = write_data_i[i];
-				end
+		for (int i = 0; i < `DECODE_WIDTH; i++) begin
+			wr_ptr[i] = {tail_q + i}[$clog2(QUEUE_DEPTH) - 1:0];
+			if (write_valid_i[i] && write_ready_o) begin
+				queue_n[wr_ptr[i]] = write_data_i[i];
 			end
 		end
 
 		// 读出
+
 		for (int i = 0; i < `DISPATCH_WIDTH; i++) begin
-			read_data_o[i] = queue_q[head_q + i];
+			rd_ptr[i] = {head_q + i}[$clog2(QUEUE_DEPTH) - 1:0];
+			read_data_o[i] = queue_q[rd_ptr];
 		end
 
 		// 更新指针
