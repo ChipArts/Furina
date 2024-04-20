@@ -227,10 +227,9 @@ module ReorderBuffer (
     end
 
     // mem write back
-    // 除了load（非原子）、preld指令，其他mem指令都要等待成为最旧的指令
+    // 除了load（非原子）其他mem指令都要等待成为最旧的指令
     mem_wb_rsp.ready = (mem_wb_req.mem_op == `MEM_LOAD & ~mem_wb_req.micro) |
-                       mem_wb_req.mem_op == `MEM_PRELD |
-                       mem_wb_req.base.rob_idx == head_idx;
+                       (mem_wb_req.base.rob_idx == head_idx);
     if (mem_wb_req.base.valid && mem_wb_rsp.ready) begin
       rob_n[mem_wb_req.base.rob_idx].complete = 1;
       // 分支预测失败处理
