@@ -273,19 +273,17 @@ module ReorderBuffer (
     end
 
     /* commit logic */
-    commit_cnt = '0;
     // 第一条指令一定不被屏蔽
     redirect_mask[0] = '1;
     exc_mask[0] = '1;
     br_mask[0] = '1;
     // 第二条指令
-    // BR恢复需要抽干流水线
-    redirect_mask[1] = ~rob[cmt_idx[0]].br_redirect;
-    // excp恢复需要抽干流水线
-    exc_mask[1]      = ~rob[cmt_idx[0]].excp.valid;
+    // BR恢复需要抽干流水线 && 成为最后一条指令才能提交
+    redirect_mask[1] = ~rob[cmt_idx[0]].br_redirect & ~rob[cmt_idx[1]].br_redirect;
+    // excp恢复需要抽干流水线 && 成为最后一条指令才能提交
+    exc_mask[1]      = ~rob[cmt_idx[0]].excp.valid & ~rob[cmt_idx[1]].excp.valid;
     // 仅允许一条分支指令提交（BPU更新只有一个写口）
-    br_mask[1]       = rob[cmt_idx[0]].instr_type != `BR_INSTR | 
-                       rob[cmt_idx[1]].instr_type != `BR_INSTR;
+    br_mask[1]       = rob[cmt_idx[0]].instr_type != `BR_INSTR;
 
     commit_mask = br_mask & redirect_mask & exc_mask;
 
