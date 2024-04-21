@@ -54,7 +54,7 @@ parameter
         rat_n.valid[preg_i[i]] = '1;
       end
 
-      if (ppdst_valid_i) begin
+      if (ppdst_valid_i[i]) begin
         rat_n.valid[ppdst_i[i]] = '0;
       end
     end
