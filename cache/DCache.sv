@@ -148,7 +148,6 @@ module DCache (
   logic cacop_mode2;
   logic cacop_mode2_hit;
   logic read_req; // 是否需要从axi读取数据
-  logic refill;  // 可以修改cache状态（包装一些逻辑，简化mem控制）
 
 
 /*================================ Cache Stage0 ================================*/
@@ -493,8 +492,6 @@ module DCache (
     // cacop      --> rd 0
     // other      --> rd 1 (ibar、dbar不会启动状态机)
     read_req = ~(uncache_store | s2_mem_op == `MEM_CACOP);
-    // REFILL的最后一拍进行cache内容重填（所有的Cache修改确保为rob最旧指令）
-    refill = cache_state == REFILL & ((axi4_mst.r_valid & axi4_mst.r_last) | ~read_req) & dcache_req.ready;
 
     // store 和 cacop 指令需要等待ready信号
     // wait2miss;    <=> store、load产生miss，cacop(1,2) dirty
@@ -658,7 +655,10 @@ module DCache (
 
     // tag ram
     tag_ram_we = '0;
-    tag_ram_we[s2_repl_way] = refill;  // 事实上cacop(code == 1,2)不需要写入，但是写入也不会产生错误
+    if (cache_state == REFILL) begin
+      tag_ram_we[s2_repl_way] = (axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache) |  // cache miss refill
+                                (cacop_mode0);                                        // cacop mode 0 fill tag
+    end
     tag_ram_waddr = `DCACHE_IDX_OF(s2_vaddr);
     tag_ram_wdata = cacop_mode0 ? '0 : `DCACHE_TAG_OF(s2_paddr);
     tag_ram_raddr = s1_ready ? `DCACHE_IDX_OF(dcache_req.vaddr) :  `DCACHE_IDX_OF(s1_vaddr);
@@ -667,9 +667,13 @@ module DCache (
     meta_ram_we = '0;
     meta_ram_waddr = `DCACHE_IDX_OF(s2_vaddr);
     if (cache_state == REFILL) begin
-      meta_ram_we[s2_repl_way] = refill; // 事实上cacop(code == 0)不需要写入，但是写入也不会产生错误
-      meta_ram_wdata = cacop_mode1 || cacop_mode2_hit ? '{valid: 1'b0, dirty: 1'b0} : '{valid: 1'b1, dirty: 1'b0};
+      meta_ram_we[s2_repl_way] = (axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache) |  // cache miss refill
+                                 (cacop_mode1 | cacop_mode2);                          // cacop mode 1、2 invalid cache line
+      meta_ram_wdata = cacop_mode1 || cacop_mode2 ? '{valid: 1'b0, dirty: 1'b0} :      // cacop invalid
+                       s2_store_valid             ? '{valid: 1'b1, dirty: 1'b1} :      // cache miss store refill
+                                                    '{valid: 1'b1, dirty: 1'b0} ;      // cache miss load  refill
     end else begin
+      // store指令写入dirty
       meta_ram_we[matched_way] = s2_valid & (s2_mem_op == `MEM_STORE) & ~s2_miss & dcache_req.ready;
       meta_ram_wdata = '{valid: 1'b1, dirty: 1'b1};
     end
@@ -682,13 +686,9 @@ module DCache (
     plru_ram_raddr = s1_ready ? `DCACHE_IDX_OF(dcache_req.vaddr) : `DCACHE_IDX_OF(s1_vaddr);
 
     // 一点转发逻辑
-    // cache refill时转发tag和meta
+    // cache refill时转发tag和meta  TODO: 需要转发???
     tag = tag_ram_rdata;
     meta = meta_ram_rdata;
-    if (refill && s2_vaddr == s1_vaddr) begin
-      tag[s2_repl_way] = tag_ram_wdata;
-      meta[s2_repl_way] = meta_ram_wdata;
-    end
   end
 
   // Data Memory: 每路 1 个单端口RAM
