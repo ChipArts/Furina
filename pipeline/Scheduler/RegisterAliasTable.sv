@@ -88,6 +88,7 @@ parameter
       for (int j = 0; j < i; j++) begin
         psrc0_ready[i] = (src0_i[i] == dest_i[j]) ? '0 : psrc0_ready[i];
         psrc0[i] = (src0_i[i] == dest_i[j]) ? preg_i[j] : psrc0[i];
+        
         psrc1_ready[i] = (src1_i[i] == dest_i[j]) ? '0 : psrc1_ready[i];
         psrc1[i] = (src1_i[i] == dest_i[j]) ? preg_i[j] : psrc1[i];
       end

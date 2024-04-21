@@ -240,9 +240,9 @@ module Scheduler (
         dq_wdata[dq_write_idx[i]].npc = s1_sche_req.npc[i];
         dq_wdata[dq_write_idx[i]].src = s1_sche_req.src[i];
         dq_wdata[dq_write_idx[i]].src0_valid = s1_sche_req.arch_src0[i] != 5'b0;
-        dq_wdata[dq_write_idx[i]].src0_ready = rat_src0_ready;
+        dq_wdata[dq_write_idx[i]].src0_ready = rat_src0_ready[i];
         dq_wdata[dq_write_idx[i]].src1_valid = s1_sche_req.arch_src1[i] != 5'b0;
-        dq_wdata[dq_write_idx[i]].src1_ready = rat_src1_ready;
+        dq_wdata[dq_write_idx[i]].src1_ready = rat_src1_ready[i];
         dq_wdata[dq_write_idx[i]].dest_valid = s1_sche_req.arch_dest[i] != 5'b0;
         dq_wdata[dq_write_idx[i]].src0 = rat_psrc0[i];
         dq_wdata[dq_write_idx[i]].src1 = rat_psrc1[i];
