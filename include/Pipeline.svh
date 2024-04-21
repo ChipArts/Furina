@@ -161,7 +161,7 @@ function logic[31:0] imm_ext(logic[25:0] src, ImmType imm_type, logic[31:0] pc);
     `IMM_SI16 : imm = {{16{src[25]}}, src[25:10]};
     `IMM_SI20 : imm = {{12{src[24]}}, src[24: 5]};
     `IMM_SI26 : imm = {{ 6{src[9]}} , src[9: 0], src[25:10]};
-    `IMM_PC   : imm = pc + {{12{src[24]}}, src[24: 5]};
+    `IMM_PC   : imm = pc + {src[24: 5], 12'd0};
     default : imm = '0;
   endcase
   return imm;
