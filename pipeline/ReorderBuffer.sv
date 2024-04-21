@@ -53,10 +53,11 @@ module ReorderBuffer (
   logic [$clog2(`ROB_DEPTH):0] head_ptr, tail_ptr, head_ptr_n, tail_ptr_n;
   logic [$clog2(`ROB_DEPTH):0] rob_cnt_q, rob_cnt_n;
   // wire
-  logic [$clog2(`ROB_DEPTH) - 1:0] head_idx, tail_idx;
   logic [$clog2(`DECODE_WIDTH):0] alloc_cnt;
   logic [`DECODE_WIDTH - 1:0][$clog2(`ROB_DEPTH):0] alloc_ptr;  // {pos, rob_idx}
   logic [`DECODE_WIDTH - 1:0][$clog2(`ROB_DEPTH) - 1:0] alloc_idx;
+
+  logic [`COMMIT_WIDTH - 1:0][$clog2(`ROB_DEPTH) - 1:0] cmt_idx;
 
   /* write back */
   // processor state change --> psc
@@ -79,8 +80,12 @@ module ReorderBuffer (
     head_ptr_n = head_ptr;
     tail_ptr_n = tail_ptr;
     rob_cnt_n = rob_cnt_q;
-    head_idx = head_ptr[$clog2(`ROB_DEPTH) - 1:0];
-    tail_idx = tail_ptr[$clog2(`ROB_DEPTH) - 1:0];
+
+    // 每个提交端口的rob read idx
+    for (int i = 0; i < `COMMIT_WIDTH; i++) begin
+      cmt_idx = head_ptr[$clog2(`ROB_DEPTH) - 1:0] + i;
+    end
+    
 
     /* alloc logic */
     alloc_cnt = $countones(alloc_req.valid);
@@ -119,7 +124,7 @@ module ReorderBuffer (
     // misc write back
     // 除了PRIV_CSR_READ其余特权指令写回都会彻底改变处理器状态
     misc_psc = misc_wb_req.instr_type == `PRIV_INSTR & misc_wb_req.misc_op > 4'd0;  
-    misc_wb_rsp.ready = ~misc_psc | misc_wb_req.base.rob_idx == head_idx;
+    misc_wb_rsp.ready = ~misc_psc | misc_wb_req.base.rob_idx == cmt_idx[0];
     if (misc_wb_req.base.valid && misc_wb_rsp.ready) begin
       rob_n[misc_wb_req.base.rob_idx].complete = 1;
       // 分支预测失败处理
@@ -231,7 +236,7 @@ module ReorderBuffer (
     // mem write back
     // 除了load（非原子）其他mem指令都要等待成为最旧的指令
     mem_wb_rsp.ready = (mem_wb_req.mem_op == `MEM_LOAD & ~mem_wb_req.micro) |
-                       (mem_wb_req.base.rob_idx == head_idx);
+                       (mem_wb_req.base.rob_idx == cmt_idx[0]);
     if (mem_wb_req.base.valid && mem_wb_rsp.ready) begin
       rob_n[mem_wb_req.base.rob_idx].complete = 1;
       // 分支预测失败处理
@@ -275,27 +280,27 @@ module ReorderBuffer (
     br_mask[0] = '1;
     // 第二条指令
     // BR恢复需要抽干流水线
-    redirect_mask[1] = ~rob[head_idx + 1].br_redirect;
+    redirect_mask[1] = ~rob[cmt_idx[1]].br_redirect;
     // excp恢复需要抽干流水线
-    exc_mask[1]      = ~rob[head_idx + 1].excp.valid;
+    exc_mask[1]      = ~rob[cmt_idx[1]].excp.valid;
     // 仅允许一条分支指令提交（BPU更新只有一个写口）
-    br_mask[1]       = rob[head_idx].instr_type != `BR_INSTR;
-
-    valid_mask[0] = rob_cnt_q > 0;
-    valid_mask[1] = rob_cnt_q > 1;
-
+    br_mask[1]       = rob[cmt_idx[0]].instr_type != `BR_INSTR | 
+                       rob[cmt_idx[1]].instr_type != `BR_INSTR;
 
     commit_mask = br_mask & redirect_mask & exc_mask;
 
-    commit_valid[0] = rob[head_idx].complete & (head_ptr < tail_ptr);
-    commit_valid[1] = commit_valid[0] & rob[head_idx + 1].complete & commit_mask[1] & (head_ptr + 1 < tail_ptr);
+    for (int i = 0; i < `COMMIT_WIDTH; i++) valid_mask[i] = rob_cnt_q > i;  // 有效ROB表项
+
+    commit_valid[0] =                   rob[cmt_idx[0]].complete & commit_mask[0] & valid_mask[0];
+    commit_valid[1] = commit_valid[0] & rob[cmt_idx[1]].complete & commit_mask[1] & valid_mask[1];
 
     commit_cnt = $countones(commit_valid);
     head_ptr_n = head_ptr + commit_cnt;
 
+    // output logic
     cmt_o.valid = commit_valid;
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
-      cmt_o.rob_entry[i] = rob[head_idx + i];
+      cmt_o.rob_entry[i] = rob[cmt_idx[i]];
     end
 
     if (alloc_rsp.ready) begin
