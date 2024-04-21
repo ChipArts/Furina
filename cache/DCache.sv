@@ -543,15 +543,19 @@ module DCache (
         default : cache_state <= IDEL;
       endcase
       // axi读数据缓存
-      if (axi4_mst.r_valid && axi4_mst.r_ready) begin
+      if (cache_state == REFILL) begin
+        if (axi4_mst.r_valid && axi4_mst.r_ready) begin
           axi_rdata_buffer[axi_rdata_idx] <= axi4_mst.r_data;
           axi_rdata_idx <= axi_rdata_idx + 1;
+        end 
       end else begin
         axi_rdata_idx <= '0;
       end
       // axi写
-      if (axi4_mst.aw_ready && axi4_mst.w_valid) begin
+      if (cache_state == REPLACE) begin
+        if (axi4_mst.aw_ready && axi4_mst.w_valid) begin
           axi_wdata_idx <= axi_wdata_idx + 1;
+        end 
       end else begin
         axi_wdata_idx <= '0;
       end

@@ -438,7 +438,6 @@ module Scheduler (
     alu_rs_base = '0;
     mdu_rs_base = '0;
     mem_rs_base = '0;
-
     
     misc_rs_oc = '0;
     alu_rs_oc = '0;
