@@ -83,7 +83,7 @@ module ReorderBuffer (
 
     // 每个提交端口的rob read idx
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
-      cmt_idx = head_ptr[$clog2(`ROB_DEPTH) - 1:0] + i;
+      cmt_idx[i] = head_ptr[$clog2(`ROB_DEPTH) - 1:0] + i;
     end
     
 
