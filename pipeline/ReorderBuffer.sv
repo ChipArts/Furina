@@ -280,9 +280,9 @@ module ReorderBuffer (
     br_mask[0] = '1;
     // 第二条指令
     // BR恢复需要抽干流水线
-    redirect_mask[1] = ~rob[cmt_idx[1]].br_redirect;
+    redirect_mask[1] = ~rob[cmt_idx[0]].br_redirect;
     // excp恢复需要抽干流水线
-    exc_mask[1]      = ~rob[cmt_idx[1]].excp.valid;
+    exc_mask[1]      = ~rob[cmt_idx[0]].excp.valid;
     // 仅允许一条分支指令提交（BPU更新只有一个写口）
     br_mask[1]       = rob[cmt_idx[0]].instr_type != `BR_INSTR | 
                        rob[cmt_idx[1]].instr_type != `BR_INSTR;
