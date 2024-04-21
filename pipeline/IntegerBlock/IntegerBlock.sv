@@ -111,12 +111,12 @@ module IntegerBlock (
   MduPipe inst_MduPipe
   (
     .clk         (clk),
-    .a_rst_n     (rst_n),
+    .rst_n       (rst_n),
     .flush_i     (flush_i),
     .exe_i       (mdu_exe_i),
     .ready_o     (mdu_ready_o),
-    .wb_o       (mdu_wb_o),
-    .wb_ready_i (mdu_wb_ready_i)
+    .wb_o        (mdu_wb_o),
+    .wb_ready_i  (mdu_wb_ready_i)
   );
 
 
