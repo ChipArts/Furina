@@ -149,6 +149,10 @@ module DCache (
   logic cacop_mode2_hit;
   logic read_req; // 是否需要从axi读取数据
 
+`ifdef DEBUG
+  logic [3:0][7:0] store_data;
+`endif
+
 
 /*================================ Cache Stage0 ================================*/
   // 1. 从CPU读取请求
@@ -410,23 +414,23 @@ module DCache (
 `ifdef DEBUG
     dcache_rsp.vaddr = s2_vaddr;
     dcache_rsp.paddr = s2_paddr;
-    // dcache_rsp.store_data = s2_wdata;
-    dcache_rsp.store_data = '0;
+    store_data = '0;
     case (s2_align_op)
       `ALIGN_B : 
-        dcache_rsp.store_data[s2_vaddr[1:0] + 0] = s2_wdata[7:0];
+        store_data[s2_vaddr[1:0] + 0] = s2_wdata[7:0];
       `ALIGN_H : begin 
-        dcache_rsp.store_data[s2_vaddr[1:0] + 0] = s2_wdata[7:0];
-        dcache_rsp.store_data[s2_vaddr[1:0] + 1] = s2_wdata[15:8];
+        store_data[s2_vaddr[1:0] + 0] = s2_wdata[7:0];
+        store_data[s2_vaddr[1:0] + 1] = s2_wdata[15:8];
       end
       `ALIGN_W : begin
-        dcache_rsp.store_data[s2_vaddr[1:0] + 0] = s2_wdata[7:0];
-        dcache_rsp.store_data[s2_vaddr[1:0] + 1] = s2_wdata[15:8];
-        dcache_rsp.store_data[s2_vaddr[1:0] + 2] = s2_wdata[23:16];
-        dcache_rsp.store_data[s2_vaddr[1:0] + 3] = s2_wdata[31:24];
+        store_data[s2_vaddr[1:0] + 0] = s2_wdata[7:0];
+        store_data[s2_vaddr[1:0] + 1] = s2_wdata[15:8];
+        store_data[s2_vaddr[1:0] + 2] = s2_wdata[23:16];
+        store_data[s2_vaddr[1:0] + 3] = s2_wdata[31:24];
       end
-      default : dcache_rsp.store_data = '0;
+      default : store_data = '0;
     endcase
+    dcache_rsp.store_data = store_data;
 `endif
     busy_o = s1_valid | s2_valid;
 
