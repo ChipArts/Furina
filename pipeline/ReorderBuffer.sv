@@ -124,7 +124,7 @@ module ReorderBuffer (
     /* write back logic */
     // misc write back
     // 除了PRIV_CSR_READ其余特权指令写回都会彻底改变处理器状态
-    misc_psc = misc_wb_req.instr_type == `PRIV_INSTR & misc_wb_req.misc_op > 4'd0;  
+    misc_psc = misc_wb_req.instr_type == `PRIV_INSTR & misc_wb_req.priv_op > 4'd0;  
     misc_wb_rsp.ready = ~misc_psc | misc_wb_req.base.rob_idx == cmt_idx[0];
     if (misc_wb_req.base.valid && misc_wb_rsp.ready) begin
       rob_n[misc_wb_req.base.rob_idx].complete = 1;

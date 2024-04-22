@@ -96,6 +96,7 @@ typedef struct packed {
 typedef struct packed {
   WbBaseSt base;
   InstrType instr_type;
+  PrivOpType priv_op;
   MiscOpType misc_op;
   // csr
   logic csr_we;
