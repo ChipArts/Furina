@@ -39,12 +39,13 @@ module MduPipe (
   input wb_ready_i
 );
 
-  logic idle2wait;  // s0
+  logic idle2drv;   // s0
   logic wait2idle;   // s1
 
 
-  typedef enum logic {
+  typedef enum logic[1:0] {
     IDEL,  // 计算完成 空闲
+    DRIVE, // 驱动MDU开始计算
     WAIT   // 等待计算结果
   } MduState;
 
@@ -58,7 +59,7 @@ module MduPipe (
     s0_ready = s1_ready;
     ready_o = s0_ready;
 
-    idle2wait = s1_ready & exe_i.base.valid;
+    idle2drv = s1_ready & exe_i.base.valid;
   end
 
 /*================================== stage1 ===================================*/
@@ -127,8 +128,9 @@ module MduPipe (
       mdu_res_valid <= '0;
     end else begin
       case (mdu_state)
-        IDEL  : if (idle2wait) mdu_state <= WAIT;
-        WAIT  : if (wait2idle)  mdu_state <= IDEL;
+        IDEL  : if (idle2drv)  mdu_state <= DRIVE;
+        DRIVE :                mdu_state <= WAIT;
+        WAIT  : if (wait2idle) mdu_state <= IDEL;
         default : mdu_state <= IDEL;
       endcase
 
