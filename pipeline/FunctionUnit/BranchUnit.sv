@@ -25,6 +25,7 @@
 `include "Decoder.svh"
 
 module BranchUnit (
+  input logic valid_i,                      // 是一条分支指令
   input logic signed_i,
   input logic [`PROC_VALEN - 1:0] pc_i, 
   input logic [`PROC_VALEN - 1:0] npc_i,    // 预测的下一条指令地址
@@ -62,6 +63,8 @@ module BranchUnit (
       `BRANCH_NC  : taken = '1;
       default: taken = '0;
     endcase
+
+    taken = taken & valid_i;
 
     if (taken) begin
       target = indirect_i ? src0_i + (imm_i << 2) : pc_i + (imm_i << 2);

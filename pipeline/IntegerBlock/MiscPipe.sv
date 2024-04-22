@@ -140,6 +140,7 @@ module MiscPipe (
   
   BranchUnit U_BranchUnit
   (
+    .valid_i     (s1_exe.misc_oc.instr_type == `BR_INSTR),
     .signed_i    (s1_exe.misc_oc.signed_op),
     .pc_i        (s1_exe.pc),
     .npc_i       (s1_exe.npc),
