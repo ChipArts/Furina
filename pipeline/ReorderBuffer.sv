@@ -68,8 +68,8 @@ module ReorderBuffer (
   logic [$clog2(`COMMIT_WIDTH):0] commit_cnt;
   logic [`COMMIT_WIDTH - 1:0] redirect_mask;  // 重定向后面的指令不允许提交
   logic [`COMMIT_WIDTH - 1:0] exc_mask;       // 异常后面的指令不允许提交
-  logic [`COMMIT_WIDTH - 1:0] pre_exist_br;   // 之前是否有分支指令
   logic [`COMMIT_WIDTH - 1:0] br_mask;        // 仅允许一条分支指令提交（BPU只有一个写口）
+  logic [`COMMIT_WIDTH - 1:0] priv_mask;      // 特权指令后面的指令不允许提交（只有csrrd可以豁免，但这个优化似乎没有太大必要）
   logic [`COMMIT_WIDTH - 1:0] valid_mask;     // 是一条有效的ROB表项
   logic [`COMMIT_WIDTH - 1:0] commit_mask;    // 屏蔽后续指令的退休
   logic [`COMMIT_WIDTH - 1:0] commit_valid;   // 本次可退休得指令
@@ -278,6 +278,7 @@ module ReorderBuffer (
     redirect_mask[0] = '1;
     exc_mask[0] = '1;
     br_mask[0] = '1;
+    priv_mask[0] = '1;
     // 第二条指令
     // BR恢复需要抽干流水线 && 成为最后一条指令才能提交
     redirect_mask[1] = ~rob[cmt_idx[0]].br_redirect & ~rob[cmt_idx[1]].br_redirect;
@@ -285,6 +286,8 @@ module ReorderBuffer (
     exc_mask[1]      = ~rob[cmt_idx[0]].excp.valid & ~rob[cmt_idx[1]].excp.valid;
     // 仅允许一条分支指令提交（BPU更新只有一个写口）
     br_mask[1]       = rob[cmt_idx[0]].instr_type != `BR_INSTR;
+    // 特权指令后面的指令不允许提交（只有csrrd可以豁免，但这个优化似乎没有太大必要）
+    priv_mask[1]     = rob[cmt_idx[0]].instr_type != `PRIV_INSTR;
 
     commit_mask = br_mask & redirect_mask & exc_mask;
 
