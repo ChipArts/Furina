@@ -101,8 +101,8 @@ module ReorderBuffer (
       alloc_rsp.rob_idx[i] = alloc_ptr[i][$clog2(`ROB_DEPTH) - 1:0];
 
       // set rob entry
-      rob_n[alloc_idx[i]] = '0;
       if (alloc_req.valid[i] && alloc_rsp.ready && alloc_req.ready) begin
+        rob_n[alloc_idx[i]] = '0;
         rob_n[alloc_idx[i]].complete = alloc_req.excp[i].valid;  // 如果有异常，视为完成执行
         rob_n[alloc_idx[i]].pc = alloc_req.pc[i];
         rob_n[alloc_idx[i]].instr_type = alloc_req.instr_type[i];
