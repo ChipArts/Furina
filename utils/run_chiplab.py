@@ -47,7 +47,8 @@ prog = "func/func_lab19"
 os.chdir("%s/sims/verilator/run_prog" % chiplab_home)
 
 # 执行chiplab命令
-os.system(f"./configure.sh --run {prog} --tail-waveform --waveform-tail-size 2000 --tail-simu-trace --trace-tail-size 2000")
+# os.system(f"./configure.sh --run {prog} --tail-waveform --waveform-tail-size 10000 --tail-simu-trace --trace-tail-size 10000")
+os.system(f"./configure.sh --run {prog} --threads 8")
 os.system("make clean")
 os.system("make -j16")
 
