@@ -289,7 +289,7 @@ module ReorderBuffer (
     // 特权指令后面的指令不允许提交（只有csrrd可以豁免，但这个优化似乎没有太大必要）
     priv_mask[1]     = rob[cmt_idx[0]].instr_type != `PRIV_INSTR;
 
-    commit_mask = br_mask & redirect_mask & exc_mask;
+    commit_mask = br_mask & redirect_mask & exc_mask & priv_mask;
 
     for (int i = 0; i < `COMMIT_WIDTH; i++) valid_mask[i] = rob_cnt_q > i;  // 有效ROB表项
 
