@@ -91,7 +91,7 @@ module MduPipe (
                mdu_state == IDEL;                  // fsm 空闲
 
     // mult
-    mult_req.valid = s1_exe.base.valid & mdu_state == WAIT &
+    mult_req.valid = s1_exe.base.valid & mdu_state == DRIVE &
                      (s1_exe.mdu_oc.mdu_op == `MDU_MUL | 
                       s1_exe.mdu_oc.mdu_op == `MDU_MULH);
     mult_req.ready = wb_ready_i;
@@ -101,7 +101,7 @@ module MduPipe (
     mult_req.multiplier = s1_exe.base.src1;
 
     // div
-    div_req.valid = s1_exe.base.valid & mdu_state == WAIT &
+    div_req.valid = s1_exe.base.valid & mdu_state == DRIVE &
                     (s1_exe.mdu_oc.mdu_op == `MDU_DIV | 
                      s1_exe.mdu_oc.mdu_op == `MDU_MOD);
     div_req.ready = wb_ready_i;
