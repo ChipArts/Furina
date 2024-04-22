@@ -500,7 +500,7 @@ module Decoder (
   assign _zz_ctrl_176 = (instr_i & 32'h40000000);
   assign _zz_ctrl_177 = 32'h40000000;
   assign _zz_ctrl_179 = ((instr_i & _zz_ctrl_180) == 32'h000c0000);
-  assign _zz_ctrl_181 = ((instr_i & _zz_ctrl_182) == 32'h00200000);
+  assign _zz_ctrl_181 = ((instr_i & _zz_ctrl_182) == 32'h00000000);
   assign _zz_ctrl_185 = (instr_i & 32'h54008000);
   assign _zz_ctrl_186 = 32'h10000000;
   assign _zz_ctrl_189 = (_zz_ctrl_190 == _zz_ctrl_191);
@@ -510,7 +510,7 @@ module Decoder (
   assign _zz_ctrl_205 = (|_zz_ctrl_206);
   assign _zz_ctrl_219 = {_zz_ctrl_220,{_zz_ctrl_235,_zz_ctrl_238}};
   assign _zz_ctrl_180 = 32'h260c0000;
-  assign _zz_ctrl_182 = 32'h26280000;
+  assign _zz_ctrl_182 = 32'h26500000;
   assign _zz_ctrl_190 = (instr_i & 32'h46400000);
   assign _zz_ctrl_191 = 32'h06000000;
   assign _zz_ctrl_193 = (instr_i & 32'h54008000);
