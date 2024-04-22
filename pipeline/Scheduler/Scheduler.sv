@@ -209,7 +209,7 @@ module Scheduler (
 
     // 写入ROB
     rob_alloc_req.valid = s1_sche_req.valid;
-    rob_alloc_req.ready = s1_ready;
+    rob_alloc_req.ready = dq_write_ready;   // 重点关注 ！！！
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       rob_alloc_req.valid[i] = s1_sche_req.valid[i] & dq_write_ready;
       rob_alloc_req.pc[i] = s1_sche_req.pc[i];

@@ -90,6 +90,7 @@ module ReorderBuffer (
     /* alloc logic */
     alloc_cnt = $countones(alloc_req.valid);
     alloc_rsp.ready = rob_cnt_q <= `ROB_DEPTH - `DECODE_WIDTH;
+    // 写入条件 有效 && slv可写入 && mst可接收
     if (alloc_rsp.ready & alloc_req.ready) begin
       tail_ptr_n = tail_ptr + alloc_cnt;
     end
@@ -101,7 +102,7 @@ module ReorderBuffer (
 
       // set rob entry
       rob_n[alloc_idx[i]] = '0;
-      if (alloc_req.valid[i]) begin
+      if (alloc_req.valid[i] && alloc_rsp.ready && alloc_req.ready) begin
         rob_n[alloc_idx[i]].complete = alloc_req.excp[i].valid;  // 如果有异常，视为完成执行
         rob_n[alloc_idx[i]].pc = alloc_req.pc[i];
         rob_n[alloc_idx[i]].instr_type = alloc_req.instr_type[i];
