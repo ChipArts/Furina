@@ -219,7 +219,7 @@ module Furina (
         .clock              (clk            ),
         .coreid             (0              ),
         .index              (i              ),
-        .valid              (U_Pipeline.rob_cmt_buffer.valid[i]),
+        .valid              (U_Pipeline.rob_cmt_buffer.valid[i] & ~U_Pipeline.rob_cmt_buffer.rob_entry[0].excp.valid),
         .pc                 (U_Pipeline.rob_cmt_buffer.rob_entry[i].pc),
         .instr              (U_Pipeline.rob_cmt_buffer.rob_entry[i].instr       ),
         .skip               (0              ),
