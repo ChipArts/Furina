@@ -407,9 +407,27 @@ module DCache (
     dcache_rsp.pdest_valid = s2_pdest_valid;
     dcache_rsp.pdest = s2_pdest;
     dcache_rsp.rob_idx = s2_rob_idx;
+`ifdef DEBUG
     dcache_rsp.vaddr = s2_vaddr;
     dcache_rsp.paddr = s2_paddr;
-    dcache_rsp.store_data = s2_wdata;
+    // dcache_rsp.store_data = s2_wdata;
+    dcache_rsp.store_data = '0;
+    case (s2_align_op)
+      `ALIGN_B : 
+        dcache_rsp.store_data[`DCACHE_OFS_OF(s2_vaddr) + 0] = s2_wdata[7:0];
+      `ALIGN_H : begin 
+        dcache_rsp.store_data[`DCACHE_OFS_OF(s2_vaddr) + 0] = s2_wdata[7:0];
+        dcache_rsp.store_data[`DCACHE_OFS_OF(s2_vaddr) + 1] = s2_wdata[15:8];
+      end
+      `ALIGN_W : begin
+        dcache_rsp.store_data[`DCACHE_OFS_OF(s2_vaddr) + 0] = s2_wdata[7:0];
+        dcache_rsp.store_data[`DCACHE_OFS_OF(s2_vaddr) + 1] = s2_wdata[15:8];
+        dcache_rsp.store_data[`DCACHE_OFS_OF(s2_vaddr) + 2] = s2_wdata[23:16];
+        dcache_rsp.store_data[`DCACHE_OFS_OF(s2_vaddr) + 3] = s2_wdata[31:24];
+      end
+      default : dcache_rsp.store_data = '0;
+    endcase
+`endif
     busy_o = s1_valid | s2_valid;
 
     dcache_rsp.excp = s2_excp;
@@ -626,10 +644,12 @@ module DCache (
     if (cache_state == REFILL) begin
       // 重填时的写入： axi读有效 && axi最后一个数据 && 不是uncache操作 (不触发axi读取则一定不写入)
       data_ram_we[s2_repl_way] = axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache;
+      // init wdata
       data_ram_wdata = {axi4_mst.r_data, axi_rdata_buffer[`DCACHE_BLOCK_SIZE / 4 - 2:0]};
     end else begin
       // hit时的写入： 指令有效 & hit(dcache_req.ready) & store指令有效 & store指令可以执行（rob最旧指令）
       data_ram_we[s2_matched_way] = s2_valid && s2_store_valid && dcache_req.ready;
+      // init wdata
       data_ram_wdata = cache_line;
     end
     // 添加写入的内容
