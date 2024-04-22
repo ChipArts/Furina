@@ -436,7 +436,8 @@ module DCache (
       dcache_rsp.excp.valid = '0;
     end
 
-
+    // for uncache write
+    // 当 WSTRB[n] 为 1 时，WDATA[8n+7:8n]有效。
     w_strb = '0;
     case (s2_align_op)
       `ALIGN_B : 
