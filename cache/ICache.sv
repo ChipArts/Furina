@@ -212,9 +212,9 @@ module ICache (
       icache_rsp.valid[i] = s1_fetch_en[i] & (~miss | uncache_hit);
     end
     cache_line = addr_trans_rsp.uncache ? axi_rdata_buffer : data_ram_rdata[matched_way];
-    cache_line_base = s1_vaddr[`ICACHE_IDX_OFFSET - 1:FETCH_OFS];
+    cache_line_base = `FETCH_ALIGN(s1_vaddr)[`ICACHE_IDX_OFFSET - 1:2];
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
-      icache_rsp.vaddr[i] = {s1_vaddr[`PROC_VALEN - 1:FETCH_OFS],  {FETCH_OFS{1'b0}}} + (i << 2);
+      icache_rsp.vaddr[i] = `FETCH_ALIGN(s1_vaddr) + (i << 2);
       icache_rsp.instr[i] = cache_line[cache_line_base + i];
     end
 
