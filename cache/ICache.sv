@@ -212,7 +212,7 @@ module ICache (
       icache_rsp.valid[i] = s1_fetch_en[i] & (~miss | uncache_hit);
     end
     cache_line = addr_trans_rsp.uncache ? axi_rdata_buffer : data_ram_rdata[matched_way];
-    cache_line_base = s1_vaddr[`ICACHE_IDX_OFFSET - 1:2];
+    cache_line_base = s1_vaddr[`ICACHE_IDX_OFFSET - 1:FETCH_OFS];
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
       icache_rsp.vaddr[i] = {s1_vaddr[`PROC_VALEN - 1:FETCH_OFS],  {FETCH_OFS{1'b0}}} + (i << 2);
       icache_rsp.instr[i] = cache_line[cache_line_base + i];
@@ -329,7 +329,7 @@ module ICache (
     // tag ram
     for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
       if (s1_cacop_en) begin
-        tag_ram_we[i] = s1_cacop_mode == 2'b00 & s1_vaddr[$clog2(`ICACHE_WAY_NUM) - 1:0] == i & icacop_rsp.ready;
+        tag_ram_we[i] = s1_cacop_mode == 2'b00 & s1_vaddr[$clog2(`ICACHE_WAY_NUM) - 1:0] == i & icacop_req.ready;
       end else begin
         tag_ram_we[i] = |s1_fetch_en & cache_state == REFILL & replaced_way == i & axi4_mst.r_last & ~addr_trans_rsp.uncache;
       end
@@ -351,8 +351,8 @@ module ICache (
       if (s1_cacop_en) begin
         case (s1_cacop_mode)
           2'b00 : valid_ram_we[i] = '0;
-          2'b01 : valid_ram_we[i] = s1_vaddr[$clog2(`ICACHE_WAY_NUM) - 1:0] == i & icacop_rsp.ready;
-          2'b10 : valid_ram_we[i] = ~icacop_rsp.excp.valid & ~miss & matched_way == i & icacop_rsp.ready;
+          2'b01 : valid_ram_we[i] = s1_vaddr[$clog2(`ICACHE_WAY_NUM) - 1:0] == i & icacop_req.ready;
+          2'b10 : valid_ram_we[i] = ~icacop_rsp.excp.valid & ~miss & matched_way == i & icacop_req.ready;
           default : valid_ram_we[i] = '0;
         endcase
       end else begin
