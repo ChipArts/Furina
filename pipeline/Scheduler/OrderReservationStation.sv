@@ -108,11 +108,13 @@ parameter
           if (wb_i[j]) begin
             if (mem_q[i].base.valid &&
                 mem_q[i].base.psrc0 == wb_pdest_i[j]) begin
+              // un-gate the clock, we want to write something
               gate_clock = 1'b0;
               mem_n[i].base.psrc0_ready = '1;
             end
             if (mem_q[i].base.valid &&
                 mem_q[i].base.psrc1 == wb_pdest_i[j]) begin
+              // un-gate the clock, we want to write something
               gate_clock = 1'b0;
               mem_n[i].base.psrc1_ready = '1;
             end
@@ -137,6 +139,8 @@ parameter
               read_pointer_n = read_pointer_q + 1;
           // ... and decrement the overall count
           status_cnt_n   = status_cnt_q - 1;
+          // un-gate the clock, we want to write something
+          gate_clock = 1'b0;
           // set issued tag
           mem_n[read_pointer_q].base.issued = '1;
       end
