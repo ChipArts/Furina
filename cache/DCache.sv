@@ -149,9 +149,7 @@ module DCache (
   logic cacop_mode2_hit;
   logic read_req; // 是否需要从axi读取数据
 
-`ifdef DEBUG
   logic [3:0][7:0] store_data;
-`endif
 
 
 /*================================ Cache Stage0 ================================*/
@@ -403,42 +401,6 @@ module DCache (
 
   always_comb begin
     s2_ready = ~s2_valid | dcache_req.ready & cache_state == IDEL;
-    // 1. 生成响应
-    dcache_rsp.valid = s2_valid & cache_state == IDEL;
-    dcache_rsp.mem_op = s2_mem_op;  // 用于rob判断是否可以写回
-    dcache_rsp.micro = s2_micro;
-    dcache_rsp.llbit = s2_llbit;
-    dcache_rsp.pdest_valid = s2_pdest_valid;
-    dcache_rsp.pdest = s2_pdest;
-    dcache_rsp.rob_idx = s2_rob_idx;
-`ifdef DEBUG
-    dcache_rsp.vaddr = s2_vaddr;
-    dcache_rsp.paddr = s2_paddr;
-    store_data = '0;
-    case (s2_align_op)
-      `ALIGN_B : 
-        store_data[s2_vaddr[1:0] + 0] = s2_wdata[7:0];
-      `ALIGN_H : begin 
-        store_data[s2_vaddr[1:0] + 0] = s2_wdata[7:0];
-        store_data[s2_vaddr[1:0] + 1] = s2_wdata[15:8];
-      end
-      `ALIGN_W : begin
-        store_data[s2_vaddr[1:0] + 0] = s2_wdata[7:0];
-        store_data[s2_vaddr[1:0] + 1] = s2_wdata[15:8];
-        store_data[s2_vaddr[1:0] + 2] = s2_wdata[23:16];
-        store_data[s2_vaddr[1:0] + 3] = s2_wdata[31:24];
-      end
-      default : store_data = '0;
-    endcase
-    dcache_rsp.store_data = store_data;
-`endif
-    busy_o = s1_valid | s2_valid;
-
-    dcache_rsp.excp = s2_excp;
-    // 特殊处理preld的excp
-    if (s2_preld) begin
-      dcache_rsp.excp.valid = '0;
-    end
 
     // for uncache write
     // 当 WSTRB[n] 为 1 时，WDATA[8n+7:8n]有效。
@@ -456,8 +418,49 @@ module DCache (
       default : w_strb = '0;
     endcase
 
+    store_data = '0;
+    case (s2_align_op)
+      `ALIGN_B : 
+        store_data[s2_vaddr[1:0] + 0] = s2_wdata[7:0];
+      `ALIGN_H : begin 
+        store_data[s2_vaddr[1:0] + 0] = s2_wdata[7:0];
+        store_data[s2_vaddr[1:0] + 1] = s2_wdata[15:8];
+      end
+      `ALIGN_W : begin
+        store_data[s2_vaddr[1:0] + 0] = s2_wdata[7:0];
+        store_data[s2_vaddr[1:0] + 1] = s2_wdata[15:8];
+        store_data[s2_vaddr[1:0] + 2] = s2_wdata[23:16];
+        store_data[s2_vaddr[1:0] + 3] = s2_wdata[31:24];
+      end
+      default : store_data = '0;
+    endcase
+
+    busy_o = s1_valid | s2_valid;
+
     cache_line = s2_uncache ? axi_rdata_buffer : data_ram_rdata[s2_matched_way];
     matched_word = cache_line[s2_vaddr[`DCACHE_IDX_OFFSET - 1:2]];
+
+
+    // 1. 生成响应
+    dcache_rsp.valid = s2_valid & cache_state == IDEL;
+    dcache_rsp.mem_op = s2_mem_op;  // 用于rob判断是否可以写回
+    dcache_rsp.micro = s2_micro;
+    dcache_rsp.llbit = s2_llbit;
+    dcache_rsp.pdest_valid = s2_pdest_valid;
+    dcache_rsp.pdest = s2_pdest;
+    dcache_rsp.rob_idx = s2_rob_idx;
+`ifdef DEBUG
+    dcache_rsp.vaddr = s2_vaddr;
+    dcache_rsp.paddr = s2_paddr;
+    dcache_rsp.store_data = store_data;
+`endif
+    
+
+    dcache_rsp.excp = s2_excp;
+    // 特殊处理preld的excp
+    if (s2_preld) begin
+      dcache_rsp.excp.valid = '0;
+    end
     case (s2_align_op)
       `ALIGN_B: begin
         case (s2_vaddr[1:0])
@@ -600,9 +603,9 @@ module DCache (
     // input: axi4_mst.aw_ready
 
     axi4_mst.w_id   = '0;
-    axi4_mst.w_data = s2_uncache ? s2_wdata : data_ram_rdata[s2_repl_way][axi_wdata_idx];
-    axi4_mst.w_strb = s2_uncache ? w_strb   : '1;
-    axi4_mst.w_last = s2_uncache ? '1       : axi_wdata_idx == `DCACHE_BLOCK_SIZE / 4 - 1;
+    axi4_mst.w_data = s2_uncache ? store_data : cache_line[axi_wdata_idx];
+    axi4_mst.w_strb = s2_uncache ? w_strb     : '1;
+    axi4_mst.w_last = s2_uncache ? '1         : axi_wdata_idx == `DCACHE_BLOCK_SIZE / 4 - 1;
     axi4_mst.w_user = '0;
     axi4_mst.w_valid = cache_state == REPLACE;
     // input: axi4_mst.w_ready
