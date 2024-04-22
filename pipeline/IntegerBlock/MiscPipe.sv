@@ -124,7 +124,7 @@ module MiscPipe (
 
     csr_we = priv_op == `PRIV_CSR_WRITE | priv_op == `PRIV_CSR_XCHG;
     csr_waddr = s1_exe.base.imm[13:0];
-    csr_wdata = priv_op == `PRIV_CSR_XCHG ? src0 & src1 : src0;
+    csr_wdata = priv_op == `PRIV_CSR_XCHG ? (s1_csr_rdata & ~src1) | (src0 & src1) : src0;
 
     invtlb_asid = src0[9:0];
 
