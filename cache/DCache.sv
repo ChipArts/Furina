@@ -414,16 +414,16 @@ module DCache (
     dcache_rsp.store_data = '0;
     case (s2_align_op)
       `ALIGN_B : 
-        dcache_rsp.store_data[`DCACHE_OFS_OF(s2_vaddr) + 0] = s2_wdata[7:0];
+        dcache_rsp.store_data[s2_vaddr[1:0] + 0] = s2_wdata[7:0];
       `ALIGN_H : begin 
-        dcache_rsp.store_data[`DCACHE_OFS_OF(s2_vaddr) + 0] = s2_wdata[7:0];
-        dcache_rsp.store_data[`DCACHE_OFS_OF(s2_vaddr) + 1] = s2_wdata[15:8];
+        dcache_rsp.store_data[s2_vaddr[1:0] + 0] = s2_wdata[7:0];
+        dcache_rsp.store_data[s2_vaddr[1:0] + 1] = s2_wdata[15:8];
       end
       `ALIGN_W : begin
-        dcache_rsp.store_data[`DCACHE_OFS_OF(s2_vaddr) + 0] = s2_wdata[7:0];
-        dcache_rsp.store_data[`DCACHE_OFS_OF(s2_vaddr) + 1] = s2_wdata[15:8];
-        dcache_rsp.store_data[`DCACHE_OFS_OF(s2_vaddr) + 2] = s2_wdata[23:16];
-        dcache_rsp.store_data[`DCACHE_OFS_OF(s2_vaddr) + 3] = s2_wdata[31:24];
+        dcache_rsp.store_data[s2_vaddr[1:0] + 0] = s2_wdata[7:0];
+        dcache_rsp.store_data[s2_vaddr[1:0] + 1] = s2_wdata[15:8];
+        dcache_rsp.store_data[s2_vaddr[1:0] + 2] = s2_wdata[23:16];
+        dcache_rsp.store_data[s2_vaddr[1:0] + 3] = s2_wdata[31:24];
       end
       default : dcache_rsp.store_data = '0;
     endcase
