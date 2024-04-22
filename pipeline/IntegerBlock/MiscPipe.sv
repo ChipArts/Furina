@@ -172,6 +172,7 @@ module MiscPipe (
         wb_o.base.rob_idx <= s1_exe.base.rob_idx;
         wb_o.base.excp <= '0;
 
+        wb_o.priv_op <= s1_exe.misc_oc.priv_op;
         wb_o.misc_op <= s1_exe.misc_oc.misc_op;
         wb_o.instr_type <= s1_exe.misc_oc.instr_type;
 
