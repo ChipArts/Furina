@@ -570,7 +570,7 @@ module Scheduler (
 
 /*================================== stage3 ===================================*/
   always_ff @(posedge clk or negedge rst_n) begin
-    if(~rst_n) begin
+    if(~rst_n || flush_i) begin
       misc_issue_o <= '0;
       alu_issue_o <= '0;
       mdu_issue_o <= '0;
