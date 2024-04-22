@@ -350,7 +350,7 @@ module Pipeline (
     bpu_req.target = tlbrefill_flush ? csr_tlbrentry_out :
                      excp_flush      ? csr_eentry_out :
                      redirect_flush  ? rob_cmt_o.rob_entry[0].br_target :
-                     ertn_flush      ? (csr_ecode_out == `ECODE_SYS || csr_ecode_out == `ECODE_BRK) ?  csr_era_out + 4 : csr_era_out :  // sys 和 brk恢复时应该跳到era+4
+                     ertn_flush      ? csr_era_out :  // sys 和 brk恢复时应该跳到era+4（软件控制）
                      refetch_flush   ? rob_cmt_o.rob_entry[0].pc + 4    :
                      32'h1c00_0000;
   end
