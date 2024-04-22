@@ -43,20 +43,20 @@ module BranchUnit (
 
   always_comb begin
     case (branch_op_i)
-      `BRANCH_EQ  : taken = src0_i == src1_i;
-      `BRANCH_NE  : taken = src0_i != src1_i;
+      `BRANCH_EQ  : taken = src1_i == src0_i;
+      `BRANCH_NE  : taken = src1_i != src0_i;
       `BRANCH_LT  : begin
         if(signed_i) begin
-          taken = $signed(src0_i) < $signed(src1_i);
+          taken = $signed(src1_i) < $signed(src0_i);
         end else begin
-          taken = src0_i < src1_i;
+          taken = src1_i < src0_i;
         end
       end
       `BRANCH_GE  : begin
         if(signed_i) begin
-          taken = $signed(src0_i) >= $signed(src1_i);
+          taken = $signed(src1_i) >= $signed(src0_i);
         end else begin
-          taken = src0_i >= src1_i;
+          taken = src1_i >= src0_i;
         end
       end
       `BRANCH_NC  : taken = '1;
