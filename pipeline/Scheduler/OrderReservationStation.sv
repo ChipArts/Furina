@@ -146,7 +146,7 @@ parameter
       end
 
       // keep the count pointer stable if we push and pop at the same time
-      if (wr_valid_i && issue_ready_i &&  ~full && ~empty) begin
+      if (wr_valid_i && issue_ready_i && issue_valid_o && ~full && ~empty) begin
         status_cnt_n   = status_cnt_q;
       end
 
@@ -154,20 +154,14 @@ parameter
 
   // sequential process
   always_ff @(posedge clk or negedge rst_n) begin
-      if(~rst_n) begin
+      if(~rst_n || flush_i) begin
           read_pointer_q  <= '0;
           write_pointer_q <= '0;
           status_cnt_q    <= '0;
       end else begin
-          if (flush_i) begin
-              read_pointer_q  <= '0;
-              write_pointer_q <= '0;
-              status_cnt_q    <= '0;
-           end else begin
-              read_pointer_q  <= read_pointer_n;
-              write_pointer_q <= write_pointer_n;
-              status_cnt_q    <= status_cnt_n;
-          end
+          read_pointer_q  <= read_pointer_n;
+          write_pointer_q <= write_pointer_n;
+          status_cnt_q    <= status_cnt_n;
       end
   end
 
