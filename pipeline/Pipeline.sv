@@ -920,10 +920,21 @@ module Pipeline (
 
 
 `ifdef DEBUG
-  logic [31:0][31:0] arch_regfile, arch_regfile_n;
+  RobCmtSt rob_cmt_buffer;
+
+  always_ff @(posedge clk or negedge rst_n) begin : proc_rob_cmt_buffer
+    if(~rst_n) begin
+      rob_cmt_buffer <= 0;
+    end else begin
+      rob_cmt_buffer <= rob_cmt_o;
+    end
+  end
+
+
+  logic [31:0][31:0] arch_regfile_q, arch_regfile_n;
 
   always_comb begin
-    arch_regfile_n = arch_regfile;
+    arch_regfile_n = arch_regfile_q;
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
       if (rob_cmt_o.valid[i] && 
           rob_cmt_o.rob_entry[i].rf_wen) begin
@@ -934,9 +945,9 @@ module Pipeline (
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
-      arch_regfile <= '0;
+      arch_regfile_q <= '0;
     end else begin
-      arch_regfile <= arch_regfile_n;
+      arch_regfile_q <= arch_regfile_n;
     end
   end
 `endif
