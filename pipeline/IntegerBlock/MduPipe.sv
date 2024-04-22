@@ -40,7 +40,8 @@ module MduPipe (
 );
 
   logic idle2wait;  // s0
-  logic wait2idle;  // s1
+  logic wait2idle;   // s1
+
 
   typedef enum logic {
     IDEL,  // 计算完成 空闲
@@ -89,7 +90,7 @@ module MduPipe (
                mdu_state == IDEL;                  // fsm 空闲
 
     // mult
-    mult_req.valid = s1_exe.base.valid & 
+    mult_req.valid = s1_exe.base.valid & mdu_state == WAIT &
                      (s1_exe.mdu_oc.mdu_op == `MDU_MUL | 
                       s1_exe.mdu_oc.mdu_op == `MDU_MULH);
     mult_req.ready = wb_ready_i;
@@ -99,7 +100,7 @@ module MduPipe (
     mult_req.multiplier = s1_exe.base.src1;
 
     // div
-    div_req.valid = s1_exe.base.valid & 
+    div_req.valid = s1_exe.base.valid & mdu_state == WAIT &
                     (s1_exe.mdu_oc.mdu_op == `MDU_DIV | 
                      s1_exe.mdu_oc.mdu_op == `MDU_MOD);
     div_req.ready = wb_ready_i;
@@ -126,8 +127,8 @@ module MduPipe (
       mdu_res_valid <= '0;
     end else begin
       case (mdu_state)
-        IDEL : if (idle2wait) mdu_state <= WAIT;
-        WAIT : if (wait2idle) mdu_state <= IDEL;
+        IDEL  : if (idle2wait) mdu_state <= WAIT;
+        WAIT  : if (wait2idle)  mdu_state <= IDEL;
         default : mdu_state <= IDEL;
       endcase
 
