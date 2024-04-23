@@ -142,16 +142,16 @@ module MemoryManagementUnit (
     // write req
     tlb_write_req.valid = tlbfill_en_i || tlbwr_en_i;
     tlb_write_req.idx = ({5{tlbfill_en_i}} & rand_idx_i) | ({5{tlbwr_en_i}} & tlbidx_i[`INDEX]);
-    tlb_write_req.tlb_entry_st = '{exist: (ecode_i == 6'h3f) ? 1'b1 : !tlbidx_i[`NE],
-                                   asid: csr_asid_i,
-                                   glo: tlbelo0_i[`TLB_G] && tlbelo1_i[`TLB_G],
-                                   page_size: tlbidx_i[`PS],
-                                   vppn: tlbehi_i[`VPPN],
-                                   valid: {tlbelo0_i[`TLB_V], tlbelo1_i[`TLB_V]},
-                                   dirty: {tlbelo0_i[`TLB_D], tlbelo1_i[`TLB_D]},
-                                   mat: {tlbelo0_i[`TLB_MAT], tlbelo1_i[`TLB_MAT]},
-                                   plv: {tlbelo0_i[`TLB_PLV], tlbelo1_i[`TLB_PLV]},
-                                   ppn: {tlbelo0_i[`TLB_PPN_EN], tlbelo1_i[`TLB_PPN_EN]}};
+    tlb_write_req.tlb_entry_st = '{exist     : (ecode_i == 6'h3f) ? 1'b1 : !tlbidx_i[`NE],
+                                   asid      : csr_asid_i,
+                                   glo       : tlbelo1_i[`TLB_G] & tlbelo0_i[`TLB_G],
+                                   page_size : tlbidx_i[`PS],
+                                   vppn      : tlbehi_i[`VPPN],
+                                   valid     : {tlbelo1_i[`TLB_V]     , tlbelo0_i[`TLB_V]},
+                                   dirty     : {tlbelo1_i[`TLB_D]     , tlbelo0_i[`TLB_D]},
+                                   mat       : {tlbelo1_i[`TLB_MAT]   , tlbelo0_i[`TLB_MAT]},
+                                   plv       : {tlbelo1_i[`TLB_PLV]   , tlbelo0_i[`TLB_PLV]},
+                                   ppn       : {tlbelo1_i[`TLB_PPN_EN], tlbelo0_i[`TLB_PPN_EN]}};
     // read req
     tlb_read_req.valid = tlbrd_en_i;
     tlb_read_req.idx = tlbidx_i[`INDEX];
@@ -167,11 +167,13 @@ module MemoryManagementUnit (
     r_g    = tlb_read_rsp.tlb_entry_st.glo;
     r_ps   = tlb_read_rsp.tlb_entry_st.page_size;
     r_e    = tlb_read_rsp.tlb_entry_st.exist;
+
     r_v0   = tlb_read_rsp.tlb_entry_st.valid[0];
     r_d0   = tlb_read_rsp.tlb_entry_st.dirty[0];
     r_mat0 = tlb_read_rsp.tlb_entry_st.mat[0];
     r_plv0 = tlb_read_rsp.tlb_entry_st.plv[0];
     r_ppn0 = tlb_read_rsp.tlb_entry_st.ppn[0];
+
     r_v1   = tlb_read_rsp.tlb_entry_st.valid[1];
     r_d1   = tlb_read_rsp.tlb_entry_st.dirty[1];
     r_mat1 = tlb_read_rsp.tlb_entry_st.mat[1];
