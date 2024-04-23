@@ -244,7 +244,7 @@ module MemoryManagementUnit (
     end
 
 
-    tlbsrch_found_o = tlb_search_rsp[2].valid;
+    tlbsrch_found_o = tlb_search_rsp[2].found;
     tlbsrch_idx_o = tlb_search_rsp[2].idx;
   end
 

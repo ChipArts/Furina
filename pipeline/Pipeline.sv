@@ -1089,8 +1089,8 @@ module Pipeline (
 
     // 填写tlbsrch结果
     csr_tlbsrch_en = iblk_misc_wb_o.base.valid &
-                     iblk_misc_wb_ready_i &
-                     iblk_misc_wb_o.tlbsrch_en;
+                     iblk_misc_wb_o.tlbsrch_en &
+                     rob_misc_wb_rsp.ready;
     csr_tlbsrch_found = iblk_misc_wb_o.tlbsrch_found;
     csr_tlbsrch_index = iblk_misc_wb_o.tlbsrch_idx;
 
