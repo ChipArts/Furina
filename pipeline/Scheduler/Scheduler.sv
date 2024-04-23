@@ -160,7 +160,7 @@ module Scheduler (
     s1_ready = (rob_alloc_rsp.ready & dq_write_ready) | ~(|s1_sche_req.valid);
     // RAT 控制逻辑
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      rat_dest_valid[i] = s1_sche_req.valid[i] & |s1_sche_req.arch_dest[i];
+      rat_dest_valid[i] = s1_sche_req.valid[i] & |s1_sche_req.arch_dest[i] & dq_write_ready;  // 仅在最后的时机进行查找
     end
 
     // 在此处检查INT、INE、IPE、SYS、BRK异常
