@@ -881,11 +881,12 @@ module Pipeline (
       free_valid[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0 & rob_cmt_o.rob_entry[i].old_phy_reg_valid;
       free_preg[i] = rob_cmt_o.rob_entry[i].old_phy_reg;
 
-      arch_rat_dest_valid_i[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0;
+      // 异常要放弃对于重命名阶段fl和RAT的修改，即恢复时不对arch的状态进行修改
+      arch_rat_dest_valid_i[i] = rob_cmt_o.valid[i] & ~rob_cmt_o.rob_entry[i].excp.valid & rob_cmt_o.rob_entry[i].arch_reg != 0;
       arch_rat_dest_i[i] = rob_cmt_o.rob_entry[i].arch_reg;
       arch_rat_preg_i[i] = rob_cmt_o.rob_entry[i].phy_reg;
 
-      arch_fl_alloc_valid_i[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0;
+      arch_fl_alloc_valid_i[i] = rob_cmt_o.valid[i] & ~rob_cmt_o.rob_entry[i].excp.valid &rob_cmt_o.rob_entry[i].arch_reg != 0;
       arch_fl_free_valid_i[i] = free_valid[i];
       arch_fl_free_preg_i[i] = free_preg[i];
     end
