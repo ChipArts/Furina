@@ -899,7 +899,7 @@ module Pipeline (
   always_comb begin
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
       // 异常要放弃对于重命名阶段fl和RAT的修改 ！！！ TODO 这个逻辑似乎有优化空间
-      free_valid[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].arch_reg != 0 & rob_cmt_o.rob_entry[i].old_phy_reg_valid & ~rob_cmt_o.rob_entry[i].excp.valid;
+      free_valid[i] = rob_cmt_o.valid[i] & rob_cmt_o.rob_entry[i].old_phy_reg_valid & ~rob_cmt_o.rob_entry[i].excp.valid;
       free_preg[i] = rob_cmt_o.rob_entry[i].old_phy_reg;
 
       arch_rat_dest_valid_i[i] = rob_cmt_o.valid[i] & ~rob_cmt_o.rob_entry[i].excp.valid & rob_cmt_o.rob_entry[i].arch_reg != 0;
