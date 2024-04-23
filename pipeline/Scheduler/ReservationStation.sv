@@ -70,7 +70,7 @@ parameter
   // issue: oldest first
   logic [BANK_NUM - 1:0] position_bit;
   logic [BANK_NUM - 1:0][$clog2(`ROB_DEPTH) - 1:0] rob_idx;
-  logic [BANK_NUM - 1:0][$clog2(`DECODE_WIDTH) - 1:0] issue_idx;
+  logic [BANK_NUM - 1:0][$clog2(BANK_SIZE) - 1:0] issue_idx;
 
   always_comb begin
     // defult assign
@@ -131,6 +131,7 @@ parameter
 
     // select logic
     for (int i = 0; i < BANK_NUM; i++) begin
+      // 选择每个bank最旧的指令
       issue_valid_o[i] =
               ~free[i][0] &
               (rs_mem[i][0].base.psrc0_ready | ~rs_mem[i][0].base.psrc0_valid) &
@@ -140,9 +141,7 @@ parameter
       position_bit[i] = rs_mem[i][0].base.position_bit;
       rob_idx[i] = rs_mem[i][0].base.rob_idx;
       issue_idx[i] = 0;
-    end
 
-    for (int i = 0; i < BANK_NUM; i++) begin
       // 乱序发射
       for (int j = 1; j < BANK_SIZE; j++) begin
         // 是一条可发射的指令
@@ -158,7 +157,6 @@ parameter
             issue_base_o[i] = rs2is(rs_mem[i][j].base);
             issue_oc_o[i] = rs_mem[i][j].oc;
 
-
             // 更新最老的指令idx
             position_bit[i] = rs_mem[i][j].base.position_bit;
             rob_idx[i] = rs_mem[i][j].base.rob_idx;
@@ -166,9 +164,7 @@ parameter
           end
         end
       end
-    end
 
-    for (int i = 0; i < BANK_NUM; i++) begin
       if (issue_valid_o[i] && issue_ready_i[i]) begin
         rs_mem_n[i][issue_idx[i]].base.issued = '1;
       end
