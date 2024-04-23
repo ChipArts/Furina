@@ -225,6 +225,7 @@ module MemoryManagementUnit (
       addr_trans_rsp[i].pis = '0;
       addr_trans_rsp[i].ppi = '0;
       addr_trans_rsp[i].pme = '0;
+      addr_trans_rsp[i].tlbr = '0;
       if (addr_trans_en[i]) begin
         addr_trans_rsp[i].tlbr = ~tlb_search_rsp[i].found;
         if (!tlb_search_rsp[i].valid) begin

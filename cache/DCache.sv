@@ -160,18 +160,17 @@ module DCache (
   always_comb begin
     s0_ready = s1_ready;
     dcache_rsp.ready = s0_ready;
-    if (dcache_req.valid) begin
-      addr_trans_req.valid = s1_ready & dcache_req.valid;
-      addr_trans_req.ready = 1'b1;
-      addr_trans_req.vaddr = dcache_req.vaddr;
-      case (dcache_req.mem_op)
-        `MEM_LOAD : addr_trans_req.mem_type = MMU_LOAD;
-        `MEM_STORE: addr_trans_req.mem_type = MMU_STORE;
-        default : addr_trans_req.mem_type = MMU_LOAD;
-      endcase
-      addr_trans_req.cacop_direct = dcache_req.mem_op == `MEM_CACOP &
-                                    dcache_req.code[4:3] < 2'b10;
-    end
+
+    addr_trans_req.valid = s1_ready & dcache_req.valid;
+    addr_trans_req.ready = s1_ready;
+    addr_trans_req.vaddr = dcache_req.vaddr;
+    case (dcache_req.mem_op)
+      `MEM_LOAD : addr_trans_req.mem_type = MMU_LOAD;
+      `MEM_STORE: addr_trans_req.mem_type = MMU_STORE;
+      default   : addr_trans_req.mem_type = MMU_LOAD;
+    endcase
+    addr_trans_req.cacop_direct = dcache_req.mem_op == `MEM_CACOP & dcache_req.code[4:3] < 2'b10;
+    // excp处理
     case (dcache_req.align_op)
       `ALIGN_B : ale = '0;
       `ALIGN_H : ale = dcache_req.vaddr[0] != 1'b0;
