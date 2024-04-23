@@ -132,24 +132,16 @@ parameter
     // select logic
     for (int i = 0; i < BANK_NUM; i++) begin
       // 选择每个bank最旧的指令
-      issue_valid_o[i] =
-              ~free[i][0] &
-              (rs_mem[i][0].base.psrc0_ready | ~rs_mem[i][0].base.psrc0_valid) &
-              (rs_mem[i][0].base.psrc1_ready | ~rs_mem[i][0].base.psrc1_valid);
-      issue_base_o[i] = rs2is(rs_mem[i][0].base);
-      issue_oc_o[i] = rs_mem[i][0].oc;
-      position_bit[i] = rs_mem[i][0].base.position_bit;
-      rob_idx[i] = rs_mem[i][0].base.rob_idx;
-      issue_idx[i] = 0;
-
+      issue_valid_o[i] = '0;  // 初始化 ！！！
       // 乱序发射
-      for (int j = 1; j < BANK_SIZE; j++) begin
+      for (int j = 0; j < BANK_SIZE; j++) begin
         // 是一条可发射的指令
         if (!free[i][j] &&
             (rs_mem[i][j].base.psrc0_ready || !rs_mem[i][j].base.psrc0_valid) &&
             (rs_mem[i][j].base.psrc1_ready || !rs_mem[i][j].base.psrc1_valid)) begin
-          // 是一条更老的指令
-          if ((rs_mem[i][j].base.position_bit == position_bit[i] &&
+          // 是一条更旧的指令 或 暂无有效的issue
+          if (issue_valid_o[i] == '0 ||
+              (rs_mem[i][j].base.position_bit == position_bit[i] &&
                rs_mem[i][j].base.rob_idx < rob_idx[i]) || 
               (rs_mem[i][j].base.position_bit != position_bit[i] &&
                rs_mem[i][j].base.rob_idx > rob_idx[i])) begin
