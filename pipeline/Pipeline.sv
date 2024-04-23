@@ -906,7 +906,7 @@ module Pipeline (
       arch_rat_dest_i[i] = rob_cmt_o.rob_entry[i].arch_reg;
       arch_rat_preg_i[i] = rob_cmt_o.rob_entry[i].phy_reg;
 
-      arch_fl_alloc_valid_i[i] = rob_cmt_o.valid[i] & ~rob_cmt_o.rob_entry[i].excp.valid &rob_cmt_o.rob_entry[i].arch_reg != 0;
+      arch_fl_alloc_valid_i[i] = rob_cmt_o.valid[i] & ~rob_cmt_o.rob_entry[i].excp.valid & rob_cmt_o.rob_entry[i].arch_reg != 0;
       arch_fl_free_valid_i[i] = free_valid[i];
       arch_fl_free_preg_i[i] = free_preg[i];
     end
