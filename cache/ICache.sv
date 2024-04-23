@@ -333,7 +333,12 @@ module ICache (
       if (s1_cacop_en) begin
         tag_ram_we[i] = s1_cacop_mode == 2'b00 & s1_vaddr[$clog2(`ICACHE_WAY_NUM) - 1:0] == i & icacop_req.ready;
       end else begin
-        tag_ram_we[i] = |s1_fetch_en & cache_state == REFILL & replaced_way == i & axi4_mst.r_last & ~addr_trans_rsp.uncache;
+        tag_ram_we[i] = |s1_fetch_en & 
+                         cache_state == REFILL & 
+                         replaced_way == i & 
+                         axi4_mst.r_last & 
+                         axi4_mst.r_valid & 
+                        ~addr_trans_rsp.uncache;
       end
     end
     tag_ram_waddr = `ICACHE_IDX_OF(s1_vaddr);
@@ -349,6 +354,7 @@ module ICache (
     end
 
     // valid ram
+    valid_ram_we = '0;
     for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
       if (s1_cacop_en) begin
         case (s1_cacop_mode)
@@ -358,7 +364,12 @@ module ICache (
           default : valid_ram_we[i] = '0;
         endcase
       end else begin
-        valid_ram_we[i] = |s1_fetch_en & cache_state == REFILL & replaced_way == i & axi4_mst.r_last & ~addr_trans_rsp.uncache;
+        valid_ram_we[i] = |s1_fetch_en & 
+                           cache_state == REFILL & 
+                           replaced_way == i & 
+                           axi4_mst.r_last & 
+                           axi4_mst.r_valid & 
+                          ~addr_trans_rsp.uncache;
       end
     end
     valid_ram_waddr = `ICACHE_IDX_OF(s1_vaddr);
