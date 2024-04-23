@@ -146,7 +146,7 @@ module MemoryBlock (
       wb_o.icacop = '1;
       wb_o.paddr = '0;
       wb_o.store_data = '0;
-    end else if (dcache_rsp.valid) begin
+    end else begin
       wb_o.base.valid = dcache_rsp.valid;
       wb_o.base.we = dcache_rsp.pdest_valid & ( dcache_rsp.mem_op == `MEM_LOAD | dcache_rsp.micro);
       wb_o.base.wdata = dcache_rsp.mem_op == `MEM_LOAD ? dcache_rsp.rdata : {31'd0, dcache_rsp.llbit};

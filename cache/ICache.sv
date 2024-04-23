@@ -151,8 +151,10 @@ module ICache (
         s1_adef  <= adef;
 
         uncache_hit <= '0;
-      end else begin 
-        uncache_hit <= cache_state == REFILL && axi4_mst.r_last && axi4_mst.r_valid && addr_trans_rsp.uncache;
+      end else begin
+        if (cache_state == REFILL) begin
+          uncache_hit <= axi4_mst.r_last && axi4_mst.r_valid && addr_trans_rsp.uncache;
+        end
       end
     end
   end
