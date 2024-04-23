@@ -778,7 +778,7 @@ module Pipeline (
 
     mblk_icacop_rsp = icacop_rsp;
 
-    mblk_wb_ready_i = rob_misc_wb_rsp.ready;
+    mblk_wb_ready_i = rob_mem_wb_rsp.ready;
   end
 
   MemoryBlock inst_MemoryBlock

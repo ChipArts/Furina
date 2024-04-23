@@ -444,6 +444,7 @@ module Scheduler (
     mdu_rs_oc = '0;
     mem_rs_oc = '0;
     for (int i = 0; i < `DISPATCH_WIDTH; i++) begin
+      // RS写入条件 --> DQ 内容有效 && DQ会读出（dq_read_ready）
       if ((dq_rdata[i].oc.instr_type inside {`MISC_INSTR, `BR_INSTR, `PRIV_INSTR}) && misc_cnt[i] == 0) begin
         misc_rs_wr_valid = dq_read_valid[i] & dq_read_ready[i];
         misc_rs_base = dq2rs(dq_rdata[i]);
