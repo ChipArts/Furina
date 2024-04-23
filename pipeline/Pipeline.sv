@@ -813,7 +813,8 @@ module Pipeline (
     write_back_valid[1] = iblk_alu_wb_o[0].base.valid & iblk_alu_wb_o[0].base.we & rob_alu_wb_rsp[0].ready;
     write_back_valid[2] = iblk_alu_wb_o[1].base.valid & iblk_alu_wb_o[1].base.we & rob_alu_wb_rsp[0].ready;
     write_back_valid[3] = iblk_mdu_wb_o.base.valid & iblk_mdu_wb_o.base.we & rob_mdu_wb_rsp.ready;
-    write_back_valid[4] = mblk_wb_o.base.valid & mblk_wb_o.base.we & rob_mem_wb_rsp.ready;
+    // 后端仅mem触发异常 异常不写回
+    write_back_valid[4] = mblk_wb_o.base.valid & ~mblk_wb_o.base.excp.valid & mblk_wb_o.base.we & rob_mem_wb_rsp.ready;
 
     write_back_pdest[0] = iblk_misc_wb_o.base.pdest;
     write_back_pdest[1] = iblk_alu_wb_o[0].base.pdest;
@@ -937,7 +938,8 @@ module Pipeline (
     arch_regfile_n = arch_regfile_q;
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
       if (rob_cmt_o.valid[i] && 
-          rob_cmt_o.rob_entry[i].rf_wen) begin
+          rob_cmt_o.rob_entry[i].rf_wen &&
+          !rob_cmt_o.rob_entry[i].excp.valid) begin
         arch_regfile_n[rob_cmt_o.rob_entry[i].arch_reg] = rob_cmt_o.rob_entry[i].rf_wdata;
       end
     end
