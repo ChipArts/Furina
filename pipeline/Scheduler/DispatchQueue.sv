@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : DispatchQueue.sv
 // Create  : 2024-04-18 18:26:24
-// Revise  : 2024-04-23 21:10:03
+// Revise  : 2024-04-23 21:25:43
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -93,12 +93,12 @@ parameter
 		// wake up
 		for (int i = 0; i < QUEUE_DEPTH; i++) begin
 			for (int j = 0; j < `WB_WIDTH; j++) begin
-				if (wb_i[i]) begin
+				if (wb_i[j]) begin
 					if (queue_q[i].src0 == wb_pdest_i[j]) begin
-						queue_n[i].src0_ready = 1;
+						queue_n[i].src0_ready = '1;
 					end
 					if (queue_q[i].src1 == wb_pdest_i[j]) begin
-						queue_n[i].src1_ready = 1;
+						queue_n[i].src1_ready = '1;
 					end
 				end
 			end
