@@ -62,8 +62,8 @@ module MiscPipe (
   always_comb begin
     s0_ready = s1_ready;
     ready_o = s0_ready;
-    tlbsrch_valid_o = exe_i.base.valid & exe_i.misc_oc.instr_type == `MISC_INSTR & exe_i.misc_oc.priv_op == `PRIV_TLBSRCH;
-    tlbrd_valid_o = exe_i.base.valid & exe_i.misc_oc.instr_type == `MISC_INSTR & exe_i.misc_oc.priv_op == `PRIV_TLBRD;
+    tlbsrch_valid_o = exe_i.base.valid & exe_i.misc_oc.instr_type == `PRIV_INSTR & exe_i.misc_oc.priv_op == `PRIV_TLBSRCH;
+    tlbrd_valid_o = exe_i.base.valid & exe_i.misc_oc.instr_type == `PRIV_INSTR & exe_i.misc_oc.priv_op == `PRIV_TLBRD;
   end
 
 /*================================== stage1 ===================================*/

@@ -1104,8 +1104,8 @@ module Pipeline (
 
     // 填写tlbrd结果
     csr_tlbrd_en = iblk_misc_wb_o.base.valid &
-                   iblk_misc_wb_ready_i &
-                   iblk_misc_wb_o.tlbrd_en;
+                   iblk_misc_wb_o.tlbrd_en &
+                   rob_misc_wb_rsp.ready;
     csr_tlbehi_in = iblk_misc_wb_o.tlbrd_ehi;
     csr_tlbelo0_in = iblk_misc_wb_o.tlbrd_elo0;
     csr_tlbelo1_in = iblk_misc_wb_o.tlbrd_elo1;
