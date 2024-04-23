@@ -214,7 +214,7 @@ module ICache (
     cache_line = addr_trans_rsp.uncache ? axi_rdata_buffer : data_ram_rdata[matched_way];
     cache_line_base = `FETCH_ALIGN(s1_vaddr)[`ICACHE_IDX_OFFSET - 1:2];
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
-      icache_rsp.vaddr[i] = `FETCH_ALIGN(s1_vaddr) + (i << 2);
+      icache_rsp.vaddr[i] = s1_adef ? s1_vaddr : `FETCH_ALIGN(s1_vaddr) + (i << 2);  // pc异常时保留异常的pc
       icache_rsp.instr[i] = cache_line[cache_line_base + i];
     end
 
