@@ -139,6 +139,7 @@ module Scheduler (
   logic [`DECODE_WIDTH - 1:0] priv_instr;
   logic [`DECODE_WIDTH - 1:0] syscall_instr;
   logic [`DECODE_WIDTH - 1:0] break_instr;
+  logic [`DECODE_WIDTH - 1:0] invalid_instr;  // 包括非法指令和非法操作数
 
   logic [`DECODE_WIDTH - 1:0] rat_dest_valid;
   logic [`DECODE_WIDTH - 1:0] rat_src0_ready;
@@ -176,6 +177,13 @@ module Scheduler (
       break_instr[i] = s1_sche_req.option_code[i].instr_type == `MISC_INSTR &
                        s1_sche_req.option_code[i].misc_op == `MISC_BREAK;
 
+      invalid_instr[i] = s1_sche_req.option_code[i].invalid_inst |
+                         ( // invtlb 非法操作数
+                           s1_sche_req.option_code[i].instr_type == `PRIV_INSTR &
+                           s1_sche_req.option_code[i].priv_op == `PRIV_TLBINV &
+                           s1_sche_req.src[i][4:0] > 5'd6
+                         );
+
     end
 
     excp = '0;
@@ -186,7 +194,7 @@ module Scheduler (
         excp[i].sub_ecode = `ESUBCODE_ADEF;
       end else if (s1_sche_req.excp[i].valid) begin
         excp[i] = s1_sche_req.excp[i];
-      end else if(s1_sche_req.option_code[i].invalid_inst) begin
+      end else if(invalid_instr[i]) begin
         excp[i].valid = '1;
         excp[i].ecode = `ECODE_INE;
         excp[i].sub_ecode = `ESUBCODE_ADEF;
