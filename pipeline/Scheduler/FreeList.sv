@@ -63,15 +63,6 @@ parameter
 
     alloc_ready_o = cnt_q >= `DECODE_WIDTH;
     free_ready_o = '1;
-
-    
-    if (alloc_ready_o) begin
-      head_n = head + alloc_req_cnt;
-    end else begin
-      head_n = head;
-    end
-
-    tail_n = tail + free_req_cnt;
     
 
     // 根据valid信号生成输出
@@ -114,6 +105,14 @@ parameter
     end else begin
       cnt_n = cnt_q + free_req_cnt;
     end
+
+    if (alloc_ready_o) begin
+      head_n = head + alloc_req_cnt;
+    end else begin
+      head_n = head;
+    end
+
+    tail_n = tail + free_req_cnt;
 
     if (flush_i) begin
       head_n = arch_head;

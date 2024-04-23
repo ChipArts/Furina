@@ -914,7 +914,7 @@ module Pipeline (
 
   ArchRegisterAliasTable #(
     .PHY_REG_NUM(`PHY_REG_NUM)
-  ) inst_RegisterAliasTable (
+  ) U_ArchRegisterAliasTable (
     .clk          (clk),
     .rst_n        (rst_n),
     .dest_valid_i (arch_rat_dest_valid_i),

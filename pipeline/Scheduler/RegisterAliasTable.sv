@@ -107,7 +107,8 @@ parameter
       end
       // 处理WAW相关性
       for (int j = 0; j < i; j++) begin
-        if (dest_i[i] == dest_i[j]) begin
+        // 要判断dest_valid_i[j] 否则当前一条指令无效时有可能会错误的释放寄存器
+        if (dest_i[i] == dest_i[j] && dest_valid_i[j]) begin
           ppdst[i] = preg_i[j];
           ppdst_valid[i] = '1;
         end
