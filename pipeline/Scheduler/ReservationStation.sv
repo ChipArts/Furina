@@ -132,14 +132,6 @@ parameter
     // select logic
     for (int i = 0; i < BANK_NUM; i++) begin
       // 选择每个bank最旧的指令
-      // 初始化 ！！！
-      issue_valid_o[i] = '0;
-      issue_base_o[i] = '0;
-      issue_oc_o[i] = '0;
-      issue_idx[i] = '0;
-      position_bit[i] = '0;
-      rob_idx[i] = '0;
-
       // 乱序发射
       for (int j = 0; j < BANK_SIZE; j++) begin
         // 是一条可发射的指令
