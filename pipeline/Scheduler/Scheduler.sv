@@ -91,8 +91,6 @@ module Scheduler (
 
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       fl_alloc_valid[i] =  schedule_req.valid[i] &
-                          !schedule_req.excp[i].valid &
-                          !schedule_req.option_code[i].invalid_inst &
                           |schedule_req.arch_dest[i] &  // dest valid
                            s1_ready;
     end
