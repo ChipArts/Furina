@@ -300,7 +300,7 @@ module DCache (
                  excp_ppi ? `ECODE_PPI :
                  excp_pme ? `ECODE_PME :
                  '0;
-    excp.sub_ecode = `ESUBCODE_ADEM;
+    excp.sub_ecode = `ESUBCODE_ADEF;
 
     /* cache 状态机控制 */
     // 启动cache fsm的条件：
