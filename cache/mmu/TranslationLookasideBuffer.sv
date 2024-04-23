@@ -93,33 +93,43 @@ module TranslationLookasideBuffer (
       end else if(tlb_inv_req.valid) begin
         for (int i = 0; i < `TLB_ENTRY_NUM; i++) begin
           case (tlb_inv_req.op)
-            `TLB_INV_ALL0 : tlb_entries[i] <= '0;
-            `TLB_INV_ALL1 : tlb_entries[i] <= '0;
+            `TLB_INV_ALL0 : tlb_entries[i].exist <= '0;
+            `TLB_INV_ALL1 : tlb_entries[i].exist <= '0;
             `TLB_INV_GLO1 : begin
               if (tlb_entries[i].glo) begin
-                tlb_entries[i] <= '0;
+                tlb_entries[i].exist <= '0;
               end
             end
             `TLB_INV_GLO0 : begin
               if (~tlb_entries[i].glo) begin
-                tlb_entries[i] <= '0;
+                tlb_entries[i].exist <= '0;
               end
             end
             `TLB_INV_GLO0_ASID : begin
-              if (~tlb_entries[i].glo & (tlb_entries[i].asid == tlb_inv_req.asid)) begin
-                tlb_entries[i] <= '0;
+              if (~tlb_entries[i].glo && (tlb_entries[i].asid == tlb_inv_req.asid)) begin
+                tlb_entries[i].exist <= '0;
               end
             end
             `TLB_INV_GLO0_ASID_VA : begin
-              if (~tlb_entries[i].glo & (tlb_entries[i].asid == tlb_inv_req.asid) & 
-                  (tlb_entries[i].vppn == tlb_inv_req.vppn)) begin
-                tlb_entries[i] <= '0;
+              if (~tlb_entries[i].glo && (tlb_entries[i].asid == tlb_inv_req.asid) &&
+                   (
+                     tlb_entries[i].page_size == 6'd12 ? 
+                     tlb_entries[i].vppn == tlb_inv_req.vppn : 
+                     tlb_entries[i].vppn[`PROC_VALEN - 1:22] == tlb_inv_req.vppn[`PROC_VALEN - 1:22]
+                   )
+                 ) begin
+                tlb_entries[i].exist <= '0;
               end
             end
             `TLB_INV_GLO1_ASID_VA : begin
-              if (tlb_entries[i].glo & (tlb_entries[i].asid == tlb_inv_req.asid) & 
-                  (tlb_entries[i].vppn == tlb_inv_req.vppn)) begin
-                tlb_entries[i] <= '0;
+              if ((tlb_entries[i].glo || (tlb_entries[i].asid == tlb_inv_req.asid)) &&
+                   (
+                     tlb_entries[i].page_size == 6'd12 ? 
+                     tlb_entries[i].vppn == tlb_inv_req.vppn : 
+                     tlb_entries[i].vppn[`PROC_VALEN - 1:22] == tlb_inv_req.vppn[`PROC_VALEN - 1:22]
+                   )
+                 ) begin
+                tlb_entries[i].exist <= '0;
               end
             end
             default : /* default */;
