@@ -115,12 +115,11 @@ parameter
       end
     end
 
-
+    rat_n = rat_q;
     if (restore_i) begin
       rat_n.valid = arch_valid_i;
       rat_n.ready = '1;  // 此时ROB会被清空，显然所有的指令都已经写回
     end else begin
-      rat_n = rat_q;
       for (int i = 0; i < `DECODE_WIDTH; i++) begin
         if (dest_valid_i[i]) begin
           rat_n.arch_reg[preg_i[i]] = dest_i[i];
