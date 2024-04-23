@@ -149,6 +149,7 @@ module Pipeline (
   logic [1:0] iblk_alu_ready_o;
   MduExeSt iblk_mdu_exe_i;
   logic iblk_mdu_ready_o;
+
   logic iblk_tlbsrch_valid_o;
   logic iblk_tlbsrch_found_i;
   logic [$clog2(`TLB_ENTRY_NUM) - 1:0] iblk_tlbsrch_idx_i;
@@ -160,7 +161,9 @@ module Pipeline (
   logic [ 9:0] iblk_tlbasid_i;
   logic [63:0] iblk_timer_64_i;
   logic [31:0] iblk_timer_id_i;
+  logic        iblk_csr_rstat_i;
   logic [31:0] iblk_csr_rdata_i;
+
   MiscWbSt iblk_misc_wb_o;
   logic iblk_misc_wb_ready_i;
   AluWbSt [1:0] iblk_alu_wb_o;
@@ -703,7 +706,14 @@ module Pipeline (
     iblk_mdu_exe_i.base = is2exe(sche_mdu_issue_o.base_info, sche_mdu_issue_o.valid, rf_rdata_o[7], rf_rdata_o[6]);
     iblk_mdu_exe_i.mdu_oc = sche_mdu_issue_o.mdu_oc;
 
+    iblk_csr_rstat_i = sche_misc_issue_o.misc_oc.instr_type == `PRIV_INSTR &
+                       (
+                          sche_misc_issue_o.misc_oc.priv_op == `PRIV_CSR_READ |
+                          sche_misc_issue_o.misc_oc.priv_op == `PRIV_CSR_WRITE |
+                          sche_misc_issue_o.misc_oc.priv_op == `PRIV_CSR_XCHG
+                        ) & sche_misc_issue_o.base_info.src[23:10] == 14'h5; // ESTAT = 14'h5;
     iblk_csr_rdata_i = csr_rd_data;
+
     iblk_tlbsrch_found_i = mmu_tlbsrch_found_o;
     iblk_tlbsrch_idx_i = mmu_tlbsrch_idx_o;
     

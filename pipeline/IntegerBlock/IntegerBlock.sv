@@ -54,6 +54,8 @@ module IntegerBlock (
   input logic [ 9:0] tlbasid_i,
   input logic [63:0] timer_64_i,
   input logic [31:0] timer_id_i,
+
+  input logic crs_rstat_i,  // diff
   input logic [31:0] csr_rdata_i,
   /* write back */
   // MISC
@@ -72,25 +74,26 @@ module IntegerBlock (
 /*=================================== MSIC ====================================*/
   MiscPipe inst_MiscPipe
   (
-    .clk         (clk),
-    .rst_n       (rst_n),
-    .flush_i     (flush_i),
-    .exe_i       (misc_exe_i),
-    .ready_o     (misc_ready_o),
-    .tlbsrch_valid_o(tlbsrch_valid_o),
-    .tlbsrch_found_i(tlbsrch_found_i),
-    .tlbsrch_idx_i  (tlbsrch_idx_i),
-    .tlbrd_valid_o  (tlbrd_valid_o),
-    .tlbehi_i       (tlbehi_i),
-    .tlbidx_i       (tlbidx_i),
-    .tlbelo0_i      (tlbelo0_i),
-    .tlbelo1_i      (tlbelo1_i),
-    .tlbasid_i      (tlbasid_i),
-    .timer_64_i     (timer_64_i),
-    .timer_id_i     (timer_id_i),
-    .csr_rdata_i (csr_rdata_i),
-    .wb_o       (misc_wb_o),
-    .wb_ready_i (misc_wb_ready_i)
+    .clk             (clk),
+    .rst_n           (rst_n),
+    .flush_i         (flush_i),
+    .exe_i           (misc_exe_i),
+    .ready_o         (misc_ready_o),
+    .tlbsrch_valid_o (tlbsrch_valid_o),
+    .tlbsrch_found_i (tlbsrch_found_i),
+    .tlbsrch_idx_i   (tlbsrch_idx_i),
+    .tlbrd_valid_o   (tlbrd_valid_o),
+    .tlbehi_i        (tlbehi_i),
+    .tlbidx_i        (tlbidx_i),
+    .tlbelo0_i       (tlbelo0_i),
+    .tlbelo1_i       (tlbelo1_i),
+    .tlbasid_i       (tlbasid_i),
+    .timer_64_i      (timer_64_i),
+    .timer_id_i      (timer_id_i),
+    .crs_rstat_i     (crs_rstat_i),
+    .csr_rdata_i     (csr_rdata_i),
+    .wb_o            (misc_wb_o),
+    .wb_ready_i      (misc_wb_ready_i)
   );
 /*==================================== ALU ====================================*/
 
