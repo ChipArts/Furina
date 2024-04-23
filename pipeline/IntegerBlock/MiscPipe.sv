@@ -36,20 +36,22 @@ module MiscPipe (
   /* other exe io */
   // tlb search
   output logic tlbsrch_valid_o,
-  input logic tlbsrch_found_i,
-  input logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbsrch_idx_i,
+  input logic tlbsrch_found_i,                               // s1
+  input logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbsrch_idx_i,  // s1
   // tlb read
   output logic tlbrd_valid_o,
-  input logic [31:0] tlbehi_i ,
-  input logic [31:0] tlbelo0_i,
-  input logic [31:0] tlbelo1_i,
-  input logic [31:0] tlbidx_i ,
-  input logic [ 9:0] tlbasid_i,
+  input logic [31:0] tlbehi_i ,  // s1
+  input logic [31:0] tlbelo0_i,  // s1
+  input logic [31:0] tlbelo1_i,  // s1
+  input logic [31:0] tlbidx_i ,  // s1
+  input logic [ 9:0] tlbasid_i,  // s1
+  // tlb inv
+  input logic [ 5:0] invtlb_op_i, // s0
   // csr read
-  input logic crs_rstat_i,  // diff
-  input logic [31:0] csr_rdata_i,
-  input logic [63:0] timer_64_i,
-  input logic [31:0] timer_id_i,
+  input logic        csr_rstat_i, // diff s0
+  input logic [31:0] csr_rdata_i, // s0
+  input logic [63:0] timer_64_i,  // s0
+  input logic [31:0] timer_id_i,  // s0
   /* commit */
   output MiscWbSt wb_o,
   input wb_ready_i
@@ -68,6 +70,7 @@ module MiscPipe (
 
 /*================================== stage1 ===================================*/
   MiscExeSt s1_exe;
+  logic [ 5:0] s1_invtlb_op;  
   logic        s1_csr_rstat;
   logic [31:0] s1_csr_rdata;
   logic [63:0] s1_timer_64;
@@ -82,6 +85,7 @@ module MiscPipe (
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n || flush_i) begin
       s1_exe <= '0;
+      s1_invtlb_op <= '0;
       s1_csr_rstat <= '0;
       s1_csr_rdata <= '0;
       s1_timer_64 <= '0;
@@ -89,7 +93,8 @@ module MiscPipe (
     end else begin
       if (s1_ready) begin
         s1_exe <= exe_i;
-        s1_csr_rstat <= crs_rstat_i;
+        s1_invtlb_op <= invtlb_op_i;
+        s1_csr_rstat <= csr_rstat_i;
         s1_csr_rdata <= csr_rdata_i;
         s1_timer_64 <= timer_64_i;
         s1_timer_id <= timer_id_i;
@@ -194,7 +199,7 @@ module MiscPipe (
 
         wb_o.invtlb_en <= instr_type == `PRIV_INSTR & priv_op == `PRIV_TLBINV;
         wb_o.invtlb_asid <= invtlb_asid;
-        wb_o.invtlb_op <= s1_exe.base.imm[4:0];
+        wb_o.invtlb_op <= s1_invtlb_op;
         wb_o.vaddr <= vaddr;
 
         wb_o.tlbsrch_en <= instr_type == `PRIV_INSTR & priv_op == `PRIV_TLBSRCH;

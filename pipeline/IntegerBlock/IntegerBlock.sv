@@ -43,22 +43,24 @@ module IntegerBlock (
   input MduExeSt mdu_exe_i,
   output logic mdu_ready_o,
   /* other exe io */
+  // tlb srch
   output logic tlbsrch_valid_o,
-  input logic tlbsrch_found_i,
-  input logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbsrch_idx_i,
-
+  input logic tlbsrch_found_i,                               // s1
+  input logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbsrch_idx_i,  // s1
+  // tlb read
   output logic tlbrd_valid_o,
-  input logic [31:0] tlbehi_i ,
-  input logic [31:0] tlbelo0_i,
-  input logic [31:0] tlbelo1_i,
-  input logic [31:0] tlbidx_i ,
-  input logic [ 9:0] tlbasid_i,
-  
-  input logic [63:0] timer_64_i,
-  input logic [31:0] timer_id_i,
-
-  input logic crs_rstat_i,  // diff
-  input logic [31:0] csr_rdata_i,
+  input logic [31:0] tlbehi_i ,  // s1
+  input logic [31:0] tlbelo0_i,  // s1
+  input logic [31:0] tlbelo1_i,  // s1
+  input logic [31:0] tlbidx_i ,  // s1
+  input logic [ 9:0] tlbasid_i,  // s1
+  // tlb inv
+  input logic [ 5:0] invtlb_op_i, // s0
+  // from csr
+  input logic        csr_rstat_i,  // s0 diff
+  input logic [31:0] csr_rdata_i,  // s0
+  input logic [63:0] timer_64_i,   // s0
+  input logic [31:0] timer_id_i,   // s0
   /* write back */
   // MISC
   output MiscWbSt misc_wb_o,
@@ -81,19 +83,25 @@ module IntegerBlock (
     .flush_i         (flush_i),
     .exe_i           (misc_exe_i),
     .ready_o         (misc_ready_o),
+    // tlb search
     .tlbsrch_valid_o (tlbsrch_valid_o),
     .tlbsrch_found_i (tlbsrch_found_i),
     .tlbsrch_idx_i   (tlbsrch_idx_i),
+    // tlb read
     .tlbrd_valid_o   (tlbrd_valid_o),
     .tlbehi_i        (tlbehi_i),
     .tlbidx_i        (tlbidx_i),
     .tlbelo0_i       (tlbelo0_i),
     .tlbelo1_i       (tlbelo1_i),
     .tlbasid_i       (tlbasid_i),
+    // tlb inv
+    .invtlb_op_i     (invtlb_op_i),
+    // csr read
     .timer_64_i      (timer_64_i),
     .timer_id_i      (timer_id_i),
-    .crs_rstat_i     (crs_rstat_i),
+    .csr_rstat_i     (csr_rstat_i),
     .csr_rdata_i     (csr_rdata_i),
+    // write back
     .wb_o            (misc_wb_o),
     .wb_ready_i      (misc_wb_ready_i)
   );

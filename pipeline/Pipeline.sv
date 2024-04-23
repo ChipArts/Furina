@@ -149,21 +149,25 @@ module Pipeline (
   logic [1:0] iblk_alu_ready_o;
   MduExeSt iblk_mdu_exe_i;
   logic iblk_mdu_ready_o;
-
+  // tlb srch
   logic iblk_tlbsrch_valid_o;
   logic iblk_tlbsrch_found_i;
   logic [$clog2(`TLB_ENTRY_NUM) - 1:0] iblk_tlbsrch_idx_i;
+  // tlb read
   logic iblk_tlbrd_valid_o;
   logic [31:0] iblk_tlbehi_i;
   logic [31:0] iblk_tlbelo0_i;
   logic [31:0] iblk_tlbelo1_i;
   logic [31:0] iblk_tlbidx_i;
   logic [ 9:0] iblk_tlbasid_i;
+  // tlb inv
+  logic [ 5:0] iblk_invtlb_op_i;
+  // csr read
   logic [63:0] iblk_timer_64_i;
   logic [31:0] iblk_timer_id_i;
   logic        iblk_csr_rstat_i;
   logic [31:0] iblk_csr_rdata_i;
-
+  // write back
   MiscWbSt iblk_misc_wb_o;
   logic iblk_misc_wb_ready_i;
   AluWbSt [1:0] iblk_alu_wb_o;
@@ -706,13 +710,7 @@ module Pipeline (
     iblk_mdu_exe_i.base = is2exe(sche_mdu_issue_o.base_info, sche_mdu_issue_o.valid, rf_rdata_o[7], rf_rdata_o[6]);
     iblk_mdu_exe_i.mdu_oc = sche_mdu_issue_o.mdu_oc;
 
-    iblk_csr_rstat_i = sche_misc_issue_o.misc_oc.instr_type == `PRIV_INSTR &
-                       (
-                          sche_misc_issue_o.misc_oc.priv_op == `PRIV_CSR_READ |
-                          sche_misc_issue_o.misc_oc.priv_op == `PRIV_CSR_WRITE |
-                          sche_misc_issue_o.misc_oc.priv_op == `PRIV_CSR_XCHG
-                        ) & sche_misc_issue_o.base_info.src[23:10] == 14'h5; // ESTAT = 14'h5;
-    iblk_csr_rdata_i = csr_rd_data;
+    
 
     iblk_tlbsrch_found_i = mmu_tlbsrch_found_o;
     iblk_tlbsrch_idx_i = mmu_tlbsrch_idx_o;
@@ -723,9 +721,18 @@ module Pipeline (
     iblk_tlbidx_i = mmu_tlbidx_o;
     iblk_tlbasid_i = mmu_tlbasid_o;
 
+    iblk_invtlb_op_i = sche_misc_issue_o.base_info.src[4:0];
+
+
+    iblk_csr_rstat_i = sche_misc_issue_o.misc_oc.instr_type == `PRIV_INSTR &
+                       (
+                          sche_misc_issue_o.misc_oc.priv_op == `PRIV_CSR_READ |
+                          sche_misc_issue_o.misc_oc.priv_op == `PRIV_CSR_WRITE |
+                          sche_misc_issue_o.misc_oc.priv_op == `PRIV_CSR_XCHG
+                        ) & sche_misc_issue_o.base_info.src[23:10] == 14'h5; // ESTAT = 14'h5;
+    iblk_csr_rdata_i = csr_rd_data;
     iblk_timer_64_i = csr_timer_64_out;
     iblk_timer_id_i = csr_tid_out;
-    iblk_csr_rdata_i = csr_rd_data;
 
 
     // 特权指令在成为最旧指令时才执行
@@ -760,10 +767,13 @@ module Pipeline (
     .tlbelo1_i       (iblk_tlbelo1_i),
     .tlbidx_i        (iblk_tlbidx_i),
     .tlbasid_i       (iblk_tlbasid_i),
+    // inv tlb
+    .invtlb_op_i     (iblk_invtlb_op_i),
     // csr data
     .timer_64_i      (iblk_timer_64_i),
     .timer_id_i      (iblk_timer_id_i),
     .csr_rdata_i     (iblk_csr_rdata_i),
+    .csr_rstat_i     (iblk_csr_rstat_i),
     /* write back */
     .misc_wb_o       (iblk_misc_wb_o),
     .misc_wb_ready_i (iblk_misc_wb_ready_i),
