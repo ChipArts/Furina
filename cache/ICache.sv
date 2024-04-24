@@ -193,10 +193,10 @@ module ICache (
     // cacop异常检查
     icacop_rsp.excp.valid = s1_cacop_mode == 2'b10 &  // 只有在示采用查询索引方式维护Cache一致性时产生mmu异常
                             (addr_trans_rsp.tlbr |
-                             addr_trans_rsp.pif  |
+                             addr_trans_rsp.pil  |
                              addr_trans_rsp.ppi);
     icacop_rsp.excp.ecode =  addr_trans_rsp.tlbr ? `ECODE_TLBR : 
-                             addr_trans_rsp.pif  ? `ECODE_PIF  :
+                             addr_trans_rsp.pil  ? `ECODE_PIL  :
                              addr_trans_rsp.ppi  ? `ECODE_PPI  : '0;
     icacop_rsp.excp.sub_ecode = `ESUBCODE_ADEF;
 
