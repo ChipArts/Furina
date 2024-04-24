@@ -568,7 +568,7 @@ module DCache (
       if (cache_state == REFILL) begin
         if (axi4_mst.r_valid && axi4_mst.r_ready) begin
           axi_rdata_buffer[axi_rdata_idx] <= axi4_mst.r_data;
-          axi_rdata_idx <= axi_rdata_idx + 1;
+          axi_rdata_idx <= axi_rdata_idx + 1 == `DCACHE_BLOCK_SIZE / 4 ? axi_rdata_idx : axi_rdata_idx + 1;
         end 
       end else begin
         axi_rdata_idx <= '0;
@@ -626,8 +626,8 @@ module DCache (
     axi4_mst.ar_qos = '0;
     axi4_mst.ar_region = '0;
     axi4_mst.ar_user = '0;
-    axi4_mst.ar_valid = cache_state == MISS   ? ~write_req : 
-                        cache_state == REFILL ? read_req   : '0;
+    axi4_mst.ar_valid = cache_state == MISS    ? ~write_req :
+                        cache_state == REPLACE ? read_req   : '0;
     // input: axi4_mst.ar_ready
 
     // input: axi4_mst.r_id
