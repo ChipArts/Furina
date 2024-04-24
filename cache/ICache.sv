@@ -359,7 +359,8 @@ module ICache (
       tag_ram_wdata = `ICACHE_TAG_OF(paddr);
     end
     if (s1_ready) begin
-      tag_ram_raddr = `ICACHE_IDX_OF(icache_req.vaddr);
+      // 优先使用cacop_req.vaddr
+      tag_ram_raddr = icacop_req.valid ? `ICACHE_IDX_OF(icacop_req.vaddr) : `ICACHE_IDX_OF(icache_req.vaddr);
     end else begin
       tag_ram_raddr = `ICACHE_IDX_OF(s1_vaddr);
     end
@@ -386,7 +387,8 @@ module ICache (
     valid_ram_waddr = `ICACHE_IDX_OF(s1_vaddr);
     valid_ram_wdata = s1_cacop_en ? '0 : '1;
     if (s1_ready) begin
-      valid_ram_raddr = `ICACHE_IDX_OF(icache_req.vaddr);
+      // 优先使用cacop_req.vaddr
+      valid_ram_raddr = icacop_req.valid ? `ICACHE_IDX_OF(icacop_req.vaddr) : `ICACHE_IDX_OF(icache_req.vaddr);
     end else begin
       valid_ram_raddr = `ICACHE_IDX_OF(s1_vaddr);
     end
