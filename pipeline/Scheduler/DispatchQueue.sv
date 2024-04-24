@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : DispatchQueue.sv
 // Create  : 2024-04-18 18:26:24
-// Revise  : 2024-04-23 21:25:43
+// Revise  : 2024-04-24 20:37:21
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -55,6 +55,13 @@ parameter
 	logic [`DISPATCH_WIDTH - 1:0][$clog2(QUEUE_DEPTH) - 1:0] rd_ptr;
 
 	always_comb begin
+		// default assign
+		queue_n = queue_q;
+		head_n = head_q;
+		tail_n = tail_q;
+		cnt_n = cnt_q;
+
+
 		for (int i = 0; i < `DISPATCH_WIDTH; i++) begin
 			read_valid_o[i] = cnt_q > i;
 		end
