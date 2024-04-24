@@ -129,16 +129,18 @@ module DCache (
   logic [`DCACHE_BLOCK_SIZE / 4 - 1:0][31:0] cache_line;
   logic [31:0] matched_word;
   // cache state 控制相关信号
-  logic wait2miss;    // store、load产生miss
-  logic wait2refill;  // caaop操作
+  logic repl_complete;  // cache 的写回完成(ff)
 
-  logic miss2repl;    // store aw_ready
-  logic miss2refill;  // load ar_ready
+  logic wait2miss;      // store、load产生miss
+  logic wait2refill;    // caaop操作
 
-  logic repl2refill;  // cache   store 完成写回
-  logic repl2idle  ;  // uncache store 完成写回
+  logic miss2repl;      // store aw_ready
+  logic miss2refill;    // load ar_ready
 
-  logic refill2idle;  // cache 重填（load、store、cacop）
+  logic repl2refill;    // cache   store 完成写回
+  logic repl2idle  ;    // uncache store 完成写回
+
+  logic refill2idle;    // cache 重填（load、store、cacop）
 
 
   logic uncache_store;
@@ -535,8 +537,8 @@ module DCache (
     miss2refill = axi4_mst.ar_ready;
 
     repl2refill = ~s2_uncache & 
-                  axi4_mst.w_last & axi4_mst.w_valid & axi4_mst.w_ready & 
-                  axi4_mst.ar_ready;  // TODO 这里可能有bug 可能需要将ar_ready用寄存器保存？？？
+                  repl_complete &     // TODO 有优化的空间 可以提前一拍
+                  axi4_mst.ar_ready;  // TODO 这里可能有bug 可能需要将ar_ready用寄存器保存？？？ 就目前来看wr完成前不会产生aw_ready
     repl2idle   = s2_uncache & 
                   axi4_mst.w_last & axi4_mst.w_valid & axi4_mst.w_ready;
 
@@ -548,6 +550,7 @@ module DCache (
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
       cache_state <= IDEL;
+      repl_complete <= '0;
       axi_rdata_idx <= '0;
       axi_rdata_buffer <= '0;
     end else begin
@@ -577,9 +580,14 @@ module DCache (
       if (cache_state == REPLACE) begin
         if (axi4_mst.w_ready && axi4_mst.w_valid) begin
           axi_wdata_idx <= (axi_wdata_idx + 1 == `DCACHE_BLOCK_SIZE / 4) ? axi_wdata_idx : axi_wdata_idx + 1;
-        end 
+        end
+
+        if (axi4_mst.w_ready && axi4_mst.w_valid && axi4_mst.w_last) begin
+          repl_complete <= '1;
+        end
       end else begin
         axi_wdata_idx <= '0;
+        repl_complete <= '0;
       end
     end
   end
