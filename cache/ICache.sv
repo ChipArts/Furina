@@ -170,13 +170,17 @@ module ICache (
   wire [`ICACHE_TAG_WIDTH - 1:0] tag_dbug = `ICACHE_TAG_OF(paddr);
 `endif
 
-  assign s1_ready = (!(|s1_fetch_en || s1_cacop_en) ? '1 :                        // 无操作
-                     |s1_fetch_en ? (!miss || uncache_hit) && icache_req.ready :  // fetch (uncache)hit ready
-                      s1_cacop_en & icacop_req.ready)                             // cacop ready
-                    & cache_state == IDEL;                                        // 必要条件 确保flash后axi完成读操作（不进行refill）
+  assign s1_ready = cache_state == IDEL &                                        // 必要条件 确保flash后axi完成读操作（不进行refill）
+                    (
+                      !s1_fetch_en && !s1_cacop_en           ? '1 :                               // 无操作
+                       s1_fetch_en && addr_trans_rsp.uncache ? uncache_hit & icache_req.ready :   // fetch uncache ready
+                       s1_fetch_en                           ? ~miss & icache_req.ready :         // fetch miss ready
+                       s1_cacop_en & icacop_req.ready                                             // cacop ready
+                    );
                       
 
   always_comb begin
+
     paddr = addr_trans_rsp.paddr;
 
     // fetch异常检查
