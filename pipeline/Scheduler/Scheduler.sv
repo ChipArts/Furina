@@ -584,25 +584,35 @@ module Scheduler (
       mdu_issue_o <= '0;
       mem_issue_o <= '0;
     end else begin
-      misc_issue_o.valid <= misc_issue_valid;
-      misc_issue_o.base_info <= misc_issue_base;
-      misc_issue_o.misc_oc <= misc_issue_oc;
+      if (misc_ready_i) begin
+        misc_issue_o.valid <= misc_issue_valid;
+        misc_issue_o.base_info <= misc_issue_base;
+        misc_issue_o.misc_oc <= misc_issue_oc;
+      end
 
-      alu_issue_o[0].valid <= alu_issue_valid[0];
-      alu_issue_o[0].base_info <= alu_issue_base[0];
-      alu_issue_o[0].alu_oc <= alu_issue_oc[0];
+      if (alu_ready_i[0]) begin
+        alu_issue_o[0].valid <= alu_issue_valid[0];
+        alu_issue_o[0].base_info <= alu_issue_base[0];
+        alu_issue_o[0].alu_oc <= alu_issue_oc[0];
+      end
+      
+      if (alu_ready_i[1]) begin
+        alu_issue_o[1].valid <= alu_issue_valid[1];
+        alu_issue_o[1].base_info <= alu_issue_base[1];
+        alu_issue_o[1].alu_oc <= alu_issue_oc[1];
+      end
 
-      alu_issue_o[1].valid <= alu_issue_valid[1];
-      alu_issue_o[1].base_info <= alu_issue_base[1];
-      alu_issue_o[1].alu_oc <= alu_issue_oc[1];
+      if (mdu_ready_i) begin
+        mdu_issue_o.valid <= mdu_issue_valid;
+        mdu_issue_o.base_info <= mdu_issue_base;
+        mdu_issue_o.mdu_oc <= mdu_issue_oc;
+      end
 
-      mdu_issue_o.valid <= mdu_issue_valid;
-      mdu_issue_o.base_info <= mdu_issue_base;
-      mdu_issue_o.mdu_oc <= mdu_issue_oc;
-
-      mem_issue_o.valid <= mem_issue_valid;
-      mem_issue_o.base_info <= mem_issue_base;
-      mem_issue_o.mem_oc <= mem_issue_oc;
+      if (mem_ready_i) begin
+        mem_issue_o.valid <= mem_issue_valid;
+        mem_issue_o.base_info <= mem_issue_base;
+        mem_issue_o.mem_oc <= mem_issue_oc;
+      end
     end
   end
 
