@@ -39,4 +39,4 @@ rk --> src1
 
 ## N 开发log
 
-2024.4.24 通过func_lab19
+2024.4.24 通过func_lab19 通过func_advance

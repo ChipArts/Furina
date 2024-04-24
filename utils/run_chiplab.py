@@ -41,7 +41,7 @@ my_program memset dhrystone coremark linux rtthread
 c_prg/memcmp c_prg/inner_product c_prg/lookup_table
 c_prg/loop_induction c_prg/minmax_sequence c_prg/product_sequence
 """
-prog = "func/func_lab19"
+prog = "func/func_advance"
 
 # 进入CHIPLAB_HOME/sims/verilator/run_prog目录
 os.chdir("%s/sims/verilator/run_prog" % chiplab_home)
