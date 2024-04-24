@@ -308,15 +308,15 @@ module DCache (
     // s1指令有效
     // s2可以处理请求（s2不暂停）
     // 没有例外
-    // store、load、preld指令miss（cache缺失的处理流程）
-    // uncache操作，uncache一定miss（cache缺失处理，但是跳过refill）
+    // store、load、preld指令miss（cache缺失的处理流程）TODO 可以优化preld 在uncache时不会启动fsm
+    // uncache操作，uncache不一定miss（cache缺失处理，但是跳过refill）
     // cacop(code==0) (复用cache refill)
     // cacop(code==1) (复用cache writeback refill)
     // cacop(code==2) (当且仅当hit时 复用cache writeback refill)
     idle2wait = s1_valid & ~excp.valid & s2_ready &
                 (
-                  s1_mem_op == `MEM_LOAD  ? miss :
-                  s1_mem_op == `MEM_STORE ? s1_store_valid & miss :
+                  s1_mem_op == `MEM_LOAD  ? miss | addr_trans_rsp.uncache:
+                  s1_mem_op == `MEM_STORE ? s1_store_valid & (miss | addr_trans_rsp.uncache):
                   s1_mem_op == `MEM_CACOP & ~(s1_code[4:3] == 2'b10 & miss)
                 );
   end

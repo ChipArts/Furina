@@ -243,7 +243,7 @@ module ICache (
     end else begin
       case (cache_state)
         // cache操作不会引起重填
-        IDEL : if (miss && !uncache_hit && |s1_fetch_en && !s1_cacop_en) cache_state <= MISS;
+        IDEL : if ((miss || addr_trans_rsp.uncache) && !uncache_hit && |s1_fetch_en && !s1_cacop_en) cache_state <= MISS;
         MISS : if (axi4_mst.ar_ready) cache_state <= REFILL;
         REFILL : if (axi4_mst.r_last && axi4_mst.r_valid) cache_state <= IDEL;
         default : /* default */;
