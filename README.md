@@ -34,3 +34,9 @@ s0：一般为FU的请求接收级，不可见所在级pipe_reg 仅判断FU内�
 rd --> dist
 rj --> src0
 rk --> src1
+
+
+
+## N 开发log
+
+2024.4.24 通过func_lab19
