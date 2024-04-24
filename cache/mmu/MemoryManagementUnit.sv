@@ -147,11 +147,11 @@ module MemoryManagementUnit (
                                    glo       : tlbelo1_i[`TLB_G] & tlbelo0_i[`TLB_G],
                                    page_size : tlbidx_i[`PS],
                                    vppn      : tlbehi_i[`VPPN],
-                                   valid     : {tlbelo1_i[`TLB_V]     , tlbelo0_i[`TLB_V]},
-                                   dirty     : {tlbelo1_i[`TLB_D]     , tlbelo0_i[`TLB_D]},
-                                   mat       : {tlbelo1_i[`TLB_MAT]   , tlbelo0_i[`TLB_MAT]},
-                                   plv       : {tlbelo1_i[`TLB_PLV]   , tlbelo0_i[`TLB_PLV]},
-                                   ppn       : {tlbelo1_i[`TLB_PPN_EN], tlbelo0_i[`TLB_PPN_EN]}};
+                                   valid     : {tlbelo1_i[`TLB_V]  , tlbelo0_i[`TLB_V]},
+                                   dirty     : {tlbelo1_i[`TLB_D]  , tlbelo0_i[`TLB_D]},
+                                   mat       : {tlbelo1_i[`TLB_MAT], tlbelo0_i[`TLB_MAT]},
+                                   plv       : {tlbelo1_i[`TLB_PLV], tlbelo0_i[`TLB_PLV]},
+                                   ppn       : {tlbelo1_i[`TLB_PPN], tlbelo0_i[`TLB_PPN]}};
     // read req
     tlb_read_req.valid = tlbrd_en_i;
     tlb_read_req.idx = tlbidx_i[`INDEX];

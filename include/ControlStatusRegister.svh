@@ -54,8 +54,8 @@
 `define TLB_PLV    3:2
 `define TLB_MAT    5:4
 `define TLB_G      6
-`define TLB_PPN    31:8
-`define TLB_PPN_EN 27:8   //todo
+`define TLB_PPN    27:8  // PALEN == 32
+// `define TLB_PPN_EN 27:8
 //ASID
 `define TLB_ASID  9:0
 //CPUID
