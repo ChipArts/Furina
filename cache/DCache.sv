@@ -536,7 +536,7 @@ module DCache (
 
     repl2refill = ~s2_uncache & 
                   axi4_mst.w_last & axi4_mst.w_valid & axi4_mst.w_ready & 
-                  axi4_mst.ar_ready;
+                  axi4_mst.ar_ready;  // TODO 这里可能有bug 可能需要将ar_ready用寄存器保存？？？
     repl2idle   = s2_uncache & 
                   axi4_mst.w_last & axi4_mst.w_valid & axi4_mst.w_ready;
 
@@ -568,7 +568,7 @@ module DCache (
       if (cache_state == REFILL) begin
         if (axi4_mst.r_valid && axi4_mst.r_ready) begin
           axi_rdata_buffer[axi_rdata_idx] <= axi4_mst.r_data;
-          axi_rdata_idx <= axi_rdata_idx + 1 == `DCACHE_BLOCK_SIZE / 4 ? axi_rdata_idx : axi_rdata_idx + 1;
+          axi_rdata_idx <= (axi_rdata_idx + 1 == `DCACHE_BLOCK_SIZE / 4) ? axi_rdata_idx : axi_rdata_idx + 1;
         end 
       end else begin
         axi_rdata_idx <= '0;
@@ -576,7 +576,7 @@ module DCache (
       // axi写
       if (cache_state == REPLACE) begin
         if (axi4_mst.w_ready && axi4_mst.w_valid) begin
-          axi_wdata_idx <= axi_wdata_idx + 1;
+          axi_wdata_idx <= (axi_wdata_idx + 1 == `DCACHE_BLOCK_SIZE / 4) ? axi_wdata_idx : axi_wdata_idx + 1;
         end 
       end else begin
         axi_wdata_idx <= '0;
