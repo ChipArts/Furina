@@ -526,7 +526,7 @@ module DCache (
     // miss2repl;    <=> aw_ready
     // miss2refill;  <=> ar_ready
     // repl2refill;  <=> cache 完成写回 且 ar_ready
-    // repl2idle  ;  <=> uncache store 完成写回
+    // repl2idle  ;  <=> uncache、cacop store 完成写回
     // refill2idle;  <=> cache 重填（load、store、cacop）
     wait2miss   = s2_mem_op == `MEM_STORE ? dcache_req.ready : 
                   s2_mem_op == `MEM_CACOP ? dcache_req.ready & s2_repl_meta.valid & s2_repl_meta.dirty & ~cacop_mode0 :
@@ -538,8 +538,8 @@ module DCache (
 
     repl2refill = ~s2_uncache & 
                   repl_complete &     // TODO 有优化的空间 可以提前一拍
-                  axi4_mst.ar_ready;  // TODO 这里可能有bug 可能需要将ar_ready用寄存器保存？？？ 就目前来看wr完成前不会产生aw_ready
-    repl2idle   = s2_uncache & 
+                  (~read_req | axi4_mst.ar_ready);  // TODO 这里可能有bug 可能需要将ar_ready用寄存器保存？？？ 就目前来看wr完成前不会产生aw_ready
+    repl2idle   = s2_uncache &
                   axi4_mst.w_last & axi4_mst.w_valid & axi4_mst.w_ready;
 
     refill2idle = s2_mem_op == `MEM_CACOP |
