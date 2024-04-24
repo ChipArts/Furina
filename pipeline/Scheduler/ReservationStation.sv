@@ -84,6 +84,25 @@ parameter
     issue_base_o = '0;
     issue_oc_o = '0;
 
+    // wake up logic
+    // 先进行唤醒，以防写入的内容被覆盖
+    for (int i = 0; i < BANK_NUM; i++) begin
+      for (int j = 0; j < BANK_SIZE; j++) begin
+        for (int k = 0; k < `WB_WIDTH; k++) begin
+          if (wb_i[k]) begin
+            if (rs_mem[i][j].base.valid &&
+                rs_mem[i][j].base.psrc0 == wb_pdest_i[k]) begin
+              rs_mem_n[i][j].base.psrc0_ready = '1;
+            end
+            if (rs_mem[i][j].base.valid &&
+                rs_mem[i][j].base.psrc1 == wb_pdest_i[k]) begin
+              rs_mem_n[i][j].base.psrc1_ready = '1;
+            end
+          end
+        end
+      end
+    end
+
     for (int i = 0; i < BANK_NUM; i++) begin
       for (int j = 0; j < BANK_SIZE; j++) begin
         free[i][j] = ~rs_mem[i][j].base.valid | rs_mem[i][j].base.issued;
@@ -108,24 +127,6 @@ parameter
       if (wr_ready_o[i] && wr_valid_i[i]) begin
         rs_mem_n[i][write_idx[i]].base = rs_base_i[i];
         rs_mem_n[i][write_idx[i]].oc = option_code_i[i];
-      end
-    end
-
-    // wake up logic
-    for (int i = 0; i < BANK_NUM; i++) begin
-      for (int j = 0; j < BANK_SIZE; j++) begin
-        for (int k = 0; k < `WB_WIDTH; k++) begin
-          if (wb_i[k]) begin
-            if (rs_mem[i][j].base.valid &&
-                rs_mem[i][j].base.psrc0 == wb_pdest_i[k]) begin
-              rs_mem_n[i][j].base.psrc0_ready = '1;
-            end
-            if (rs_mem[i][j].base.valid &&
-                rs_mem[i][j].base.psrc1 == wb_pdest_i[k]) begin
-              rs_mem_n[i][j].base.psrc1_ready = '1;
-            end
-          end
-        end
       end
     end
 

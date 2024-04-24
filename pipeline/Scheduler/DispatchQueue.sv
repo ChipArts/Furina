@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : DispatchQueue.sv
 // Create  : 2024-04-18 18:26:24
-// Revise  : 2024-04-24 20:37:21
+// Revise  : 2024-04-24 20:53:57
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -61,6 +61,21 @@ parameter
 		tail_n = tail_q;
 		cnt_n = cnt_q;
 
+		// wake up
+		// 先进行唤醒，以防写入的内容被覆盖
+		for (int i = 0; i < QUEUE_DEPTH; i++) begin
+			for (int j = 0; j < `WB_WIDTH; j++) begin
+				if (wb_i[j]) begin
+					if (queue_q[i].src0 == wb_pdest_i[j]) begin
+						queue_n[i].src0_ready = '1;
+					end
+					if (queue_q[i].src1 == wb_pdest_i[j]) begin
+						queue_n[i].src1_ready = '1;
+					end
+				end
+			end
+		end
+
 
 		for (int i = 0; i < `DISPATCH_WIDTH; i++) begin
 			read_valid_o[i] = cnt_q > i;
@@ -95,20 +110,6 @@ parameter
 		head_n = head_q + read_cnt;
 		if (write_ready_o) begin
 			tail_n = tail_q + write_cnt;
-		end
-
-		// wake up
-		for (int i = 0; i < QUEUE_DEPTH; i++) begin
-			for (int j = 0; j < `WB_WIDTH; j++) begin
-				if (wb_i[j]) begin
-					if (queue_q[i].src0 == wb_pdest_i[j]) begin
-						queue_n[i].src0_ready = '1;
-					end
-					if (queue_q[i].src1 == wb_pdest_i[j]) begin
-						queue_n[i].src1_ready = '1;
-					end
-				end
-			end
 		end
 
 	end

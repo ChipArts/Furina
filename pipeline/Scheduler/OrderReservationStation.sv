@@ -86,23 +86,8 @@ parameter
       issue_base_o = rs2is(mem_q[read_pointer_q].base);
       issue_oc_o = mem_q[read_pointer_q].oc;
 
-      // push a new element to the queue
-      if (wr_valid_i && ~full) begin
-          // push the data onto the queue
-          mem_n[write_pointer_q] = {rs_base_i, option_code_i};
-          // un-gate the clock, we want to write something
-          gate_clock = 1'b0;
-          // increment the write counter
-          // this is dead code when DEPTH is a power of two
-          if (write_pointer_q == RS_SIZE - 1)
-              write_pointer_n = '0;
-          else
-              write_pointer_n = write_pointer_q + 1;
-          // increment the overall counter
-          status_cnt_n    = status_cnt_q + 1;
-      end
-
       // wake up
+      // 先进行唤醒，以防写入的内容被覆盖
       for (int i = 0; i < RS_SIZE; i++) begin
         for (int j = 0; j < `WB_WIDTH; j++) begin
           if (wb_i[j]) begin
@@ -120,6 +105,22 @@ parameter
             end
           end
         end
+      end
+
+      // push a new element to the queue
+      if (wr_valid_i && ~full) begin
+          // push the data onto the queue
+          mem_n[write_pointer_q] = {rs_base_i, option_code_i};
+          // un-gate the clock, we want to write something
+          gate_clock = 1'b0;
+          // increment the write counter
+          // this is dead code when DEPTH is a power of two
+          if (write_pointer_q == RS_SIZE - 1)
+              write_pointer_n = '0;
+          else
+              write_pointer_n = write_pointer_q + 1;
+          // increment the overall counter
+          status_cnt_n    = status_cnt_q + 1;
       end
 
       // select logic
