@@ -792,7 +792,7 @@ module Pipeline (
     mblk_exe_i.base = is2exe(sche_mem_issue_o.base_info, sche_mem_issue_o.valid, rf_rdata_o[9], rf_rdata_o[8]);
     mblk_exe_i.mem_oc = sche_mem_issue_o.mem_oc;
     mblk_exe_i.code = sche_mem_issue_o.base_info.src[4:0];
-    mblk_exe_i.llbit = csr_llbit_in;  // 决定SC.W指令是否执行
+    mblk_exe_i.llbit = csr_llbit_out;  // 决定SC.W指令是否执行
 
     mblk_addr_trans_rsp = mmu_addr_trans_rsp[1];
 
