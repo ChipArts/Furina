@@ -166,6 +166,10 @@ module ICache (
   // 6 生成新的plru信息
   // 7 生成 inst 输出
 
+`ifdef DEBUG
+  wire [`ICACHE_TAG_WIDTH - 1:0] tag_dbug = `ICACHE_TAG_OF(paddr);
+`endif
+
   assign s1_ready = (!(|s1_fetch_en || s1_cacop_en) ? '1 :                        // 无操作
                      |s1_fetch_en ? (!miss || uncache_hit) && icache_req.ready :  // fetch (uncache)hit ready
                       s1_cacop_en & icacop_req.ready)                             // cacop ready
@@ -316,6 +320,7 @@ module ICache (
     for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
       data_ram_we[i] = cache_state == REFILL &
                        replaced_way == i &
+                       axi4_mst.r_valid &
                        axi4_mst.r_last &
                       |s1_fetch_en &            // fulsh后不refill
                       ~addr_trans_rsp.uncache;  // uncache请求不refill
