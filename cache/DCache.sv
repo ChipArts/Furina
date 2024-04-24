@@ -575,7 +575,7 @@ module DCache (
       end
       // axi写
       if (cache_state == REPLACE) begin
-        if (axi4_mst.aw_ready && axi4_mst.w_valid) begin
+        if (axi4_mst.w_ready && axi4_mst.w_valid) begin
           axi_wdata_idx <= axi_wdata_idx + 1;
         end 
       end else begin
