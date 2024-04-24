@@ -547,6 +547,7 @@ module DCache (
 
   end
 
+  /* cache fsm */
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
       cache_state <= IDEL;

@@ -195,7 +195,7 @@ module ICache (
 
     // 进行 tag 匹配
     for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
-      matched_way_oh[i] = `DCACHE_TAG_OF(paddr) == tag_ram_rdata[i] & valid_ram_rdata;
+      matched_way_oh[i] = `ICACHE_TAG_OF(paddr) == tag_ram_rdata[i] & valid_ram_rdata[i];
       matched_way = matched_way_oh[i] ? i : '0;
     end
 
