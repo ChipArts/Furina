@@ -287,7 +287,7 @@ module ReorderBuffer (
     // 仅允许一条分支指令提交（BPU更新只有一个写口）
     br_mask[1]       = rob[cmt_idx[0]].instr_type != `BR_INSTR;
     // 特权指令后面的指令不允许提交（只有csrrd可以豁免，但这个优化似乎没有太大必要）
-    priv_mask[1]     = rob[cmt_idx[0]].instr_type != `PRIV_INSTR | ~rob[cmt_idx[0]].icacop_flush;
+    priv_mask[1]     = rob[cmt_idx[0]].instr_type != `PRIV_INSTR & ~rob[cmt_idx[0]].icacop_flush;
 
     // TODO flush 的信号设计有大量优化空间
 
