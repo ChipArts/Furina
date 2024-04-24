@@ -137,7 +137,19 @@ module ReorderBuffer (
       // write back阶段的flush缓存
       rob_n[misc_wb_req.base.rob_idx].ertn_flush = misc_wb_req.ertn_en;
       rob_n[misc_wb_req.base.rob_idx].ibar_flush = '0;
-      rob_n[misc_wb_req.base.rob_idx].priv_flush = misc_psc;
+      rob_n[misc_wb_req.base.rob_idx].priv_flush = misc_wb_req.instr_type == `PRIV_INSTR & 
+                                                   misc_wb_req.priv_op inside {
+                                                    // `PRIV_CSR_READ,  // 无需flush
+                                                    `PRIV_CSR_WRITE,
+                                                    `PRIV_CSR_XCHG,
+                                                    `PRIV_TLBSRCH,
+                                                    `PRIV_TLBRD,
+                                                    `PRIV_TLBWR,
+                                                    `PRIV_TLBFILL,
+                                                    `PRIV_TLBINV
+                                                    // `PRIV_ERTN,  // 特殊处理
+                                                    // `PRIV_IDLE   // 特殊处理
+                                                   };
       rob_n[misc_wb_req.base.rob_idx].icacop_flush = '0;
       rob_n[misc_wb_req.base.rob_idx].idle_flush = misc_wb_req.idle_en;
 `ifdef DEBUG

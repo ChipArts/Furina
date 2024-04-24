@@ -112,7 +112,7 @@ module ICache (
     addr_trans_req.valid = (|icache_req.valid | icacop_req.valid) & s1_ready;
     addr_trans_req.ready = '1;
     addr_trans_req.vaddr = icacop_req.valid ? icacop_req.vaddr : icache_req.vaddr;
-    addr_trans_req.mem_type = MMU_FETCH;
+    addr_trans_req.mem_type = icacop_req.valid ? MMU_LOAD : MMU_FETCH;  // TODO 存疑
     addr_trans_req.cacop_direct = icacop_req.valid & (icacop_req.cacop_mode == 2'b00 | icacop_req.cacop_mode == 2'b01);
 
     icacop_rsp.ready = s0_ready; // CACOP优先
