@@ -80,6 +80,10 @@ module Scheduler (
   // 接收inst信息
   // 读取freelist
 
+  // TODO 优化这里的代码结构
+
+  ScheduleReqSt s0_sche_req;
+
   // freelist ==> fl
   logic fl_alloc_ready;
   logic [`DECODE_WIDTH - 1:0] fl_alloc_valid;
@@ -93,6 +97,11 @@ module Scheduler (
       fl_alloc_valid[i] =  schedule_req.valid[i] &
                           |schedule_req.arch_dest[i] &  // dest valid
                            s1_ready;
+    end
+
+    s0_sche_req = schedule_req;
+    if (!fl_alloc_ready) begin
+      s0_sche_req.valid = '0;
     end
   end
 
@@ -126,7 +135,7 @@ module Scheduler (
       s1_fl_alloc_preg <= '0;
     end else begin
       if (s1_ready) begin
-        s1_sche_req <= schedule_req;
+        s1_sche_req <= s0_sche_req;
         s1_fl_alloc_preg <= fl_alloc_preg;
       end
     end
@@ -239,7 +248,7 @@ module Scheduler (
     dq_wdata = '0;
     dq_write_valid = '0;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      if (s1_sche_req.valid[i] && !excp[i].valid) begin
+      if (s1_sche_req.valid[i] && !excp[i].valid && rob_alloc_rsp.ready) begin
         dq_write_valid[dq_write_idx[i]] = '1;
         dq_wdata[dq_write_idx[i]].valid = '1;
         dq_wdata[dq_write_idx[i]].pc = s1_sche_req.pc[i];
