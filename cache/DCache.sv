@@ -714,7 +714,7 @@ module DCache (
                                                     '{valid: 1'b1, dirty: 1'b0} ;      // cache miss load  refill
     end else begin
       // hit时的写入： 指令有效 & hit(dcache_req.ready) & store指令有效 & store指令可以执行（rob最旧指令）& 无例外
-      meta_ram_we[matched_way] = s2_valid & ~s2_miss & s2_store_valid & dcache_req.ready & ~s2_excp.valid;
+      meta_ram_we[s2_matched_way] = s2_valid & ~s2_miss & s2_store_valid & dcache_req.ready & ~s2_excp.valid;
       meta_ram_wdata = '{valid: 1'b1, dirty: 1'b1};
     end
     meta_ram_raddr = s1_ready ? `DCACHE_IDX_OF(dcache_req.vaddr) : `DCACHE_IDX_OF(s1_vaddr);
