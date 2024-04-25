@@ -438,7 +438,9 @@ module DCache (
 
     busy_o = s1_valid | s2_valid;
 
-    cache_line = s2_uncache ? axi_rdata_buffer : data_ram_rdata[s2_matched_way];
+    cache_line   = s2_uncache ? axi_rdata_buffer : 
+                   s2_miss    ? data_ram_rdata[s2_repl_way] : 
+                                data_ram_rdata[s2_matched_way];
     matched_word = cache_line[s2_vaddr[`DCACHE_IDX_OFFSET - 1:2]];
 
 
