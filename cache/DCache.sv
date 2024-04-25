@@ -687,7 +687,7 @@ module DCache (
       endcase
     end
 
-    data_ram_raddr = `DCACHE_IDX_OF(s1_vaddr);
+    data_ram_raddr = s2_ready ? `DCACHE_IDX_OF(s1_vaddr) : `DCACHE_IDX_OF(s2_vaddr);
 
     // tag ram
     tag_ram_we = '0;
