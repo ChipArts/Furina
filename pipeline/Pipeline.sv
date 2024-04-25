@@ -1217,6 +1217,31 @@ module Pipeline (
     .csr_pgdl_diff      (csr_pgdl_diff),
     .csr_pgdh_diff      (csr_pgdh_diff)
   );
+
+`ifdef DEBUG
+  // 如果超过1000个周期没有指令提交则退出
+  logic [31:0] commit_cnt;
+
+  always_ff @(posedge clk or negedge rst_n) begin
+    if(~rst_n) begin
+      commit_cnt <= 0;
+    end else begin
+      if (rob_cmt_o.valid) begin
+        commit_cnt <= 0;
+      end else begin
+        commit_cnt <= commit_cnt + 1;
+      end
+    end
+  end
+
+  always_comb begin
+    if (commit_cnt >= 1000) begin
+      $display("Pipeline stuck! over 1000 clk cycles without commit!");
+      $finish;
+    end
+  end
+
+`endif
   
 
 endmodule : Pipeline
