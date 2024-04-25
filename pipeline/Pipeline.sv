@@ -1221,24 +1221,15 @@ module Pipeline (
 `ifdef DEBUG
   // 如果超过1000个周期没有指令提交则退出
   logic [31:0] commit_cnt;
-  logic [31:0] timer;
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
       commit_cnt <= 0;
-      timer <= '0;
     end else begin
       if (rob_cmt_o.valid) begin
         commit_cnt <= 0;
       end else begin
         commit_cnt <= commit_cnt + 1;
-      end
-
-      if (timer < 100000) begin
-        timer <= timer + 1;
-      end else begin
-        timer <= '0;
-        $display("pc: %x", rob_cmt_o.rob_entry[0].pc);
       end
     end
   end
