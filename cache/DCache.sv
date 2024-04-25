@@ -401,7 +401,7 @@ module DCache (
   // 3. 如果miss，处理cache状态机
 
   always_comb begin
-    s2_ready = ~s2_valid | dcache_req.ready & cache_state == IDEL;
+    s2_ready = (~s2_valid | dcache_req.ready) & cache_state == IDEL;
 
     // for uncache write
     // 当 WSTRB[n] 为 1 时，WDATA[8n+7:8n]有效。
@@ -530,7 +530,7 @@ module DCache (
     // repl2refill;  <=> cache 完成写回 且 ar_ready
     // repl2idle  ;  <=> uncache、cacop store 完成写回
     // refill2idle;  <=> cache 重填（load、store、cacop）
-    wait2miss   = s2_mem_op == `MEM_STORE ? dcache_req.ready : 
+    wait2miss   = s2_mem_op == `MEM_STORE ? dcache_req.ready :  // refill时要写入更改信息 索性等待ready
                   s2_mem_op == `MEM_CACOP ? dcache_req.ready & s2_repl_meta.valid & s2_repl_meta.dirty & ~cacop_mode0 :
                   s2_mem_op == `MEM_LOAD  ;
     wait2refill = s2_mem_op == `MEM_CACOP & dcache_req.ready;  // fsm先判断wait2miss以确保此时无需写回
