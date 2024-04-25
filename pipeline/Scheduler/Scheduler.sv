@@ -384,25 +384,25 @@ module Scheduler (
 
     for (int i = 1; i < `DISPATCH_WIDTH; i++) begin
       if (dq_rdata[i - 1].oc.instr_type inside {`MISC_INSTR, `BR_INSTR, `PRIV_INSTR}) begin
-        misc_cnt[i] = misc_cnt[i - 1] + 1;
+        misc_cnt[i] = misc_cnt[i - 1] + dq_read_valid[i - 1];
       end else begin
         misc_cnt[i] = misc_cnt[i - 1];
       end
 
       if (dq_rdata[i - 1].oc.instr_type == `ALU_INSTR) begin
-        alu_cnt[i] = alu_cnt[i - 1] + 1;
+        alu_cnt[i] = alu_cnt[i - 1] + dq_read_valid[i - 1];
       end else begin
         alu_cnt[i] = alu_cnt[i - 1];
       end
 
       if (dq_rdata[i - 1].oc.instr_type == `MDU_INSTR) begin
-        mdu_cnt[i] = mdu_cnt[i - 1] + 1;
+        mdu_cnt[i] = mdu_cnt[i - 1] + dq_read_valid[i - 1];
       end else begin
         mdu_cnt[i] = mdu_cnt[i - 1];
       end
       
       if (dq_rdata[i - 1].oc.instr_type == `MEM_INSTR) begin
-        mem_cnt[i] = mem_cnt[i - 1] + 1;
+        mem_cnt[i] = mem_cnt[i - 1] + dq_read_valid[i - 1];
       end else begin
         mem_cnt[i] = mem_cnt[i - 1];
       end
