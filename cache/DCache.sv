@@ -660,8 +660,8 @@ module DCache (
     data_ram_we = '0;
     data_ram_waddr = `DCACHE_IDX_OF(s2_vaddr);
     if (cache_state == REFILL) begin
-      // 重填时的写入： axi读有效 && axi最后一个数据 && 不是uncache操作 (不触发axi读取则一定不写入)
-      data_ram_we[s2_repl_way] = axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache;
+      // 重填时的写入： 指令有效 && axi读有效 && axi最后一个数据 && 不是uncache操作 (不触发axi读取则一定不写入)
+      data_ram_we[s2_repl_way] = s2_valid & axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache;
       // init wdata
       data_ram_wdata = {axi4_mst.r_data, axi_rdata_buffer[`DCACHE_BLOCK_SIZE / 4 - 2:0]};
     end else begin
@@ -694,7 +694,8 @@ module DCache (
     // tag ram
     tag_ram_we = '0;
     if (cache_state == REFILL) begin
-      tag_ram_we[s2_repl_way] = (axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache) |  // cache miss refill
+      tag_ram_we[s2_repl_way] = s2_valid &                                            // 指令有效
+                                (axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache) |  // cache miss refill
                                 (cacop_mode0);                                        // cacop mode 0 fill tag
     end
     tag_ram_waddr = `DCACHE_IDX_OF(s2_vaddr);
@@ -705,7 +706,8 @@ module DCache (
     meta_ram_we = '0;
     meta_ram_waddr = `DCACHE_IDX_OF(s2_vaddr);
     if (cache_state == REFILL) begin
-      meta_ram_we[s2_repl_way] = (axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache) |  // cache miss refill
+      meta_ram_we[s2_repl_way] = s2_valid &                                            // 指令有效
+                                 (axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache) |  // cache miss refill
                                  (cacop_mode1 | cacop_mode2);                          // cacop mode 1、2 invalid cache line
       meta_ram_wdata = cacop_mode1 || cacop_mode2 ? '{valid: 1'b0, dirty: 1'b0} :      // cacop invalid
                        s2_store_valid             ? '{valid: 1'b1, dirty: 1'b1} :      // cache miss store refill
