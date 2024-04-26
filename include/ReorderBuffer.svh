@@ -27,19 +27,23 @@
 `include "config.svh"
 `include "Decoder.svh"
 `include "ControlStatusRegister.svh"
+`include "BranchPredictionUnit.svh"
 
 `ifdef DEBUG
   typedef struct packed {
     // 基础信息
     logic complete;
     logic [`PROC_VALEN - 1:0] pc;
+    BrInfoSt br_info;
     InstrType instr_type;
     logic [4:0] arch_reg;
+    logic [4:0] arch_rj;  // for branch predict  if rj == 1 then the branch is call
     logic [$clog2(`PHY_REG_NUM) - 1:0] phy_reg;
     logic [$clog2(`PHY_REG_NUM) - 1:0] old_phy_reg;
     logic                              old_phy_reg_valid;
-    // 分支预测失败处理
+    // 分支预测处理
     logic br_redirect;
+    logic [1:0] br_type;
     logic [`PROC_VALEN - 1:0] br_target;
     // 异常、例外处理
     ExcpSt excp;
@@ -88,7 +92,8 @@ typedef struct packed {
   logic [`DECODE_WIDTH - 1:0] valid;
   logic ready;
   logic [`DECODE_WIDTH - 1:0][`PROC_VALEN - 1:0] pc;
-  InstrType [`DECODE_WIDTH - 1:0]instr_type;
+  BrInfoSt [`DECODE_WIDTH - 1:0] br_info;
+  InstrType [`DECODE_WIDTH - 1:0] instr_type;
   logic [`DECODE_WIDTH - 1:0][4:0] arch_reg;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] phy_reg;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] old_phy_reg;

@@ -26,6 +26,7 @@
 `include "Cache.svh"
 `include "MemoryManagementUnit.svh"
 `include "ControlStatusRegister.svh"
+`include "BranchPredictionUnit.svh"
 
 module ICache (
   input clk,    // Clock
@@ -122,6 +123,7 @@ module ICache (
 /*=================================== Stage1 ==================================*/
   logic [`PROC_VALEN - 1:0] s1_vaddr;
   logic [`PROC_VALEN - 1:0] s1_npc;
+  BrInfoSt s1_br_info;
   logic s1_adef;
 
   logic [`FETCH_WIDTH - 1:0] s1_fetch_en;
@@ -134,6 +136,7 @@ module ICache (
       s1_cacop_en <= '0;
       s1_vaddr <= '0;
       s1_npc <= '0;
+      s1_br_info <= '0;
       s1_adef  <= '0;
       s1_cacop_mode <= '0;
       s1_rob_idx <= '0;
@@ -148,6 +151,7 @@ module ICache (
 
         s1_vaddr <= icacop_req.valid ? icacop_req.vaddr : icache_req.vaddr;
         s1_npc <= icache_req.npc;
+        s1_br_info <= icache_req.br_info;
         s1_adef  <= adef;
 
         uncache_hit <= '0;
@@ -229,6 +233,8 @@ module ICache (
       icache_rsp.vaddr[i] = s1_adef ? s1_vaddr : `FETCH_ALIGN(s1_vaddr) + (i << 2);  // pc异常时保留异常的pc
       icache_rsp.instr[i] = cache_line[cache_line_base + i];
     end
+
+    icache_rsp.br_info = s1_br_info;
 
     // TODO: 参数化这个操作
     icache_rsp.npc[0] = !s1_fetch_en[1] ? s1_npc : icache_rsp.vaddr[0] + 4;

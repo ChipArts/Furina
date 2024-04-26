@@ -228,6 +228,7 @@ module Scheduler (
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       rob_alloc_req.valid[i] = s1_sche_req.valid[i] & dq_write_ready;
       rob_alloc_req.pc[i] = s1_sche_req.pc[i];
+      rob_alloc_req.br_info[i] = s1_sche_req.br_info[i];
       rob_alloc_req.instr_type[i] = s1_sche_req.option_code[i].instr_type;
       rob_alloc_req.arch_reg[i] = s1_sche_req.arch_dest[i];
       rob_alloc_req.phy_reg[i] = s1_fl_alloc_preg[i];

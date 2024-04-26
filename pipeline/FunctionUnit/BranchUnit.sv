@@ -23,6 +23,7 @@
 `include "config.svh"
 `include "common.svh"
 `include "Decoder.svh"
+`include "BranchPredictionUnit.svh"
 
 module BranchUnit (
   input logic valid_i,                      // 是一条分支指令
@@ -32,10 +33,13 @@ module BranchUnit (
   input logic [31:0] imm_i,
   input logic [31:0] src0_i,
   input logic [31:0] src1_i,
+  input logic [ 4:0] arch_rj_i,
+  input logic [ 4:0] arch_rd_i,
   input logic indirect_i,
   input BranchOpType branch_op_i,
   output logic redirect_o,
   output logic [`PROC_VALEN - 1:0] target_o,
+  output logic [1:0] br_type_o,
   output logic taken_o
 );
 
@@ -73,6 +77,18 @@ module BranchUnit (
     end
 
     redirect = target != npc_i;
+  end
+
+  always_comb begin : proc_br_type
+    if ((indirect_i && arch_rd_i == 1)) begin
+      br_type_o = `CALL;
+    end else if (indirect_i && arch_rj_i == 1 && imm_i == 0) begin
+      br_type_o = `RETURN;
+    end else if (branch_op_i == `BRANCH_NC || indirect_i) begin
+      br_type_o = `ABSOLUTE;
+    end else begin
+      br_type_o = `PC_RELATIVE;
+    end
   end
 
   always_comb begin

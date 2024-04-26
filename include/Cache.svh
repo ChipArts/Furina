@@ -26,6 +26,7 @@
 
 `include "config.svh"
 `include "ControlStatusRegister.svh"
+`include "BranchPredictionUnit.svh"
 
 /* ICache */
 //       Virtual Address
@@ -57,7 +58,8 @@ typedef struct packed {
   logic [`FETCH_WIDTH - 1:0] valid;  // 请求有效
   logic ready;  // 请求方可接收相应(暂时无用)
   logic [`PROC_VALEN - 1:0] vaddr;  // 请求地址
-  logic [`PROC_VALEN - 1:0] npc;
+  logic [31:0] npc;  // 最后一条有效指令的下一个pc
+  BrInfoSt br_info;  // 分支信息
 } ICacheReqSt;
 
 typedef struct packed {
@@ -65,8 +67,10 @@ typedef struct packed {
   logic ready;  // 接收fetch请求
 
   logic [`FETCH_WIDTH - 1:0][`PROC_VALEN - 1:0] vaddr;
-  logic [`FETCH_WIDTH - 1:0][`PROC_VALEN - 1:0] npc;
+  logic [`FETCH_WIDTH - 1:0][31:0] npc;  // 最后一条有效指令的下一个pc
   logic [`FETCH_WIDTH - 1:0][31:0] instr;  // 指令
+
+  BrInfoSt br_info;  // 分支信息
   ExcpSt excp;
 } ICacheRspSt;
 

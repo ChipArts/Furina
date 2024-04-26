@@ -85,6 +85,13 @@ module Pipeline (
   /* Pre Decoder */
   ICacheRspSt icache_rsp_buffer;
   PreOptionCodeSt [`FETCH_WIDTH - 1:0] pre_option_code_o;
+
+  logic pre_check_redirect_o;
+  logic [31:0] pre_check_pc_o;
+  logic [31:0] pre_check_target_o;
+  logic [$clog2(`RAS_STACK_DEPTH) - 1:0] pre_check_ras_ptr_o;
+  logic [`LPHT_ADDR_WIDTH - 1:0] pre_check_lphr_idx_o;
+  logic [1:0]  pre_check_valid_o;
   
 
   /* Instruction Buffer */
@@ -364,9 +371,9 @@ module Pipeline (
 
   BranchPredictionUnit U_BranchPredictionUnit (
     .clk(clk), 
-    .a_rst_n(rst_n), 
-    .bpu_req(bpu_req), 
-    .bpu_rsp(bpu_rsp)
+    .rst_n(rst_n), 
+    .req(bpu_req), 
+    .rsp(bpu_rsp)
   );
 
 /*============================ Fetch Address Queue ============================*/
@@ -394,10 +401,11 @@ module Pipeline (
   always_comb begin
     icache_flush_i = global_flush;
 
-    icache_req.valid = bpu_rsp.valid;
-    icache_req.vaddr = bpu_rsp.pc;
-    icache_req.npc   = bpu_rsp.npc;
-    icache_req.ready = ibuf_write_ready_o;
+    icache_req.valid   = bpu_rsp.valid;
+    icache_req.vaddr   = bpu_rsp.pc;
+    icache_req.br_info = bpu_rsp.br_info;
+    icache_req.ready   = ibuf_write_ready_o;
+
     icache_addr_trans_rsp = mmu_addr_trans_rsp[0];
 
     icacop_req = mblk_icacop_req;
@@ -419,7 +427,7 @@ module Pipeline (
 
 /*================================ Pre Decoder ================================*/
   always_ff @(posedge clk or negedge rst_n) begin
-    if(~rst_n || global_flush) begin
+    if(!rst_n || global_flush) begin
       icache_rsp_buffer <= 0;
     end else begin
       if (ibuf_write_ready_o) begin
@@ -427,15 +435,32 @@ module Pipeline (
       end
     end
   end
-  
-  // TODO: 实现分支预测的pre检查
+
   for (genvar i = 0; i < `FETCH_WIDTH; i++) begin : gen_pre_decoder
     PreDecoder inst_PreDecoder (.instr_i(icache_rsp_buffer.instr[i]), .pre_option_code_o(pre_option_code_o[i]));
   end
 
+  PreChecker inst_PreChecker
+  (
+    .clk          (clk),
+    .rst_n        (rst_n),
+    .pc_i         (icache_rsp_buffer.vaddr),
+    .valid_i      (icache_rsp_buffer.valid),
+    .branch_i     (branch_i),  // TODO
+    .br_info_i    (icache_rsp_buffer.br_info),
+    // output
+    .redirect_o   (pre_check_redirect_o),
+    .pc_o         (pre_check_pc_o),
+    .target_o     (pre_check_target_o),
+    .ras_ptr_o    (pre_check_ras_ptr_o),
+    .lphr_idx_o   (pre_check_lphr_idx_o),
+    .valid_o      (pre_check_valid_o)
+  );
+
+
 
 /*============================ Instruction Buffer =============================*/
-  // 在此处进行队列压缩，剔除无效的指令
+  // 在此处进行队列压缩，剔除无效的指令，第[i]个write_data应该写入第ibuf_idx[i]个icache的数据
   logic [`FETCH_WIDTH - 1:0][$clog2(`FETCH_WIDTH) - 1:0] ibuf_idx;
   always_comb begin
     ibuf_flush_i = global_flush;
@@ -448,11 +473,14 @@ module Pipeline (
     ibuf_write_valid_i = '0;
     ibuf_write_data_i = '0;
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
-      if (icache_rsp_buffer.valid[i]) begin
+      // 指令有效时才写入
+      if (pre_check_valid_o[i]) begin  // 屏蔽掉分支预测有误的指令
         ibuf_write_valid_i[ibuf_idx[i]] = 1'b1;
-        ibuf_write_data_i[ibuf_idx[i]].valid = 1'b1;
+
+        ibuf_write_data_i[ibuf_idx[i]].valid = 1'b1;  // TODO 优化这个地方
         ibuf_write_data_i[ibuf_idx[i]].pc = icache_rsp_buffer.vaddr[i];
-        ibuf_write_data_i[ibuf_idx[i]].npc = icache_rsp_buffer.npc[i];
+        ibuf_write_data_i[ibuf_idx[i]].pc = icache_rsp_buffer.npc[i];
+        ibuf_write_data_i[ibuf_idx[i]].br_info = icache_rsp_buffer.br_info;
         ibuf_write_data_i[ibuf_idx[i]].instr = icache_rsp_buffer.instr[i];
         ibuf_write_data_i[ibuf_idx[i]].excp = icache_rsp_buffer.excp;
         ibuf_write_data_i[ibuf_idx[i]].pre_oc = pre_option_code_o[i];
@@ -545,6 +573,7 @@ module Pipeline (
       sche_req.valid[i] = ibuf_read_valid_o[i];
       sche_req.pc[i] = ibuf_read_data_o[i].pc;
       sche_req.npc[i] = ibuf_read_data_o[i].npc;
+      sche_req.br_info[i] = ibuf_read_data_o[i].br_info;
       sche_req.src[i] = ibuf_read_data_o[i].instr[25:0];
       sche_req.arch_src0[i] = decoder_src0[i];
       sche_req.arch_src1[i] = decoder_src1[i];

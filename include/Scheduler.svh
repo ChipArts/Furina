@@ -27,11 +27,13 @@
 `include "config.svh"
 `include "Decoder.svh"
 `include "ControlStatusRegister.svh"
+`include "BranchPredictionUnit.svh"
 
 typedef struct packed {
   logic [`DECODE_WIDTH - 1:0] valid;
   logic [`DECODE_WIDTH - 1:0][`PROC_VALEN - 1:0] pc;
   logic [`DECODE_WIDTH - 1:0][`PROC_VALEN - 1:0] npc;
+  BrInfoSt [`DECODE_WIDTH - 1:0] br_info;
   logic [`DECODE_WIDTH - 1:0][25:0] src;  // imm和reg的压缩信息
   logic [`DECODE_WIDTH - 1:0][4:0] arch_src0;
   logic [`DECODE_WIDTH - 1:0][4:0] arch_src1;

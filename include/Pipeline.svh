@@ -28,13 +28,15 @@
 `include "Decoder.svh"
 `include "Scheduler.svh"
 `include "ControlStatusRegister.svh"
+`include "BranchPredictionUnit.svh"
 
 typedef struct packed {
   logic valid;
   logic [31:0] instr;
   PreOptionCodeSt pre_oc;
   logic [`PROC_VALEN - 1:0] pc;
-  logic [`PROC_VALEN - 1:0] npc;
+  logic [31:0] npc;  // 最后一条有效指令的下一个pc
+  BRInfoSt br_info;
   ExcpSt excp;
 } IbufDataSt;
 
@@ -65,6 +67,7 @@ typedef struct packed {
   MiscOpCodeSt misc_oc;
   logic [`PROC_VALEN - 1:0] pc;
   logic [`PROC_VALEN - 1:0] npc;
+  logic [4:0] arch_rj;
 } MiscExeSt;
 
 typedef struct packed {
