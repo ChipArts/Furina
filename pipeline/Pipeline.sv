@@ -479,7 +479,7 @@ module Pipeline (
 
 /*================================ Pre Decoder ================================*/
   always_ff @(posedge clk or negedge rst_n) begin
-    if(!rst_n || global_flush || pre_check_redirect_o) begin
+    if(!rst_n || global_flush) begin
       icache_rsp_buffer <= 0;
     end else begin
       if (ibuf_write_ready_o) begin
