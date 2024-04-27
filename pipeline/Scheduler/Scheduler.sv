@@ -551,7 +551,7 @@ module Scheduler (
   ReservationStation #(
     .RS_SIZE(4),
     .BANK_NUM(1),
-    .OPTION_CODE(AluOpCodeSt)
+    .OPTION_CODE(MduOpCodeSt)
   ) U_MduReservationStation (
     .clk           (clk),
     .a_rst_n       (a_rst_n),
