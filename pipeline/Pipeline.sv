@@ -450,7 +450,7 @@ module Pipeline (
 
 /*========================== Instruction Fetch Unit ===========================*/
   always_comb begin
-    icache_flush_i = global_flush | pre_check_redirect_o;
+    icache_flush_i = global_flush;
 
     icache_req.valid   = bpu_rsp.valid;
     icache_req.vaddr   = bpu_rsp.pc;
@@ -468,6 +468,7 @@ module Pipeline (
     .clk            (clk),
     .a_rst_n        (rst_n),
     .flush_i        (icache_flush_i),
+    .pre_flush_i    (pre_check_redirect_o),
     .icache_req     (icache_req),
     .icache_rsp     (icache_rsp),
     .addr_trans_rsp (icache_addr_trans_rsp),
@@ -483,7 +484,11 @@ module Pipeline (
       icache_rsp_buffer <= 0;
     end else begin
       if (ibuf_write_ready_o) begin
-        icache_rsp_buffer <= icache_rsp;
+        if (pre_check_redirect_o) begin
+          icache_rsp_buffer.valid <= '0;
+        end else begin
+          icache_rsp_buffer <= icache_rsp;
+        end
       end
     end
   end

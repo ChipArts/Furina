@@ -32,6 +32,7 @@ module ICache (
   input clk,    // Clock
   input a_rst_n,  // Asynchronous reset active low
   input flush_i,
+  input pre_flush_i,
   // ICache Req
   input ICacheReqSt icache_req,
   output ICacheRspSt icache_rsp,
@@ -140,11 +141,12 @@ module ICache (
       s1_adef  <= '0;
       s1_cacop_mode <= '0;
       s1_rob_idx <= '0;
-
       uncache_hit <= '0;
     end else begin
+      // 需要特殊处理pre check的flush，此时的s1_cacop_en不应该被清除
+      s1_fetch_en <= pre_flush_i ? '0 : icache_req.valid;
+
       if (s1_ready) begin
-        s1_fetch_en <= icache_req.valid;
         s1_cacop_en <= icacop_req.valid;
         s1_cacop_mode <= icacop_req.cacop_mode;
         s1_rob_idx <= icacop_req.rob_idx;
