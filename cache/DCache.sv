@@ -408,13 +408,13 @@ module DCache (
     w_strb = '0;
     case (s2_align_op)
       `ALIGN_B : 
-        w_strb[`DCACHE_OFS_OF(s2_vaddr) + 0] = '1;
+        w_strb[s2_vaddr[1:0] + 0] = '1;
       `ALIGN_H : begin 
-        w_strb[`DCACHE_OFS_OF(s2_vaddr) + 0] = '1;
-        w_strb[`DCACHE_OFS_OF(s2_vaddr) + 1] = '1;
+        w_strb[s2_vaddr[1:0] + 0] = '1;
+        w_strb[s2_vaddr[1:0] + 1] = '1;
       end
       `ALIGN_W : begin
-        w_strb = '1;
+        w_strb                    = '1;
       end
       default : w_strb = '0;
     endcase
