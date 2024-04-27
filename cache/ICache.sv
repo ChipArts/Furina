@@ -144,7 +144,14 @@ module ICache (
       uncache_hit <= '0;
     end else begin
       // 需要特殊处理pre check的flush，此时的s1_cacop_en不应该被清除
-      s1_fetch_en <= pre_flush_i ? '0 : icache_req.valid;
+      if (pre_flush_i) begin
+        s1_fetch_en <= '0;
+      end else begin
+        if (s1_ready) begin
+          s1_fetch_en <= icache_req.valid;
+        end
+      end
+
 
       if (s1_ready) begin
         s1_cacop_en <= icacop_req.valid;
