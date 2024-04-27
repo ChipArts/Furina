@@ -370,13 +370,13 @@ module Pipeline (
 
     bpu_req.next = icache_rsp.ready & ~idle_lock;
     bpu_req.redirect = global_flush | pre_check_redirect_o;
-    bpu_req.target = tlbrefill_flush ? csr_tlbrentry_out :
-                     excp_flush      ? csr_eentry_out :
-                     redirect_flush  ? rob_cmt_o.rob_entry[0].br_target :
-                     ertn_flush      ? csr_era_out :  // sys 和 brk恢复时应该跳到era+4（软件控制）
-                     refetch_flush   ? rob_cmt_o.rob_entry[0].pc + 4    :
+    bpu_req.target = tlbrefill_flush      ? csr_tlbrentry_out :
+                     excp_flush           ? csr_eentry_out :
+                     ertn_flush           ? csr_era_out :  // sys 和 brk恢复时应该跳到era+4（软件控制）
+                     redirect_flush       ? rob_cmt_o.rob_entry[0].br_target :
+                     refetch_flush        ? rob_cmt_o.rob_entry[0].pc + 4    :
                      pre_check_redirect_o ? pre_check_target_o :
-                     32'h1c00_0000;
+                                            32'h1c00_0000;
     // for bpu updata
     bpu_req.pc = global_flush                                   ? rob_cmt_o.rob_entry[0].pc : 
                  pre_check_redirect_o                           ? pre_check_pc_o :
@@ -492,6 +492,7 @@ module Pipeline (
     PreDecoder inst_PreDecoder (.instr_i(icache_rsp_buffer.instr[i]), .pre_option_code_o(pre_option_code_o[i]));
   end
 
+  // TODO 是否需要修正NPC？？？ 似乎可以通过flush的优先级解决（ertn）
   PreChecker inst_PreChecker
   (
     .clk          (clk),

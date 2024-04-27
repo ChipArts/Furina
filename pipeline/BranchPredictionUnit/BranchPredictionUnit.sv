@@ -103,7 +103,7 @@ module BranchPredictionUnit (
   ) inst_btb (
     .clk       (clk),
     .rst_n     (rst_n),
-    .rpc_i     (npc),
+    .rpc_i     (npc[31:2]),
     .update_i  (req.btb_update),
     .wpc_i     (req.pc[31:2]),
     .bta_i     (req.target[31:2]),
@@ -160,7 +160,7 @@ module BranchPredictionUnit (
     .redirect_i (req.ras_redirect),
     .stack_ptr_i(req.ras_ptr),
     .target_i ({pc[30:3], 1'b0} + 30'd1 + br_idx),
-    .redirect_target_i(req.pc + 30'd1),
+    .redirect_target_i(req.pc[31:2] + 30'd1),
     .target_o (ras_target),
     .stack_ptr_o(ras_ptr)
   );

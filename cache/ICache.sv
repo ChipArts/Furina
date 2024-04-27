@@ -236,9 +236,11 @@ module ICache (
 
     icache_rsp.br_info = s1_br_info;
 
-    // TODO: 参数化这个操作
-    icache_rsp.npc[0] = !s1_fetch_en[1] ? s1_npc : icache_rsp.vaddr[0] + 4;
-    icache_rsp.npc[1] = s1_npc;
+    // 生成NPC
+    for (int i = 0; i < `FETCH_WIDTH - 1; i++) begin
+      icache_rsp.npc[i] = !s1_fetch_en[i + 1] ? s1_npc : `FETCH_ALIGN(s1_vaddr) + ((i + 1) << 2);
+    end
+    icache_rsp.npc[`FETCH_WIDTH - 1] = s1_npc;
 
     // cacop输出
     icacop_rsp.valid = s1_cacop_en;
