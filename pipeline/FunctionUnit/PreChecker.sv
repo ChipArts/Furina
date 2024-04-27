@@ -31,7 +31,7 @@ module PreChecker (
 	input [1:0][31:0] pc_i,
 	input [1:0] valid_i,
 	input logic [1:0] is_branch_i,  // 标记是否是分支指令
-	input BrInfoSt [1:0] br_info_i,
+	input BrInfoSt br_info_i,
 	output logic redirect_o,  // 分支预测器重定向
 	output logic [31:0] pc_o,
 	output logic [31:0] target_o,
@@ -43,7 +43,7 @@ module PreChecker (
 	logic [1:0] miss;
 	always_comb begin
 		for (int i = 0; i < `FETCH_WIDTH; i++) begin
-			miss[i] = br_info_i[i].taken && (br_info_i[i].br_idx == pc_i[i][2]) && !is_branch_i[i] && valid_i[i];
+			miss[i] = br_info_i.taken && (br_info_i.br_idx == pc_i[i][2]) && !is_branch_i[i] && valid_i[i];
 		end
 	end
 
