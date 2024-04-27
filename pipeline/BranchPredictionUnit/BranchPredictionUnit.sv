@@ -80,7 +80,7 @@ module BranchPredictionUnit (
   logic taken0, taken1;
 
 
-  always_ff @(posedge clk) begin : proc_pc
+  always_ff @(posedge clk or negedge rst_n) begin : proc_pc
     if(!rst_n) begin
       pc <= 32'h1c00_0000;
     end else if (req.redirect) begin
@@ -170,8 +170,9 @@ module BranchPredictionUnit (
   assign taken1 = (|btb_br_type[1]) | lphr[1][1];
   assign br_idx = (taken0 ? '0 : taken1) | pc[2];
   assign taken = taken0 | taken1;
-  assign ppc = btb_br_type[br_idx] == `RETURN ? ras_target :
-         taken ? btb_bta[br_idx] : {pc[31:3] + 29'd1, 1'b0};
+  assign ppc = btb_br_type[br_idx] == `RETURN ? {ras_target, 2'b00} :
+               taken                          ? {btb_bta[br_idx], 2'b00} : 
+                                                {pc[31:3] + 29'd1, 3'b000};
 
   // output
   always_comb begin : proc_rsp
