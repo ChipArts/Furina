@@ -84,7 +84,7 @@ typedef struct packed {
   logic [`FETCH_WIDTH - 1:0] valid;  // 表明pc~pc+7中哪几个是有效的
 
   // 分支预测的相关信息
-  BRInfoSt br_info;
+  BrInfoSt br_info;
 } BpuRspSt;
 
 `endif  // _BRANCH_PREDICTION_UNIT_SVH_
