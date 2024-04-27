@@ -454,6 +454,7 @@ module Pipeline (
 
     icache_req.valid   = bpu_rsp.valid;
     icache_req.vaddr   = bpu_rsp.pc;
+    icache_req.npc     = bpu_rsp.npc;
     icache_req.br_info = bpu_rsp.br_info;
     icache_req.ready   = ibuf_write_ready_o;
 
@@ -530,7 +531,7 @@ module Pipeline (
 
         ibuf_write_data_i[ibuf_idx[i]].valid = 1'b1;  // TODO 优化这个地方
         ibuf_write_data_i[ibuf_idx[i]].pc = icache_rsp_buffer.vaddr[i];
-        ibuf_write_data_i[ibuf_idx[i]].pc = icache_rsp_buffer.npc[i];
+        ibuf_write_data_i[ibuf_idx[i]].npc = icache_rsp_buffer.npc[i];
         ibuf_write_data_i[ibuf_idx[i]].br_info = icache_rsp_buffer.br_info;
         ibuf_write_data_i[ibuf_idx[i]].instr = icache_rsp_buffer.instr[i];
         ibuf_write_data_i[ibuf_idx[i]].excp = icache_rsp_buffer.excp;

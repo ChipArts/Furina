@@ -178,7 +178,7 @@ module BranchPredictionUnit (
   always_comb begin : proc_rsp
     rsp.pc = pc;
     rsp.valid[0] = ~pc[2] & req.next; // pc是2字对齐的
-    rsp.valid[0] = (~taken0 | pc[2]) & req.next; // 预测第一条不跳转或第一条无效
+    rsp.valid[1] = (~taken0 | pc[2]) & req.next; // 预测第一条不跳转或第一条无效
     rsp.npc = npc;
     rsp.br_info.taken = taken;
     rsp.br_info.lphr = lphr[br_idx];
