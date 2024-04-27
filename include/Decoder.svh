@@ -45,7 +45,10 @@ typedef logic [1:0] DestType;
 `define DEST_JD  (2'd2)  // 处理rdtime[l/h]指令
 `define DEST_RA  (2'd3)  // 返回地址寄存器
 
+typedef logic IsBranchType;
+
 typedef struct packed {
+    IsBranchType is_branch;
     SrcType src1_type;
     DestType dest_type;
     SrcType src0_type;

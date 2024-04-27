@@ -498,7 +498,7 @@ module Pipeline (
     .rst_n        (rst_n),
     .pc_i         (icache_rsp_buffer.vaddr),
     .valid_i      (icache_rsp_buffer.valid),
-    .branch_i     (branch_i),  // TODO
+    .branch_i     ({pre_option_code_o[1].is_branch, pre_option_code_o[0].is_branch}),  // TODO 参数化
     .br_info_i    (icache_rsp_buffer.br_info),
     // output
     .redirect_o   (pre_check_redirect_o),
