@@ -577,7 +577,7 @@ module DCache (
           axi_rdata_idx <= (axi_rdata_idx + 1 == `DCACHE_BLOCK_SIZE / 4) ? axi_rdata_idx : axi_rdata_idx + 1;
         end 
       end else begin
-        axi_rdata_idx <= '0;
+        axi_rdata_idx <= s2_uncache ? s2_vaddr[`DCACHE_IDX_OFFSET - 1:0] : '0;
       end
       // axi写
       if (cache_state == REPLACE) begin
@@ -627,8 +627,8 @@ module DCache (
     axi4_mst.b_ready = '1;
 
     axi4_mst.ar_id = '0;
-    axi4_mst.ar_addr = `DCACHE_PADDR_ALIGN(s2_paddr);  // 以cache行为单位;
-    axi4_mst.ar_len = `DCACHE_BLOCK_SIZE / 4 - 1;
+    axi4_mst.ar_addr = s2_uncache  ? s2_paddr : `DCACHE_PADDR_ALIGN(s2_paddr);  // 以cache行为单位;
+    axi4_mst.ar_len =  s2_uncache  ? '0 : `DCACHE_BLOCK_SIZE / 4 - 1;  // UART不支持burst ？？？
     axi4_mst.ar_size = 3'b010;  // 4 bytes;
     axi4_mst.ar_burst = 2'b01;  // Incrementing-address burst
     axi4_mst.ar_lock = '0;
