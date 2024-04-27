@@ -36,7 +36,7 @@ typedef struct packed {
   PreOptionCodeSt pre_oc;
   logic [`PROC_VALEN - 1:0] pc;
   logic [31:0] npc;  // 最后一条有效指令的下一个pc
-  BRInfoSt br_info;
+  BrInfoSt br_info;
   ExcpSt excp;
 } IbufDataSt;
 
