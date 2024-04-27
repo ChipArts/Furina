@@ -116,17 +116,18 @@ module BranchPredictionUnit (
 
 /*==================================== LPHT ====================================*/
   wire [1:0] lphr [1:0];
+  wire [`LPHT_ADDR_WIDTH - 1:1] lphr_windex = req.pc[`LPHT_ADDR_WIDTH + 2:3];
 
   PatternHistoryTable #(
     .ADDR_WIDTH(`LPHT_ADDR_WIDTH - 1)
   ) lpht_bank0 (
     .clk      (clk),
     .rst_n    (rst_n),
-    .we_i     (req.lpht_update & ~req.lphr_index[0]),
+    .we_i     (req.lpht_update & ~lphr_windex[0]),
     .taken_i  (req.taken),
     .phr_i    (req.lphr),
-    .rindex_i (npc[`LPHT_ADDR_WIDTH + 2:3]),
-    .windex_i (req.pc[`LPHT_ADDR_WIDTH - 1:1]),
+    .rindex_i (npc[`LPHT_ADDR_WIDTH + 1:3]),
+    .windex_i (lphr_windex),
     .phr_o    (lphr[0])
   );
 
@@ -135,11 +136,11 @@ module BranchPredictionUnit (
   ) lpht_bank1 (
     .clk      (clk),
     .rst_n    (rst_n),
-    .we_i     (req.lpht_update & req.lphr_index[0]),
-    .taken_i  (req.br_taken),
+    .we_i     (req.lpht_update & lphr_windex[0]),
+    .taken_i  (req.taken),
     .phr_i    (req.lphr),
-    .rindex_i (npc[`LPHT_ADDR_WIDTH + 2:3]),
-    .windex_i (req.pc[`LPHT_ADDR_WIDTH - 1:1]),
+    .rindex_i (npc[`LPHT_ADDR_WIDTH + 1:3]),
+    .windex_i (lphr_windex),
     .phr_o    (lphr[1])
   );
 
@@ -177,7 +178,7 @@ module BranchPredictionUnit (
     rsp.pc = pc;
     rsp.valid[0] = ~pc[2] & req.next; // pc是2字对齐的
     rsp.valid[0] = (~taken0 | pc[2]) & req.next; // 预测第一条不跳转或第一条无效
-    rsp.br_info.npc = npc;
+    rsp.npc = npc;
     rsp.br_info.taken = taken;
     rsp.br_info.lphr = lphr[br_idx];
     rsp.br_info.br_type = btb_br_type[br_idx];
