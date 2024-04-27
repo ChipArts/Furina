@@ -357,16 +357,67 @@ module Pipeline (
       end
     end
   end
+
+  logic br_select;
   
   always_comb begin
+    br_select = '0;
+    for (int i = 1; i < `COMMIT_WIDTH; i++) begin
+      if (rob_cmt_o.valid[i] && rob_cmt_o.rob_entry[i].instr_type == `BR_INSTR) begin
+        br_select = i;
+      end
+    end
+
     bpu_req.next = icache_rsp.ready & ~idle_lock;
-    bpu_req.redirect = global_flush;
+    bpu_req.redirect = global_flush | pre_check_redirect_o;
     bpu_req.target = tlbrefill_flush ? csr_tlbrentry_out :
                      excp_flush      ? csr_eentry_out :
                      redirect_flush  ? rob_cmt_o.rob_entry[0].br_target :
                      ertn_flush      ? csr_era_out :  // sys 和 brk恢复时应该跳到era+4（软件控制）
                      refetch_flush   ? rob_cmt_o.rob_entry[0].pc + 4    :
+                     pre_check_redirect_o ? pre_check_target_o :
                      32'h1c00_0000;
+    // for bpu updata
+    bpu_req.pc = global_flush                                   ? rob_cmt_o.rob_entry[0].pc : 
+                 pre_check_redirect_o                           ? pre_check_pc_o :
+                                                                  rob_cmt_o.rob_entry[br_select].pc;
+
+    bpu_req.taken = global_flush                                   ? rob_cmt_o.rob_entry[0].br_taken :
+                    pre_check_redirect_o                           ? 1'b0 :
+                                                                     rob_cmt_o.rob_entry[br_select].br_taken;
+
+    bpu_req.btb_update = global_flush | pre_check_redirect_o | |rob_cmt_o.valid;
+    bpu_req.br_type    = global_flush                                   ? rob_cmt_o.rob_entry[0].br_type :
+                         pre_check_redirect_o                           ? 2'b00 :
+                                                                          rob_cmt_o.rob_entry[br_select].br_type;
+
+    bpu_req.lpht_update = global_flush | pre_check_redirect_o | |rob_cmt_o.valid;
+    bpu_req.lphr   = global_flush                                   ? rob_cmt_o.rob_entry[0].br_info.lphr :
+                     pre_check_redirect_o                           ? 2'b00 :
+                                                                      rob_cmt_o.rob_entry[br_select].br_info.lphr;
+
+    if (rob_cmt_o.rob_entry[br_select].br_type == `CALL && 
+        rob_cmt_o.rob_entry[br_select].br_info != `CALL &&
+        rob_cmt_o.valid[br_select]) begin
+      bpu_req.ras_redirect = 2'd2;  // 重定向并写入
+    end else if (rob_cmt_o.rob_entry[br_select].br_type == `RETURN && 
+                 rob_cmt_o.rob_entry[br_select].br_info != `RETURN &&
+                 rob_cmt_o.valid[br_select]) begin
+      bpu_req.ras_redirect = 2'd1;  // 重定向
+    end else begin
+      bpu_req.ras_redirect = global_flush | pre_check_redirect_o;  // 视情况重定向
+    end
+
+    if (pre_check_redirect_o && ~global_flush) begin  // 确保global flush优先
+      bpu_req.ras_ptr = pre_check_ras_ptr_o;
+    end else if (rob_cmt_o.rob_entry[br_select].br_type == `CALL) begin
+      bpu_req.ras_ptr = rob_cmt_o.rob_entry[br_select].br_info.ras_ptr + 1;
+    end else if (rob_cmt_o.rob_entry[br_select].br_type == `RETURN) begin
+      bpu_req.ras_ptr = rob_cmt_o.rob_entry[br_select].br_info.ras_ptr - 1;
+    end else begin
+      bpu_req.ras_ptr = rob_cmt_o.rob_entry[br_select].br_info.ras_ptr;
+    end
+
   end
 
   BranchPredictionUnit U_BranchPredictionUnit (
@@ -726,6 +777,8 @@ module Pipeline (
     iblk_misc_exe_i.misc_oc = sche_misc_issue_o.misc_oc;
     iblk_misc_exe_i.pc = sche_misc_issue_o.base_info.pc;
     iblk_misc_exe_i.npc = sche_misc_issue_o.base_info.npc;
+    iblk_misc_exe_i.arch_rd = sche_misc_issue_o.base_info.src[4:0];
+    iblk_misc_exe_i.arch_rj = sche_misc_issue_o.base_info.src[9:5];
 
     // 第一条ALU执行pipe
     iblk_alu_exe_i[0].base = is2exe(sche_alu_issue_o[0].base_info, sche_alu_issue_o[0].valid, rf_rdata_o[3], rf_rdata_o[2]);

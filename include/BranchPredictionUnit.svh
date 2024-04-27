@@ -64,7 +64,6 @@ typedef struct packed {
   // for lpht
   logic lpht_update;
   logic [1:0] lphr;
-  logic [`LPHT_ADDR_WIDTH - 1:0] lphr_index;
 
   // for ras
   logic [1:0] ras_redirect;

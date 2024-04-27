@@ -37,11 +37,11 @@
     BrInfoSt br_info;
     InstrType instr_type;
     logic [4:0] arch_reg;
-    logic [4:0] arch_rj;  // for branch predict  if rj == 1 then the branch is call
     logic [$clog2(`PHY_REG_NUM) - 1:0] phy_reg;
     logic [$clog2(`PHY_REG_NUM) - 1:0] old_phy_reg;
     logic                              old_phy_reg_valid;
     // 分支预测处理
+    logic br_taken;
     logic br_redirect;
     logic [1:0] br_type;
     logic [`PROC_VALEN - 1:0] br_target;

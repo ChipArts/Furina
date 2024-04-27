@@ -106,6 +106,7 @@ module ReorderBuffer (
         rob_n[alloc_idx[i]].complete = alloc_req.excp[i].valid;  // 如果有异常，视为完成执行
         rob_n[alloc_idx[i]].pc = alloc_req.pc[i];
         rob_n[alloc_idx[i]].instr_type = alloc_req.instr_type[i];
+        rob_n[alloc_idx[i]].br_info = alloc_req.br_info[i];
         rob_n[alloc_idx[i]].arch_reg = alloc_req.arch_reg[i];
         rob_n[alloc_idx[i]].phy_reg = alloc_req.phy_reg[i];
         rob_n[alloc_idx[i]].old_phy_reg = alloc_req.old_phy_reg[i];
@@ -131,6 +132,8 @@ module ReorderBuffer (
       // 分支预测失败处理
       rob_n[misc_wb_req.base.rob_idx].br_redirect = misc_wb_req.br_redirect;
       rob_n[misc_wb_req.base.rob_idx].br_target = misc_wb_req.br_target;
+      rob_n[misc_wb_req.base.rob_idx].br_type = misc_wb_req.br_type;
+      rob_n[misc_wb_req.base.rob_idx].br_taken = misc_wb_req.br_taken;
       // 异常/例外处理（misc模块执行过程中不产生例外）
       rob_n[misc_wb_req.base.rob_idx].excp = '0;
       rob_n[misc_wb_req.base.rob_idx].error_vaddr = '0;
@@ -180,6 +183,8 @@ module ReorderBuffer (
         // 分支预测失败处理
         rob_n[alu_wb_req[i].base.rob_idx].br_redirect = '0;
         rob_n[alu_wb_req[i].base.rob_idx].br_target = '0;
+        rob_n[alu_wb_req[i].base.rob_idx].br_taken = '0;
+        rob_n[alu_wb_req[i].base.rob_idx].br_type = '0;
         // 异常/例外处理
         rob_n[alu_wb_req[i].base.rob_idx].excp = '0;
         rob_n[alu_wb_req[i].base.rob_idx].error_vaddr = '0;
@@ -217,6 +222,8 @@ module ReorderBuffer (
       // 分支预测失败处理
       rob_n[mdu_wb_req.base.rob_idx].br_redirect = '0;
       rob_n[mdu_wb_req.base.rob_idx].br_target = '0;
+      rob_n[mdu_wb_req.base.rob_idx].br_taken = '0;
+      rob_n[mdu_wb_req.base.rob_idx].br_type = '0;
       // 异常/例外处理
       rob_n[mdu_wb_req.base.rob_idx].excp = '0;
       rob_n[mdu_wb_req.base.rob_idx].error_vaddr = '0;

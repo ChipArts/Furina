@@ -126,7 +126,7 @@ module BranchPredictionUnit (
     .taken_i  (req.taken),
     .phr_i    (req.lphr),
     .rindex_i (npc[`LPHT_ADDR_WIDTH + 2:3]),
-    .windex_i (req.lphr_index[`LPHT_ADDR_WIDTH:1]),
+    .windex_i (req.pc[`LPHT_ADDR_WIDTH - 1:1]),
     .phr_o    (lphr[0])
   );
 
@@ -139,7 +139,7 @@ module BranchPredictionUnit (
     .taken_i  (req.br_taken),
     .phr_i    (req.lphr),
     .rindex_i (npc[`LPHT_ADDR_WIDTH + 2:3]),
-    .windex_i (req.lphr_index[`LPHT_ADDR_WIDTH:1]),
+    .windex_i (req.pc[`LPHT_ADDR_WIDTH - 1:1]),
     .phr_o    (lphr[1])
   );
 

@@ -118,6 +118,7 @@ module MiscPipe (
   logic br_taken;
   logic br_redirect;
   logic [`PROC_VALEN - 1:0] br_target;
+  logic [1:0] br_type_o;
   // cacop 或 invtlb
   logic [`PROC_VALEN - 1:0] vaddr;
   // write back
@@ -156,10 +157,13 @@ module MiscPipe (
     .imm_i       (s1_exe.base.imm),
     .src0_i      (s1_exe.base.src0),
     .src1_i      (s1_exe.base.src1),
+    .arch_rj_i   (s1_exe.arch_rj),
+    .arch_rd_i   (s1_exe.arch_rd),
     .indirect_i  (s1_exe.misc_oc.ind_br_op),
     .branch_op_i (s1_exe.misc_oc.branch_op),
     // output
     .redirect_o  (br_redirect),
+    .br_type_o   (br_type_o),
     .target_o    (br_target),
     .taken_o     (br_taken)
   );
@@ -175,42 +179,43 @@ module MiscPipe (
       wb_o <= 0;
     end else begin
       if (s2_ready) begin
-        wb_o.base.valid <= s1_exe.base.valid;
-        wb_o.base.we <= we;
-        wb_o.base.wdata <= wdata;
-        wb_o.base.pdest <= s1_exe.base.pdest;
+        wb_o.base.valid   <= s1_exe.base.valid;
+        wb_o.base.we      <= we;
+        wb_o.base.wdata   <= wdata;
+        wb_o.base.pdest   <= s1_exe.base.pdest;
         wb_o.base.rob_idx <= s1_exe.base.rob_idx;
-        wb_o.base.excp <= '0;
+        wb_o.base.excp    <= '0;
 
         wb_o.instr_type <= s1_exe.misc_oc.instr_type;
-        wb_o.priv_op <= s1_exe.misc_oc.priv_op;
-        wb_o.misc_op <= s1_exe.misc_oc.misc_op;
+        wb_o.priv_op    <= s1_exe.misc_oc.priv_op;
+        wb_o.misc_op    <= s1_exe.misc_oc.misc_op;
 
-        wb_o.csr_we <= csr_we;
+        wb_o.csr_we    <= csr_we;
         wb_o.csr_waddr <= csr_waddr;
         wb_o.csr_wdata <= csr_wdata;
 
-        wb_o.br_taken <= br_taken;
+        wb_o.br_taken    <= br_taken;
         wb_o.br_redirect <= br_redirect;
-        wb_o.br_target <= br_target;
+        wb_o.br_type     <= br_type_o;
+        wb_o.br_target   <= br_target;
 
-        wb_o.tlbfill_en <= instr_type == `PRIV_INSTR & priv_op == `PRIV_TLBFILL;
+        wb_o.tlbfill_en  <= instr_type == `PRIV_INSTR & priv_op == `PRIV_TLBFILL;
         wb_o.tlbfill_idx <= s1_timer_64[$clog2(`TLB_ENTRY_NUM) - 1:0];
 
-        wb_o.invtlb_en <= instr_type == `PRIV_INSTR & priv_op == `PRIV_TLBINV;
+        wb_o.invtlb_en   <= instr_type == `PRIV_INSTR & priv_op == `PRIV_TLBINV;
         wb_o.invtlb_asid <= invtlb_asid;
-        wb_o.invtlb_op <= s1_invtlb_op;
-        wb_o.vaddr <= vaddr;
+        wb_o.invtlb_op   <= s1_invtlb_op;
+        wb_o.vaddr       <= vaddr;
 
-        wb_o.tlbsrch_en <= instr_type == `PRIV_INSTR & priv_op == `PRIV_TLBSRCH;
+        wb_o.tlbsrch_en    <= instr_type == `PRIV_INSTR & priv_op == `PRIV_TLBSRCH;
         wb_o.tlbsrch_found <= tlbsrch_found_i;
-        wb_o.tlbsrch_idx <= tlbsrch_idx_i;
+        wb_o.tlbsrch_idx   <= tlbsrch_idx_i;
 
-        wb_o.tlbrd_en <= instr_type == `PRIV_INSTR & priv_op == `PRIV_TLBRD;
-        wb_o.tlbrd_ehi <= tlbehi_i;
+        wb_o.tlbrd_en   <= instr_type == `PRIV_INSTR & priv_op == `PRIV_TLBRD;
+        wb_o.tlbrd_ehi  <= tlbehi_i;
         wb_o.tlbrd_elo0 <= tlbelo0_i;
         wb_o.tlbrd_elo1 <= tlbelo1_i;
-        wb_o.tlbrd_idx <= tlbidx_i;
+        wb_o.tlbrd_idx  <= tlbidx_i;
         wb_o.tlbrd_asid <= tlbasid_i;
 
         wb_o.tlbwr_en <= instr_type == `PRIV_INSTR & priv_op == `PRIV_TLBWR;
@@ -227,7 +232,7 @@ module MiscPipe (
                                );
         wb_o.crs_rstat_diff <= s1_csr_rstat;
         wb_o.csr_rdata_diff <= s1_csr_rdata;
-        wb_o.timer_64_diff <= s1_timer_64;
+        wb_o.timer_64_diff  <= s1_timer_64;
 `endif
       end
     end

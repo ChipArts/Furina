@@ -68,6 +68,7 @@ typedef struct packed {
   logic [`PROC_VALEN - 1:0] pc;
   logic [`PROC_VALEN - 1:0] npc;
   logic [4:0] arch_rj;
+  logic [4:0] arch_rd;
 } MiscExeSt;
 
 typedef struct packed {
@@ -108,6 +109,7 @@ typedef struct packed {
   // branch
   logic br_taken;
   logic br_redirect;
+  logic [1:0] br_type;
   logic [`PROC_VALEN - 1:0] br_target;
   // tlb
   logic tlbfill_en;
