@@ -373,8 +373,8 @@ module Pipeline (
     bpu_req.target = tlbrefill_flush      ? csr_tlbrentry_out :
                      excp_flush           ? csr_eentry_out :
                      ertn_flush           ? csr_era_out :  // sys 和 brk恢复时应该跳到era+4（软件控制）
-                     redirect_flush       ? rob_cmt_o.rob_entry[0].br_target :
                      refetch_flush        ? rob_cmt_o.rob_entry[0].pc + 4    :
+                     redirect_flush       ? rob_cmt_o.rob_entry[0].br_target :
                      pre_check_redirect_o ? pre_check_target_o :
                                             32'h1c00_0000;
     // for bpu updata
@@ -499,7 +499,7 @@ module Pipeline (
     .rst_n        (rst_n),
     .pc_i         (icache_rsp_buffer.vaddr),
     .valid_i      (icache_rsp_buffer.valid),
-    .branch_i     ({pre_option_code_o[1].is_branch, pre_option_code_o[0].is_branch}),  // TODO 参数化
+    .is_branch_i  ({pre_option_code_o[1].is_branch, pre_option_code_o[0].is_branch}),  // TODO 参数化
     .br_info_i    (icache_rsp_buffer.br_info),
     // output
     .redirect_o   (pre_check_redirect_o),
