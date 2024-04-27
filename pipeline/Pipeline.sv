@@ -90,7 +90,6 @@ module Pipeline (
   logic [31:0] pre_check_pc_o;
   logic [31:0] pre_check_target_o;
   logic [$clog2(`RAS_STACK_DEPTH) - 1:0] pre_check_ras_ptr_o;
-  logic [`LPHT_ADDR_WIDTH - 1:0] pre_check_lphr_idx_o;
   logic [1:0]  pre_check_valid_o;
   
 
@@ -511,7 +510,6 @@ module Pipeline (
     .pc_o         (pre_check_pc_o),
     .target_o     (pre_check_target_o),
     .ras_ptr_o    (pre_check_ras_ptr_o),
-    .lphr_idx_o   (pre_check_lphr_idx_o),
     .valid_o      (pre_check_valid_o)
   );
 

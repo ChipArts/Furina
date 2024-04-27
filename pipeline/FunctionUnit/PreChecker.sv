@@ -36,7 +36,6 @@ module PreChecker (
 	output logic [31:0] pc_o,
 	output logic [31:0] target_o,
 	output logic [$clog2(`RAS_STACK_DEPTH) - 1:0] ras_ptr_o,
-	output logic [`LPHT_ADDR_WIDTH - 1:0] lphr_idx_o,
 	output logic [1:0]  valid_o
 );
 
@@ -61,15 +60,13 @@ module PreChecker (
 		pc_o = '0;
 		target_o = '0;
 		ras_ptr_o = '0;
-		lphr_idx_o = '0;
 		valid_o = valid_i;
 
 		for (int i = 0; i < `FETCH_WIDTH; i++) begin
 			if (miss[i]) begin
 				pc_o = pc_i[i];
 				target_o = pc_i[i] + 'd4;
-				ras_ptr_o = br_info_i[i].ras_ptr;
-				lphr_idx_o = pc_i[i][`LPHT_ADDR_WIDTH + 2:2];
+				ras_ptr_o = br_info_i.ras_ptr;
 			end
 		end
 
