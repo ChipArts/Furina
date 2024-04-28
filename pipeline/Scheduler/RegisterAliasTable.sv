@@ -83,7 +83,7 @@ parameter
       for (int j = 0; j < PHY_REG_NUM; j++) begin
         if (src0_i[i] == rat_q.arch_reg[j] && rat_q.valid[j]) begin
           psrc0[i] = j;
-          psrc1_valid[i] = '1;
+          psrc0_valid[i] = '1;
           psrc0_ready[i] = rat_q.ready[j];
         end
         
