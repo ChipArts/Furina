@@ -81,7 +81,7 @@ typedef logic[2:0] MemOpType;
 `define MEM_IBAR  (3'd3)
 `define MEM_DBAR  (3'd4)
 
-typedef logic MicroOpType;  // 原子操作标记
+typedef logic AtomicOpType;  // 原子操作标记
 typedef logic PreldOpType;  // 预取指令标记
 
 
@@ -150,7 +150,7 @@ typedef logic InvalidInstType;
 typedef struct packed {
   MemOpType mem_op;
   AlignOpType align_op;
-  MicroOpType micro_op;
+  AtomicOpType atomic_op;
   PreldOpType preld_op;
 } MemOpCodeSt;
 
@@ -178,7 +178,7 @@ typedef struct packed {
     DebugInstrType debug_instr;
     PreldOpType preld_op;
     IndBrOpType ind_br_op;
-    MicroOpType micro_op;
+    AtomicOpType atomic_op;
     SignedOpType signed_op;
     BranchOpType branch_op;
     MduOpType mdu_op;
@@ -216,7 +216,7 @@ function MemOpCodeSt gen2mem(OptionCodeSt option_code);
   MemOpCodeSt mem_op_code;
   mem_op_code.mem_op = option_code.mem_op;
   mem_op_code.align_op = option_code.align_op;
-  mem_op_code.micro_op = option_code.micro_op;
+  mem_op_code.atomic_op = option_code.atomic_op;
   mem_op_code.preld_op = option_code.preld_op;
   return mem_op_code;
 

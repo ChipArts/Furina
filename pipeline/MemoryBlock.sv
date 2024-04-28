@@ -93,7 +93,7 @@ module MemoryBlock (
     dcache_req.rob_idx = s1_exe.base.rob_idx;
     dcache_req.align_op = s1_exe.mem_oc.align_op;
     dcache_req.mem_op = s1_exe.mem_oc.mem_op;
-    dcache_req.micro = s1_exe.mem_oc.micro_op;
+    dcache_req.micro = s1_exe.mem_oc.atomic_op;
     dcache_req.preld = s1_exe.mem_oc.preld_op;
     dcache_req.pdest = s1_exe.base.pdest;
     dcache_req.pdest_valid = s1_exe.base.pdest_valid;

@@ -60,6 +60,7 @@ module Pipeline (
   logic ibar_flush;      // IBAR指令
   logic priv_flush;      // 特权指令（csr_rd修改可撤回，不需要flush）
   logic icacop_flush;    // ICache操作
+  logic atomic_flush;    // 原子指令
   logic idle_flush;      // IDLE指令
 
   /* Branch Prediction Unit */
@@ -934,7 +935,7 @@ module Pipeline (
   ReorderBuffer inst_ReorderBuffer
   (
     .clk         (clk),
-    .a_rst_n     (rst_n),
+    .rst_n       (rst_n),
     .flush_i     (rob_flush_i),
     .alloc_req   (rob_alloc_req),
     .alloc_rsp   (rob_alloc_rsp),

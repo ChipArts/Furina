@@ -28,7 +28,7 @@
 
 module ReorderBuffer (
   input clk,    // Clock
-  input a_rst_n,  // Asynchronous reset active low
+  input rst_n,  // Asynchronous reset active low
   input flush_i,
   input RobAllocReqSt alloc_req,
   output RobAllocRspSt alloc_rsp,
@@ -44,8 +44,6 @@ module ReorderBuffer (
   /* commit */
   output RobCmtSt cmt_o
 );
-
-  `RESET_LOGIC(clk, a_rst_n, rst_n);
 
 /*=============================== Signal Define ===============================*/
   // reg
