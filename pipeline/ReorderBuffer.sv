@@ -47,7 +47,7 @@ module ReorderBuffer (
 
 /*=============================== Signal Define ===============================*/
   // reg
-  RobEntrySt [`ROB_DEPTH - 1:0] rob, rob_n;
+  RobEntrySt [`ROB_DEPTH - 1:0] rob_q, rob_n;
   logic [$clog2(`ROB_DEPTH):0] head_ptr, tail_ptr, head_ptr_n, tail_ptr_n;
   logic [$clog2(`ROB_DEPTH):0] rob_cnt_q, rob_cnt_n;
   // wire
@@ -96,7 +96,7 @@ module ReorderBuffer (
   
 
   always_comb begin
-    rob_n = rob;
+    rob_n = rob_q;
     /* alloc logic */
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       // 写入条件 有效 && slv可写入 && mst可接收
@@ -296,13 +296,13 @@ module ReorderBuffer (
   assign priv_mask[0] = '1;
   // 第二条指令
   // BR恢复需要抽干流水线 && 成为最后一条指令才能提交
-  assign redirect_mask[1] = ~rob[cmt_idx[0]].br_redirect & ~rob[cmt_idx[1]].br_redirect;
+  assign redirect_mask[1] = ~rob_q[cmt_idx[0]].br_redirect & ~rob_q[cmt_idx[1]].br_redirect;
   // excp恢复需要抽干流水线 && 成为最后一条指令才能提交
-  assign exc_mask[1]      = ~rob[cmt_idx[0]].excp.valid & ~rob[cmt_idx[1]].excp.valid;
+  assign exc_mask[1]      = ~rob_q[cmt_idx[0]].excp.valid & ~rob_q[cmt_idx[1]].excp.valid;
   // 仅允许一条分支指令提交（BPU更新只有一个写口）
-  assign br_mask[1]       = rob[cmt_idx[0]].instr_type != `BR_INSTR;
+  assign br_mask[1]       = rob_q[cmt_idx[0]].instr_type != `BR_INSTR;
   // 特权指令后面的指令不允许提交（只有csrrd可以豁免，但这个优化似乎没有太大必要）
-  assign priv_mask[1]     = rob[cmt_idx[0]].instr_type != `PRIV_INSTR & ~rob[cmt_idx[0]].icacop_flush;
+  assign priv_mask[1]     = rob_q[cmt_idx[0]].instr_type != `PRIV_INSTR & ~rob_q[cmt_idx[0]].icacop_flush;
 
   // TODO flush 的信号设计有大量优化空间
 
@@ -310,15 +310,15 @@ module ReorderBuffer (
 
   for (genvar i = 0; i < `COMMIT_WIDTH; i++) assign valid_mask[i] = rob_cnt_q > i;  // 有效ROB表项
 
-  assign commit_valid[0] =                   rob[cmt_idx[0]].complete & commit_mask[0] & valid_mask[0];
-  assign commit_valid[1] = commit_valid[0] & rob[cmt_idx[1]].complete & commit_mask[1] & valid_mask[1];
+  assign commit_valid[0] =                   rob_q[cmt_idx[0]].complete & commit_mask[0] & valid_mask[0];
+  assign commit_valid[1] = commit_valid[0] & rob_q[cmt_idx[1]].complete & commit_mask[1] & valid_mask[1];
 
   assign commit_cnt = $countones(commit_valid);
 
   // output logic
   assign cmt_o.valid = commit_valid;
   for (genvar i = 0; i < `COMMIT_WIDTH; i++) begin
-    assign cmt_o.rob_entry[i] = rob[cmt_idx[i]];
+    assign cmt_o.rob_entry[i] = rob_q[cmt_idx[i]];
   end
 
   /* counter updata  */
@@ -330,12 +330,12 @@ module ReorderBuffer (
       head_ptr <= '0;
       tail_ptr <= '0;
       rob_cnt_q <= '0;
-      // rob <= '0; rob真的需要复位吗？
+      // rob_q <= '0; rob真的需要复位吗？
     end else begin
       head_ptr <= head_ptr_n;
       tail_ptr <= tail_ptr_n;
       rob_cnt_q <= rob_cnt_n;
-      rob <= rob_n;
+      rob_q <= rob_n;
     end
   end
 

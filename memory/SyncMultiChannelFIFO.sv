@@ -84,7 +84,7 @@ parameter
   generate
     for(genvar i = 0 ; i < BANK; i += 1) begin : gen_multi_fifo_ctrl
       // 指针更新策略
-      always_ff @(posedge clk) begin : proc_port_read_index
+      always_ff @(posedge clk or negedge rst_n) begin : proc_port_read_index
         if(~rst_n || flush_i) begin
           port_read_index[i] <= i[$clog2(BANK) - 1 : 0];
         end else begin
@@ -92,7 +92,7 @@ parameter
             port_read_index[i] <= port_read_index[i] - read_num[$clog2(BANK) - 1 : 0];
         end
       end
-      always_ff @(posedge clk) begin : proc_port_write_index
+      always_ff @(posedge clk or negedge rst_n) begin : proc_port_write_index
         if(~rst_n || flush_i) begin
           port_write_index[i] <= i[$clog2(BANK) - 1 : 0];
         end else begin
@@ -132,7 +132,7 @@ parameter
   generate
     for(genvar i = 0 ; i < RPORTS_NUM; i+= 1) begin : gen_multi_fifo_ouput
       // 指针更新策略
-      always_ff @(posedge clk) begin : proc_read_index
+      always_ff @(posedge clk or negedge rst_n) begin : proc_read_index
         if(~rst_n || flush_i) begin
           read_index[i] <= i[$clog2(BANK) - 1 : 0];
         end else begin
