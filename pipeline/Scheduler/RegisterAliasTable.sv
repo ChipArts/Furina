@@ -69,7 +69,8 @@ parameter
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc1;
   logic [`DECODE_WIDTH - 1:0] ppdst_valid;
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] ppdst;
-  always_comb begin
+
+  always_comb begin : proc_src_rename
     /* src寄存器重命名 */
     psrc0 = '0;
     psrc0_valid = '0;
@@ -97,15 +98,16 @@ parameter
       for (int j = 0; j < i; j++) begin
         psrc0_valid[i] = (src0_i[i] == dest_i[j] && dest_valid_i[j]) ? '1 : psrc0_valid[i];
         psrc0_ready[i] = (src0_i[i] == dest_i[j] && dest_valid_i[j]) ? '0 : psrc0_ready[i];
-        psrc0[i] = (src0_i[i] == dest_i[j]) ? preg_i[j] : psrc0[i];
+        psrc0[i]       = (src0_i[i] == dest_i[j]&& dest_valid_i[j]) ? preg_i[j] : psrc0[i];
         
         psrc1_valid[i] = (src1_i[i] == dest_i[j] && dest_valid_i[j]) ? '1 : psrc1_valid[i];
         psrc1_ready[i] = (src1_i[i] == dest_i[j] && dest_valid_i[j]) ? '0 : psrc1_ready[i];
-        psrc1[i] = (src1_i[i] == dest_i[j]) ? preg_i[j] : psrc1[i];
+        psrc1[i]       = (src1_i[i] == dest_i[j] && dest_valid_i[j]) ? preg_i[j] : psrc1[i];
       end
     end
+  end
 
-    /* RAT更新（配合freelist） */
+  always_comb begin : proc_ppdst_rename
     // CAM 方式查找旧的pdest映射
     ppdst = '0;
     ppdst_valid = '0;
@@ -125,7 +127,10 @@ parameter
         end
       end
     end
+  end
 
+  always_comb begin : proc_rat_updata
+    /* RAT更新（配合freelist） */
     rat_n = rat_q;
     if (restore_i) begin
       rat_n.valid = arch_valid_i;
@@ -142,14 +147,16 @@ parameter
         end
       end
 
+      // wake up
       for (int i = 0; i < `WB_WIDTH; i++) begin
         if (wb_i[i]) begin
           rat_n.ready[wb_pdest_i[i]] = '1;
         end
       end
     end
+  end
 
-    // output
+  always_comb begin : proc_output
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       psrc0_valid_o[i] = psrc0_valid[i];
       psrc0_ready_o[i] = psrc0_ready[i];
