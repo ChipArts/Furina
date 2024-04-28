@@ -40,13 +40,12 @@
 
 module Pipeline (
   input clk,    // Clock
-  input a_rst_n,  // Asynchronous reset active low
+  input rst_n,  // Asynchronous reset active low
   input logic [7:0] interrupt,
   AXI4.Master icache_axi4_mst,
   AXI4.Master dcache_axi4_mst
 );
 
-  `RESET_LOGIC(clk, a_rst_n, rst_n);
 /*=============================== Signal Define ===============================*/
   /* pipeline flush */
   logic global_flush;
@@ -465,7 +464,7 @@ module Pipeline (
   ICache inst_ICache
   (
     .clk            (clk),
-    .a_rst_n        (rst_n),
+    .rst_n          (rst_n),
     .flush_i        (icache_flush_i),
     .pre_flush_i    (pre_check_redirect_o),
     .icache_req     (icache_req),
@@ -1203,11 +1202,11 @@ module Pipeline (
     csr_tlbrd_en = iblk_misc_wb_o.base.valid &
                    iblk_misc_wb_o.tlbrd_en &
                    rob_misc_wb_rsp.ready;
-    csr_tlbehi_in = iblk_misc_wb_o.tlbrd_ehi;
+    csr_tlbehi_in  = iblk_misc_wb_o.tlbrd_ehi;
     csr_tlbelo0_in = iblk_misc_wb_o.tlbrd_elo0;
     csr_tlbelo1_in = iblk_misc_wb_o.tlbrd_elo1;
-    csr_tlbidx_in = iblk_misc_wb_o.tlbrd_idx;
-    csr_asid_in = iblk_misc_wb_o.tlbrd_asid;
+    csr_tlbidx_in  = iblk_misc_wb_o.tlbrd_idx;
+    csr_asid_in    = iblk_misc_wb_o.tlbrd_asid;
   end
 
   ControlStatusRegister #(

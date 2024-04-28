@@ -30,7 +30,7 @@
 
 module ICache (
   input clk,    // Clock
-  input a_rst_n,  // Asynchronous reset active low
+  input rst_n,  // Asynchronous reset active low
   input flush_i,
   input pre_flush_i,
   // ICache Req
@@ -44,8 +44,6 @@ module ICache (
   output IcacopRspSt icacop_rsp,
   AXI4.Master axi4_mst
 );
-
-  `RESET_LOGIC(clk, a_rst_n, rst_n);
 
   localparam FETCH_OFS = $clog2(`FETCH_WIDTH) + 2;
 
@@ -188,74 +186,69 @@ module ICache (
                       !s1_fetch_en && !s1_cacop_en           ? '1 :                               // 无操作
                       |s1_fetch_en && addr_trans_rsp.uncache ? uncache_hit & icache_req.ready :   // fetch uncache ready
                       |s1_fetch_en                           ? ~miss       & icache_req.ready :   // fetch miss ready
-                       s1_cacop_en & icacop_req.ready                                             // cacop ready
+                                                               s1_cacop_en & icacop_req.ready     // cacop ready
                     );
-                      
+  assign paddr = addr_trans_rsp.paddr;
 
-  always_comb begin
-    paddr = addr_trans_rsp.paddr;
-
-    // fetch异常检查
-    icache_rsp.excp.valid = s1_adef | addr_trans_rsp.tlbr | addr_trans_rsp.pif | addr_trans_rsp.ppi;
-    icache_rsp.excp.ecode =  s1_adef             ? `ECODE_ADE  :
-                             addr_trans_rsp.tlbr ? `ECODE_TLBR : 
-                             addr_trans_rsp.pif  ? `ECODE_PIF  :
-                             addr_trans_rsp.ppi  ? `ECODE_PPI  : '0;
-    icache_rsp.excp.sub_ecode = `ESUBCODE_ADEF;
-
-    // cacop异常检查
-    icacop_rsp.excp.valid = s1_cacop_mode == 2'b10 &  // 只有在示采用查询索引方式维护Cache一致性时产生mmu异常
-                            (addr_trans_rsp.tlbr |
-                             addr_trans_rsp.pil  |
-                             addr_trans_rsp.ppi);
-    icacop_rsp.excp.ecode =  addr_trans_rsp.tlbr ? `ECODE_TLBR : 
-                             addr_trans_rsp.pil  ? `ECODE_PIL  :
-                             addr_trans_rsp.ppi  ? `ECODE_PPI  : '0;
-    icacop_rsp.excp.sub_ecode = `ESUBCODE_ADEF;
-
-    // 进行 tag 匹配
+  // 进行 tag 匹配
+  always_comb begin : proc_matched_way
     for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
       matched_way_oh[i] = `ICACHE_TAG_OF(paddr) == tag_ram_rdata[i] & valid_ram_rdata[i];
-      matched_way = matched_way_oh[i] ? i : '0;
     end
 
-    // 判断 cache 访问是否命中
-    miss = 1'b1;
+    matched_way = '0;
     for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
-      miss &= ~matched_way_oh[i];
+      if (matched_way_oh[i]) begin
+        matched_way = i;
+        break;
+      end
     end
-
-    // 获得 plru 信息, 选出替换 way
-    replaced_way = plru_ram_rdata;  // TODO: 真正实现PLRU
-    // 生成新的plru信息
-
-    // fetch 输出
-    for (int i = 0; i < `FETCH_WIDTH; i++) begin
-      icache_rsp.valid[i] = s1_fetch_en[i] & 
-                            (
-                              addr_trans_rsp.uncache ? uncache_hit : ~miss
-                            );
-    end
-    cache_line = addr_trans_rsp.uncache ? axi_rdata_buffer : data_ram_rdata[matched_way];
-    cache_line_base = `FETCH_ALIGN(s1_vaddr)[`ICACHE_IDX_OFFSET - 1:2];
-    for (int i = 0; i < `FETCH_WIDTH; i++) begin
-      icache_rsp.vaddr[i] = s1_adef ? s1_vaddr : `FETCH_ALIGN(s1_vaddr) + (i << 2);  // pc异常时保留异常的pc
-      icache_rsp.instr[i] = cache_line[cache_line_base + i];
-    end
-
-    icache_rsp.br_info = s1_br_info;
-
-    // 生成NPC
-    for (int i = 0; i < `FETCH_WIDTH - 1; i++) begin
-      icache_rsp.npc[i] = !s1_fetch_en[i + 1] ? s1_npc : `FETCH_ALIGN(s1_vaddr) + ((i + 1) << 2);
-    end
-    icache_rsp.npc[`FETCH_WIDTH - 1] = s1_npc;
-
-    // cacop输出
-    icacop_rsp.valid = s1_cacop_en;
-    icacop_rsp.vaddr = s1_vaddr;
-    icacop_rsp.rob_idx = s1_rob_idx;
   end
+
+  // 判断 cache 访问是否命中
+  assign miss = ~|matched_way_oh;
+
+  // 获得 plru 信息, 选出替换 way
+  assign replaced_way = plru_ram_rdata;  // TODO: 真正实现PLRU
+
+
+  // fetch 输出
+  for (genvar i = 0; i < `FETCH_WIDTH; i++) begin
+    assign icache_rsp.valid[i] = s1_fetch_en[i] & (addr_trans_rsp.uncache ? uncache_hit : ~miss);
+    assign icache_rsp.vaddr[i] = s1_adef ? s1_vaddr : `FETCH_ALIGN(s1_vaddr) + (i << 2);  // pc异常时保留异常的pc
+    assign icache_rsp.instr[i] = cache_line[cache_line_base + i];
+  end
+  assign cache_line = addr_trans_rsp.uncache ? axi_rdata_buffer : data_ram_rdata[matched_way];
+  assign cache_line_base = `FETCH_ALIGN(s1_vaddr)[`ICACHE_IDX_OFFSET - 1:2];
+  assign icache_rsp.br_info = s1_br_info;
+  // 生成NPC
+  for (genvar i = 0; i < `FETCH_WIDTH - 1; i++) begin
+    assign icache_rsp.npc[i] = !s1_fetch_en[i + 1] ? s1_npc : `FETCH_ALIGN(s1_vaddr) + ((i + 1) << 2);
+  end
+  assign icache_rsp.npc[`FETCH_WIDTH - 1] = s1_npc;
+
+  // fetch异常检查
+  assign icache_rsp.excp.valid = s1_adef | addr_trans_rsp.tlbr | addr_trans_rsp.pif | addr_trans_rsp.ppi;
+  assign icache_rsp.excp.ecode =  s1_adef             ? `ECODE_ADE  :
+                                  addr_trans_rsp.tlbr ? `ECODE_TLBR : 
+                                  addr_trans_rsp.pif  ? `ECODE_PIF  :
+                                  addr_trans_rsp.ppi  ? `ECODE_PPI  : '0;
+  assign icache_rsp.excp.sub_ecode = `ESUBCODE_ADEF;
+
+  // cacop输出
+  assign icacop_rsp.valid = s1_cacop_en;
+  assign icacop_rsp.vaddr = s1_vaddr;
+  assign icacop_rsp.rob_idx = s1_rob_idx;
+
+  // cacop异常检查
+  assign icacop_rsp.excp.valid = s1_cacop_mode == 2'b10 &  // 只有在示采用查询索引方式维护Cache一致性时产生mmu异常
+                                 (addr_trans_rsp.tlbr |
+                                  addr_trans_rsp.pil  |
+                                  addr_trans_rsp.ppi);
+  assign icacop_rsp.excp.ecode =  addr_trans_rsp.tlbr ? `ECODE_TLBR : 
+                                  addr_trans_rsp.pil  ? `ECODE_PIL  :
+                                  addr_trans_rsp.ppi  ? `ECODE_PPI  : '0;
+  assign icacop_rsp.excp.sub_ecode = `ESUBCODE_ADEF;
 
   // AXI FSM
   always_ff @(posedge clk or negedge rst_n) begin

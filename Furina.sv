@@ -50,7 +50,7 @@ module Furina (
   Pipeline U_Pipeline
   (
     .clk             (clk),
-    .a_rst_n         (a_rst_n),
+    .rst_n           (a_rst_n),
     .interrupt       (interrupt),
     .icache_axi4_mst (icache_axi4_mst),
     .dcache_axi4_mst (dcache_axi4_mst)
