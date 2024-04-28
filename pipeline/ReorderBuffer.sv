@@ -83,9 +83,20 @@ module ReorderBuffer (
   end
   assign tail_ptr_n = alloc_rsp.ready && alloc_req.ready ? tail_ptr + alloc_cnt : tail_ptr;
 
+  /* write back rsp */
+  assign misc_psc = misc_wb_req.instr_type == `PRIV_INSTR & misc_wb_req.priv_op > 4'd0;  
+  assign misc_wb_rsp.ready = ~misc_psc | misc_wb_req.base.rob_idx == cmt_idx[0];  // 除了PRIV_CSR_READ其余特权指令写回都会彻底改变处理器状态
+  for (genvar i = 0; i < 2; i++) begin
+    assign alu_wb_rsp[i].ready = '1;  // alu计算指令可以随时写回
+  end
+  assign mdu_wb_rsp.ready = '1;  // mdu计算指令可以随时写回
+  // 除了load（非原子）其他mem指令都要等待成为最旧的指令
+  assign mem_wb_rsp.ready = (mem_wb_req.mem_op == `MEM_LOAD & ~mem_wb_req.atomic) |
+                            (mem_wb_req.base.rob_idx == cmt_idx[0]);
+  
+
   always_comb begin
     rob_n = rob;
-
     /* alloc logic */
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       // 写入条件 有效 && slv可写入 && mst可接收
@@ -110,9 +121,6 @@ module ReorderBuffer (
 
     /* write back logic */
     // misc write back
-    // 除了PRIV_CSR_READ其余特权指令写回都会彻底改变处理器状态
-    misc_psc = misc_wb_req.instr_type == `PRIV_INSTR & misc_wb_req.priv_op > 4'd0;  
-    misc_wb_rsp.ready = ~misc_psc | misc_wb_req.base.rob_idx == cmt_idx[0];
     if (misc_wb_req.base.valid && misc_wb_rsp.ready) begin
       rob_n[misc_wb_req.base.rob_idx].complete = 1;
       // 分支预测失败处理
@@ -163,7 +171,6 @@ module ReorderBuffer (
 
     // alu write back
     for (int i = 0; i < 2; i++) begin
-      alu_wb_rsp[i].ready = '1;  // alu计算指令可以随时写回
       if (alu_wb_req[i].base.valid && alu_wb_rsp[i].ready) begin
         rob_n[alu_wb_req[i].base.rob_idx].complete = 1;
         // 分支预测失败处理
@@ -202,7 +209,6 @@ module ReorderBuffer (
     end
 
     // mdu write back
-    mdu_wb_rsp.ready = '1;  // mdu计算指令可以随时写回
     if (mdu_wb_req.base.valid && mdu_wb_rsp.ready) begin
       rob_n[mdu_wb_req.base.rob_idx].complete = 1;
       // 分支预测失败处理
@@ -240,9 +246,6 @@ module ReorderBuffer (
     end
 
     // mem write back
-    // 除了load（非原子）其他mem指令都要等待成为最旧的指令
-    mem_wb_rsp.ready = (mem_wb_req.mem_op == `MEM_LOAD & ~mem_wb_req.atomic) |
-                       (mem_wb_req.base.rob_idx == cmt_idx[0]);
     if (mem_wb_req.base.valid && mem_wb_rsp.ready) begin
       rob_n[mem_wb_req.base.rob_idx].complete = 1;
       // 分支预测失败处理
@@ -281,42 +284,41 @@ module ReorderBuffer (
 
   /* commit logic */
   assign head_ptr_n = head_ptr + commit_cnt;
-  always_comb begin : proc_rob_commmit
-    // 每个提交端口的rob read idx
-    for (int i = 0; i < `COMMIT_WIDTH; i++) begin
-      cmt_idx[i] = head_ptr[$clog2(`ROB_DEPTH) - 1:0] + i;
-    end
-    // 第一条指令一定不被屏蔽
-    redirect_mask[0] = '1;
-    exc_mask[0] = '1;
-    br_mask[0] = '1;
-    priv_mask[0] = '1;
-    // 第二条指令
-    // BR恢复需要抽干流水线 && 成为最后一条指令才能提交
-    redirect_mask[1] = ~rob[cmt_idx[0]].br_redirect & ~rob[cmt_idx[1]].br_redirect;
-    // excp恢复需要抽干流水线 && 成为最后一条指令才能提交
-    exc_mask[1]      = ~rob[cmt_idx[0]].excp.valid & ~rob[cmt_idx[1]].excp.valid;
-    // 仅允许一条分支指令提交（BPU更新只有一个写口）
-    br_mask[1]       = rob[cmt_idx[0]].instr_type != `BR_INSTR;
-    // 特权指令后面的指令不允许提交（只有csrrd可以豁免，但这个优化似乎没有太大必要）
-    priv_mask[1]     = rob[cmt_idx[0]].instr_type != `PRIV_INSTR & ~rob[cmt_idx[0]].icacop_flush;
+  // 每个提交端口的rob read idx
+  for (genvar i = 0; i < `COMMIT_WIDTH; i++) begin
+    assign cmt_idx[i] = head_ptr[$clog2(`ROB_DEPTH) - 1:0] + i;
+  end
 
-    // TODO flush 的信号设计有大量优化空间
+  // 第一条指令一定不被屏蔽
+  assign redirect_mask[0] = '1;
+  assign exc_mask[0] = '1;
+  assign br_mask[0] = '1;
+  assign priv_mask[0] = '1;
+  // 第二条指令
+  // BR恢复需要抽干流水线 && 成为最后一条指令才能提交
+  assign redirect_mask[1] = ~rob[cmt_idx[0]].br_redirect & ~rob[cmt_idx[1]].br_redirect;
+  // excp恢复需要抽干流水线 && 成为最后一条指令才能提交
+  assign exc_mask[1]      = ~rob[cmt_idx[0]].excp.valid & ~rob[cmt_idx[1]].excp.valid;
+  // 仅允许一条分支指令提交（BPU更新只有一个写口）
+  assign br_mask[1]       = rob[cmt_idx[0]].instr_type != `BR_INSTR;
+  // 特权指令后面的指令不允许提交（只有csrrd可以豁免，但这个优化似乎没有太大必要）
+  assign priv_mask[1]     = rob[cmt_idx[0]].instr_type != `PRIV_INSTR & ~rob[cmt_idx[0]].icacop_flush;
 
-    commit_mask = br_mask & redirect_mask & exc_mask & priv_mask;
+  // TODO flush 的信号设计有大量优化空间
 
-    for (int i = 0; i < `COMMIT_WIDTH; i++) valid_mask[i] = rob_cnt_q > i;  // 有效ROB表项
+  assign commit_mask = br_mask & redirect_mask & exc_mask & priv_mask;
 
-    commit_valid[0] =                   rob[cmt_idx[0]].complete & commit_mask[0] & valid_mask[0];
-    commit_valid[1] = commit_valid[0] & rob[cmt_idx[1]].complete & commit_mask[1] & valid_mask[1];
+  for (genvar i = 0; i < `COMMIT_WIDTH; i++) assign valid_mask[i] = rob_cnt_q > i;  // 有效ROB表项
 
-    commit_cnt = $countones(commit_valid);
+  assign commit_valid[0] =                   rob[cmt_idx[0]].complete & commit_mask[0] & valid_mask[0];
+  assign commit_valid[1] = commit_valid[0] & rob[cmt_idx[1]].complete & commit_mask[1] & valid_mask[1];
 
-    // output logic
-    cmt_o.valid = commit_valid;
-    for (int i = 0; i < `COMMIT_WIDTH; i++) begin
-      cmt_o.rob_entry[i] = rob[cmt_idx[i]];
-    end
+  assign commit_cnt = $countones(commit_valid);
+
+  // output logic
+  assign cmt_o.valid = commit_valid;
+  for (genvar i = 0; i < `COMMIT_WIDTH; i++) begin
+    assign cmt_o.rob_entry[i] = rob[cmt_idx[i]];
   end
 
   /* counter updata  */
