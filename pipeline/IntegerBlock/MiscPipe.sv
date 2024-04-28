@@ -176,7 +176,7 @@ module MiscPipe (
 
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n || flush_i) begin
-      wb_o <= 0;
+      wb_o <= '0;
     end else begin
       if (s2_ready) begin
         wb_o.base.valid   <= s1_exe.base.valid;

@@ -309,7 +309,7 @@ module Scheduler (
 /*================================= stage1.5 ==================================*/
 
   logic [`DECODE_WIDTH - 1:0] dq_read_valid_o;
-  logic [`DECODE_WIDTH - 1:0] dq_read_ready_o;
+  logic [`DECODE_WIDTH - 1:0] dq_read_ready_i;
   DqEntrySt [`DECODE_WIDTH - 1:0] dq_rdata_o;
   DqEntrySt [`DECODE_WIDTH - 1:0] dq_rdata;
 
@@ -325,7 +325,7 @@ module Scheduler (
     .write_data_i  (dq_wdata),
     // read
     .read_valid_o  (dq_read_valid_o),
-    .read_ready_i  (dq_read_ready_o),
+    .read_ready_i  (dq_read_ready_i),
     .read_data_o   (dq_rdata_o),
     // wake up
     .wb_i          (wb_i),
@@ -433,33 +433,33 @@ module Scheduler (
 
   always_comb begin
     // 判断是否可以分发
+    dq_read_ready_i = '0;  // default assign
     if (dq_read_valid_o[0]) begin
         case (dq_rdata[0].oc.instr_type)
-          `MISC_INSTR : dq_read_ready_o[0] = misc_cnt[0] < $countones(misc_rs_wr_ready);
-          `BR_INSTR   : dq_read_ready_o[0] = misc_cnt[0] < $countones(misc_rs_wr_ready);
-          `PRIV_INSTR : dq_read_ready_o[0] = misc_cnt[0] < $countones(misc_rs_wr_ready);
-          `ALU_INSTR  : dq_read_ready_o[0] = alu_cnt[0] < $countones(alu_rs_wr_ready);
-          `MDU_INSTR  : dq_read_ready_o[0] = mdu_cnt[0] < $countones(mdu_rs_wr_ready);
-          `MEM_INSTR  : dq_read_ready_o[0] = mem_cnt[0] < $countones(mem_rs_wr_ready);
-          default : dq_read_ready_o[0] = '0;
+          `MISC_INSTR : dq_read_ready_i[0] = misc_cnt[0] < $countones(misc_rs_wr_ready);
+          `BR_INSTR   : dq_read_ready_i[0] = misc_cnt[0] < $countones(misc_rs_wr_ready);
+          `PRIV_INSTR : dq_read_ready_i[0] = misc_cnt[0] < $countones(misc_rs_wr_ready);
+          `ALU_INSTR  : dq_read_ready_i[0] = alu_cnt[0] < $countones(alu_rs_wr_ready);
+          `MDU_INSTR  : dq_read_ready_i[0] = mdu_cnt[0] < $countones(mdu_rs_wr_ready);
+          `MEM_INSTR  : dq_read_ready_i[0] = mem_cnt[0] < $countones(mem_rs_wr_ready);
+          default : dq_read_ready_i[0] = '0;
         endcase
     end
     for (int i = 1; i < `DISPATCH_WIDTH; i++) begin
       if (dq_read_valid_o[i]) begin
         case (dq_rdata[i].oc.instr_type)
-          `MISC_INSTR : dq_read_ready_o[i] = misc_cnt[i] < $countones(misc_rs_wr_ready) & dq_read_ready_o[i - 1];
-          `BR_INSTR   : dq_read_ready_o[i] = misc_cnt[i] < $countones(misc_rs_wr_ready) & dq_read_ready_o[i - 1];
-          `PRIV_INSTR : dq_read_ready_o[i] = misc_cnt[i] < $countones(misc_rs_wr_ready) & dq_read_ready_o[i - 1];
-          `ALU_INSTR  : dq_read_ready_o[i] = alu_cnt[i] < $countones(alu_rs_wr_ready) & dq_read_ready_o[i - 1];
-          `MDU_INSTR  : dq_read_ready_o[i] = mdu_cnt[i] < $countones(mdu_rs_wr_ready) & dq_read_ready_o[i - 1];
-          `MEM_INSTR  : dq_read_ready_o[i] = mem_cnt[i] < $countones(mem_rs_wr_ready) & dq_read_ready_o[i - 1];
-          default : dq_read_ready_o[i] = '0;
+          `MISC_INSTR : dq_read_ready_i[i] = misc_cnt[i] < $countones(misc_rs_wr_ready) & dq_read_ready_i[i - 1];
+          `BR_INSTR   : dq_read_ready_i[i] = misc_cnt[i] < $countones(misc_rs_wr_ready) & dq_read_ready_i[i - 1];
+          `PRIV_INSTR : dq_read_ready_i[i] = misc_cnt[i] < $countones(misc_rs_wr_ready) & dq_read_ready_i[i - 1];
+          `ALU_INSTR  : dq_read_ready_i[i] = alu_cnt[i] < $countones(alu_rs_wr_ready) & dq_read_ready_i[i - 1];
+          `MDU_INSTR  : dq_read_ready_i[i] = mdu_cnt[i] < $countones(mdu_rs_wr_ready) & dq_read_ready_i[i - 1];
+          `MEM_INSTR  : dq_read_ready_i[i] = mem_cnt[i] < $countones(mem_rs_wr_ready) & dq_read_ready_i[i - 1];
+          default : dq_read_ready_i[i] = '0;
         endcase
       end
     end
 
     // 写入发射队列
-    // dispatched = '0;
     misc_rs_wr_valid = '0;
     alu_rs_wr_valid = '0;
     mdu_rs_wr_valid = '0;
@@ -475,8 +475,8 @@ module Scheduler (
     mdu_rs_oc = '0;
     mem_rs_oc = '0;
     for (int i = 0; i < `DISPATCH_WIDTH; i++) begin
-      // RS写入条件 --> DQ 内容有效 && DQ会读出（dq_read_ready_o）
-      if (dq_read_ready_o[i] && dq_read_valid_o[i]) begin
+      // RS写入条件 --> DQ 内容有效 && DQ会读出（dq_read_ready_i）
+      if (dq_read_ready_i[i] && dq_read_valid_o[i]) begin
         if ((dq_rdata[i].oc.instr_type inside {`MISC_INSTR, `BR_INSTR, `PRIV_INSTR}) && misc_cnt[i] == 0) begin
           misc_rs_wr_valid = '1;
           misc_rs_base = dq2rs(dq_rdata[i]);
@@ -510,13 +510,13 @@ module Scheduler (
         end
       end
     end
-
-    // issue
-    alu_issue_ready = alu_ready_i;
-    mdu_issue_ready = mdu_ready_i;
-    mem_issue_ready = mem_ready_i;
-    misc_issue_ready = misc_ready_i;
   end
+
+  // issue
+  assign alu_issue_ready = alu_ready_i;
+  assign mdu_issue_ready = mdu_ready_i;
+  assign mem_issue_ready = mem_ready_i;
+  assign misc_issue_ready = misc_ready_i;
 
   // MISC
   OrderReservationStation #(
