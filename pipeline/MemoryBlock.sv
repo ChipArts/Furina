@@ -101,12 +101,15 @@ module MemoryBlock (
   MmuAddrTransReqSt dcache_addr_trans_req;
   MmuAddrTransRspSt dcache_addr_trans_rsp;
 
-  always_comb begin
-    s1_ready = (dcache_req.valid & dcache_rsp.ready) | 
-               (icacop_req.valid & icacop_rsp.ready) | 
-               ~s1_exe.base.valid                    &
-               mem_stage == IDEL;
+  assign s1_ready = mem_stage == IDEL                     &
+                    (
+                      (dcache_req.valid & dcache_rsp.ready) | 
+                      (icacop_req.valid & icacop_rsp.ready) | 
+                      ~s1_exe.base.valid                    
+                     );
+                    
 
+  always_comb begin
     dcache_req.valid = s1_exe.base.valid & 
                        ~(s1_exe.mem_oc.mem_op == `MEM_CACOP & s1_exe.code[1:0] == 2'b00) & 
                        ~icacop_rsp.valid;  // icacop_rsp.valid 相当于 icache的busy信号
