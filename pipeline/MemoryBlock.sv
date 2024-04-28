@@ -71,9 +71,9 @@ module MemoryBlock (
       mem_stage <= IDEL;
     end else begin
       case (mem_stage)
-        IDEL        : if (s1_ready && exe_i.mem_oc.atomic_op) mem_stage <= BOOT_ATOMIC;
-        BOOT_ATOMIC : if (dcache_rsp.ready)                   mem_stage <= WAIT_ATOMIC;
-        WAIT_ATOMIC : if (s2_ready && wb_o.atomic)            mem_stage <= IDEL;
+        IDEL        : if (s1_ready && exe_i.mem_oc.atomic_op)         mem_stage <= BOOT_ATOMIC;
+        BOOT_ATOMIC : if (dcache_rsp.ready)                           mem_stage <= WAIT_ATOMIC;
+        WAIT_ATOMIC : if (s2_ready && wb_o.atomic && wb_o.base.valid) mem_stage <= IDEL;
         default : /* default */;
       endcase
     end

@@ -1192,7 +1192,7 @@ module Pipeline (
     csr_tlbsrch_index = iblk_misc_wb_o.tlbsrch_idx;
 
     // 填写原子指令标记
-    csr_llbit_in = mblk_wb_o.mem_op == `MEM_LOAD ? '1 : '0;
+    csr_llbit_in     = mblk_wb_o.mem_op == `MEM_LOAD ? '1 : '0;
     csr_llbit_set_in = mblk_wb_o.base.valid & 
                        mblk_wb_o.atomic &
                        (mblk_wb_o.mem_op == `MEM_LOAD |
