@@ -149,7 +149,9 @@ module Scheduler (
   logic [`DECODE_WIDTH - 1:0] invalid_instr;  // 包括非法指令和非法操作数
 
   logic [`DECODE_WIDTH - 1:0] rat_dest_valid;
+  logic [`DECODE_WIDTH - 1:0] rat_src0_valid;
   logic [`DECODE_WIDTH - 1:0] rat_src0_ready;
+  logic [`DECODE_WIDTH - 1:0] rat_src1_valid;
   logic [`DECODE_WIDTH - 1:0] rat_src1_ready;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_psrc0;
   logic [`DECODE_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] rat_psrc1;
@@ -255,9 +257,9 @@ module Scheduler (
         dq_wdata[dq_write_idx[i]].pc = s1_sche_req.pc[i];
         dq_wdata[dq_write_idx[i]].npc = s1_sche_req.npc[i];
         dq_wdata[dq_write_idx[i]].src = s1_sche_req.src[i];
-        dq_wdata[dq_write_idx[i]].src0_valid = s1_sche_req.arch_src0[i] != 5'b0;
+        dq_wdata[dq_write_idx[i]].src0_valid = s1_sche_req.arch_src0[i] != 5'b0 & rat_src0_valid[i]; // TODO 这个判断似乎可以优化掉前半部分
         dq_wdata[dq_write_idx[i]].src0_ready = rat_src0_ready[i];
-        dq_wdata[dq_write_idx[i]].src1_valid = s1_sche_req.arch_src1[i] != 5'b0;
+        dq_wdata[dq_write_idx[i]].src1_valid = s1_sche_req.arch_src1[i] != 5'b0 & rat_src1_valid[i];
         dq_wdata[dq_write_idx[i]].src1_ready = rat_src1_ready[i];
         dq_wdata[dq_write_idx[i]].dest_valid = s1_sche_req.arch_dest[i] != 5'b0;
         dq_wdata[dq_write_idx[i]].src0 = rat_psrc0[i];
@@ -298,8 +300,10 @@ module Scheduler (
     .dest_i        (s1_sche_req.arch_dest),
     .preg_i        (s1_fl_alloc_preg),
     // 输出(comb)
+    .psrc0_valid_o (rat_src0_valid),
     .psrc0_ready_o (rat_src0_ready),
     .psrc0_o       (rat_psrc0),
+    .psrc1_valid_o (rat_src1_valid),
     .psrc1_ready_o (rat_src1_ready),
     .psrc1_o       (rat_psrc1),
     .ppdst_o       (rat_ppdst),

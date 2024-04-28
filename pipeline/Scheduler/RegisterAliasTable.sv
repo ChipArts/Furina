@@ -43,8 +43,10 @@ parameter
   input logic [`DECODE_WIDTH - 1:0][4:0] dest_i,
   input logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] preg_i,  // 从FreeList分配的空闲物理寄存器(已按照有效项分配)
   // 输出逻辑寄存器对应的物理寄存器编号
+  output logic [`DECODE_WIDTH - 1:0]                            psrc0_valid_o,
   output logic [`DECODE_WIDTH - 1:0]                            psrc0_ready_o,
   output logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc0_o,
+  output logic [`DECODE_WIDTH - 1:0]                            psrc1_valid_o,
   output logic [`DECODE_WIDTH - 1:0]                            psrc1_ready_o,
   output logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc1_o,
   output logic [`DECODE_WIDTH - 1:0]                            ppdst_valid_o,
@@ -59,8 +61,10 @@ parameter
 
   // Main Bit Cell
   RatEntrySt rat_q, rat_n;  // reg
+  logic [`DECODE_WIDTH - 1:0] psrc0_valid;
   logic [`DECODE_WIDTH - 1:0] psrc0_ready;
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc0;
+  logic [`DECODE_WIDTH - 1:0] psrc1_valid;
   logic [`DECODE_WIDTH - 1:0] psrc1_ready;
   logic [`DECODE_WIDTH - 1:0][$clog2(PHY_REG_NUM) - 1:0] psrc1;
   logic [`DECODE_WIDTH - 1:0] ppdst_valid;
@@ -68,28 +72,35 @@ parameter
   always_comb begin
     /* src寄存器重命名 */
     psrc0 = '0;
+    psrc0_valid = '0;
     psrc0_ready = '1;
     psrc1 = '0;
+    psrc1_valid = '0;
     psrc1_ready = '1;
+    // 查不到说明没人写过这个寄存器，标记为invalid，读出0
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       // CAM 方式查找
       for (int j = 0; j < PHY_REG_NUM; j++) begin
         if (src0_i[i] == rat_q.arch_reg[j] && rat_q.valid[j]) begin
           psrc0[i] = j;
+          psrc1_valid[i] = '1;
           psrc0_ready[i] = rat_q.ready[j];
         end
         
         if (src1_i[i] == rat_q.arch_reg[j] && rat_q.valid[j]) begin
           psrc1[i] = j;
+          psrc1_valid[i] = '1;
           psrc1_ready[i] = rat_q.ready[j];
         end
       end
       // 处理RAW相关性（在本条指令之前有指令写入了rat）
       for (int j = 0; j < i; j++) begin
-        psrc0_ready[i] = (src0_i[i] == dest_i[j]) ? '0 : psrc0_ready[i];
+        psrc1_valid[i] = (src0_i[i] == dest_i[j] && dest_valid_i[j]) ? '1 : psrc1_valid[i];
+        psrc0_ready[i] = (src0_i[i] == dest_i[j] && dest_valid_i[j]) ? '0 : psrc0_ready[i];
         psrc0[i] = (src0_i[i] == dest_i[j]) ? preg_i[j] : psrc0[i];
         
-        psrc1_ready[i] = (src1_i[i] == dest_i[j]) ? '0 : psrc1_ready[i];
+        psrc1_valid[i] = (src1_i[i] == dest_i[j] && dest_valid_i[j]) ? '1 : psrc1_valid[i];
+        psrc1_ready[i] = (src1_i[i] == dest_i[j] && dest_valid_i[j]) ? '0 : psrc1_ready[i];
         psrc1[i] = (src1_i[i] == dest_i[j]) ? preg_i[j] : psrc1[i];
       end
     end
@@ -140,8 +151,10 @@ parameter
 
     // output
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
+      psrc0_valid_o[i] = psrc0_valid[i];
       psrc0_ready_o[i] = psrc0_ready[i];
       psrc0_o[i] = psrc0[i];
+      psrc1_valid_o[i] = psrc1_valid[i];
       psrc1_ready_o[i] = psrc1_ready[i];
       psrc1_o[i] = psrc1[i];
       ppdst_valid_o[i] = ppdst_valid[i];
