@@ -95,7 +95,7 @@ parameter
       end
       // 处理RAW相关性（在本条指令之前有指令写入了rat）
       for (int j = 0; j < i; j++) begin
-        psrc1_valid[i] = (src0_i[i] == dest_i[j] && dest_valid_i[j]) ? '1 : psrc1_valid[i];
+        psrc0_valid[i] = (src0_i[i] == dest_i[j] && dest_valid_i[j]) ? '1 : psrc0_valid[i];
         psrc0_ready[i] = (src0_i[i] == dest_i[j] && dest_valid_i[j]) ? '0 : psrc0_ready[i];
         psrc0[i] = (src0_i[i] == dest_i[j]) ? preg_i[j] : psrc0[i];
         
