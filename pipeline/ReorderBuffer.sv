@@ -253,7 +253,7 @@ module ReorderBuffer (
 
     // mem write back
     // 除了load（非原子）其他mem指令都要等待成为最旧的指令
-    mem_wb_rsp.ready = (mem_wb_req.mem_op == `MEM_LOAD & ~mem_wb_req.micro) |
+    mem_wb_rsp.ready = (mem_wb_req.mem_op == `MEM_LOAD & ~mem_wb_req.atomic) |
                        (mem_wb_req.base.rob_idx == cmt_idx[0]);
     if (mem_wb_req.base.valid && mem_wb_rsp.ready) begin
       rob_n[mem_wb_req.base.rob_idx].complete = 1;
@@ -282,7 +282,7 @@ module ReorderBuffer (
       rob_n[mem_wb_req.base.rob_idx].rf_wdata = mem_wb_req.base.wdata;
       rob_n[mem_wb_req.base.rob_idx].eret = '0;
       rob_n[mem_wb_req.base.rob_idx].store_valid = mem_wb_req.mem_op == `MEM_STORE &
-                                                   (~mem_wb_req.micro | mem_wb_req.llbit);
+                                                   (~mem_wb_req.atomic | mem_wb_req.llbit);
       rob_n[mem_wb_req.base.rob_idx].load_valid = mem_wb_req.mem_op == `MEM_LOAD;
       rob_n[mem_wb_req.base.rob_idx].store_data = mem_wb_req.store_data;
       rob_n[mem_wb_req.base.rob_idx].mem_paddr = mem_wb_req.paddr;

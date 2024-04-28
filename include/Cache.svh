@@ -126,7 +126,7 @@ typedef struct packed {
   MemOpType                 mem_op;
   logic [4:0]               code;  // for cacop and preld
   logic                     llbit;
-  logic                     micro;
+  logic                     atomic;
   logic                     preld;
   logic [`PROC_VALEN - 1:0] vaddr;
   AlignOpType               align_op;
@@ -146,7 +146,7 @@ typedef struct packed {
   logic valid;
   logic [31:0] rdata;
   MemOpType mem_op;
-  logic micro;
+  logic atomic;
   logic llbit;
   logic pdest_valid;
   logic [$clog2(`PHY_REG_NUM) - 1:0] pdest;

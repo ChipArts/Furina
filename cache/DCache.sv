@@ -125,6 +125,7 @@ module DCache (
   logic [`DCACHE_WAY_NUM - 1:0][`DCACHE_TAG_WIDTH - 1:0] tag;
   DCacheMetaSt [`DCACHE_WAY_NUM - 1:0] meta;
   logic [3:0] w_strb;
+
   /* stage 2 logic */
   logic [`DCACHE_BLOCK_SIZE / 4 - 1:0][31:0] cache_line;
   logic [31:0] matched_word;
@@ -183,7 +184,7 @@ module DCache (
     endcase
 
     // 特殊判断store指令，确保SC指令在llbit==1时才执行
-    store_valid = dcache_req.mem_op == `MEM_STORE & ~(dcache_req.micro & ~dcache_req.llbit);
+    store_valid = dcache_req.mem_op == `MEM_STORE & ~(dcache_req.atomic & ~dcache_req.llbit);
   end
 
 
@@ -191,7 +192,7 @@ module DCache (
   logic s1_valid;
   logic [`PROC_VALEN - 1:0] s1_vaddr;
   MemOpType s1_mem_op;
-  logic s1_micro;
+  logic s1_atomic;
   logic s1_llbit;
   logic [31:0] s1_wdata;
   AlignOpType s1_align_op;
@@ -209,7 +210,7 @@ module DCache (
       s1_valid <= '0;
       s1_vaddr <= '0;
       s1_mem_op <= '0;
-      s1_micro <= '0;
+      s1_atomic <= '0;
       s1_llbit <= '0;
       s1_code <= '0;
       s1_wdata <= '0;
@@ -226,7 +227,7 @@ module DCache (
         s1_valid <= dcache_req.valid;
         s1_vaddr <= dcache_req.vaddr;
         s1_mem_op <= dcache_req.mem_op;
-        s1_micro <= dcache_req.micro;
+        s1_atomic <= dcache_req.atomic;
         s1_llbit <= dcache_req.llbit;
         s1_code <= dcache_req.code;
         s1_wdata <= dcache_req.wdata;
@@ -331,7 +332,7 @@ module DCache (
   logic s2_uncache;
   logic [31:0] s2_wdata;
   MemOpType s2_mem_op;
-  logic s2_micro;
+  logic s2_atomic;
   logic s2_llbit;
   logic [4:0] s2_code;
   AlignOpType s2_align_op;
@@ -343,7 +344,6 @@ module DCache (
   logic [$clog2(`DCACHE_WAY_NUM) - 1:0] s2_repl_way;
   logic [$clog2(`DCACHE_WAY_NUM) - 1:0] s2_matched_way;
   logic s2_preld;
-
   logic s2_store_valid;
 
   always_ff @(posedge clk or negedge rst_n) begin
@@ -357,7 +357,7 @@ module DCache (
       s2_wdata <= '0;
       s2_matched_way <= '0;
       s2_mem_op <= '0;
-      s2_micro <= '0;
+      s2_atomic <= '0;
       s2_llbit <= '0;
       s2_code <= '0;
       s2_align_op <= '0;
@@ -380,7 +380,7 @@ module DCache (
         s2_wdata <= s1_wdata;
         s2_matched_way <= matched_way;
         s2_mem_op <= s1_mem_op;
-        s2_micro <= s1_micro;
+        s2_atomic <= s1_atomic;
         s2_llbit <= s1_llbit;
         s2_code <= s1_code;
         s2_align_op <= s1_align_op;
@@ -447,7 +447,7 @@ module DCache (
     // 1. 生成响应
     dcache_rsp.valid = s2_valid & cache_state == IDEL;
     dcache_rsp.mem_op = s2_mem_op;  // 用于rob判断是否可以写回
-    dcache_rsp.micro = s2_micro;
+    dcache_rsp.atomic = s2_atomic;
     dcache_rsp.llbit = s2_llbit;
     dcache_rsp.pdest_valid = s2_pdest_valid;
     dcache_rsp.pdest = s2_pdest;

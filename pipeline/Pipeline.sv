@@ -60,7 +60,6 @@ module Pipeline (
   logic ibar_flush;      // IBAR指令
   logic priv_flush;      // 特权指令（csr_rd修改可撤回，不需要flush）
   logic icacop_flush;    // ICache操作
-  logic atomic_flush;    // 原子指令
   logic idle_flush;      // IDLE指令
 
   /* Branch Prediction Unit */
@@ -1195,7 +1194,7 @@ module Pipeline (
     // 填写原子指令标记
     csr_llbit_in = mblk_wb_o.mem_op == `MEM_LOAD ? '1 : '0;
     csr_llbit_set_in = mblk_wb_o.base.valid & 
-                       mblk_wb_o.micro &
+                       mblk_wb_o.atomic &
                        (mblk_wb_o.mem_op == `MEM_LOAD |
                        (mblk_wb_o.mem_op == `MEM_STORE & mblk_wb_o.llbit)) &
                        rob_mem_wb_rsp.ready;

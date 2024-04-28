@@ -148,7 +148,7 @@ typedef struct packed {
   WbBaseSt base;
   logic [31:0] vaddr;
   MemOpType mem_op;
-  logic micro;
+  logic atomic;
   logic llbit;
   logic icacop;
   // diff

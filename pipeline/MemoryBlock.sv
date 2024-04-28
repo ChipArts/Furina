@@ -59,14 +59,36 @@ module MemoryBlock (
 
 
 /*================================== stage1 ===================================*/
-  MemExeSt s1_exe;
+  typedef enum logic[1:0] {
+    IDEL,         // 空闲（目前表示不处于原子访问的状态）
+    BOOT_ATOMIC,  // 原子访问
+    WAIT_ATOMIC
+  } MemStage;     // TODO 优化 添加cacop的控制
 
+  MemStage mem_stage;
+  always_ff @(posedge clk or negedge rst_n) begin : proc_mem_stage
+    if(~rst_n || flush_i) begin
+      mem_stage <= IDEL;
+    end else begin
+      case (mem_stage)
+        IDEL        : if (s1_ready && exe_i.mem_oc.atomic_op) mem_stage <= BOOT_ATOMIC;
+        BOOT_ATOMIC : if (dcache_rsp.ready)                   mem_stage <= WAIT_ATOMIC;
+        WAIT_ATOMIC : if (s2_ready && wb_o.atomic)            mem_stage <= IDEL;
+        default : /* default */;
+      endcase
+    end
+  end
+
+  MemExeSt s1_exe;
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n || flush_i) begin
       s1_exe <= '0;
     end else begin
       if (s1_ready) begin
         s1_exe <= exe_i;
+      end else if (mem_stage == BOOT_ATOMIC && dcache_rsp.ready) begin
+        // cache 接收请求 但还不能读入新的请求
+        s1_exe.base.valid <= '0;
       end
     end
   end
@@ -82,7 +104,8 @@ module MemoryBlock (
   always_comb begin
     s1_ready = (dcache_req.valid & dcache_rsp.ready) | 
                (icacop_req.valid & icacop_rsp.ready) | 
-               ~s1_exe.base.valid;
+               ~s1_exe.base.valid                    &
+               mem_stage == IDEL;
 
     dcache_req.valid = s1_exe.base.valid & 
                        ~(s1_exe.mem_oc.mem_op == `MEM_CACOP & s1_exe.code[1:0] == 2'b00) & 
@@ -93,7 +116,7 @@ module MemoryBlock (
     dcache_req.rob_idx = s1_exe.base.rob_idx;
     dcache_req.align_op = s1_exe.mem_oc.align_op;
     dcache_req.mem_op = s1_exe.mem_oc.mem_op;
-    dcache_req.micro = s1_exe.mem_oc.atomic_op;
+    dcache_req.atomic = s1_exe.mem_oc.atomic_op;
     dcache_req.preld = s1_exe.mem_oc.preld_op;
     dcache_req.pdest = s1_exe.base.pdest;
     dcache_req.pdest_valid = s1_exe.base.pdest_valid;
@@ -141,21 +164,21 @@ module MemoryBlock (
       wb_o.base.excp = icacop_rsp.excp;
       wb_o.vaddr = icacop_rsp.vaddr;
       wb_o.mem_op = `MEM_CACOP;
-      wb_o.micro = '0;
+      wb_o.atomic = '0;
       wb_o.llbit = '0;
       wb_o.icacop = '1;
       wb_o.paddr = '0;
       wb_o.store_data = '0;
     end else begin
       wb_o.base.valid = dcache_rsp.valid;
-      wb_o.base.we = dcache_rsp.pdest_valid & ( dcache_rsp.mem_op == `MEM_LOAD | dcache_rsp.micro);
+      wb_o.base.we = dcache_rsp.pdest_valid & ( dcache_rsp.mem_op == `MEM_LOAD | dcache_rsp.atomic);
       wb_o.base.wdata = dcache_rsp.mem_op == `MEM_LOAD ? dcache_rsp.rdata : {31'd0, dcache_rsp.llbit};
       wb_o.base.rob_idx = dcache_rsp.rob_idx;
       wb_o.base.pdest = dcache_rsp.pdest;
       wb_o.base.excp = dcache_rsp.excp;
       wb_o.vaddr = dcache_rsp.vaddr;
       wb_o.mem_op = dcache_rsp.mem_op;
-      wb_o.micro = dcache_rsp.micro;
+      wb_o.atomic = dcache_rsp.atomic;
       wb_o.llbit = dcache_rsp.llbit;
       wb_o.paddr = dcache_rsp.paddr;
       wb_o.icacop = '0;
