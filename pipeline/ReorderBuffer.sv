@@ -73,32 +73,21 @@ module ReorderBuffer (
   logic [`COMMIT_WIDTH - 1:0] commit_valid;   // 本次可退休得指令
 
 /*================================= W/R Ctrl ==================================*/
+  assign alloc_cnt = $countones(alloc_req.valid);
+  assign alloc_rsp.ready = rob_cnt_q <= `ROB_DEPTH - `DECODE_WIDTH;
+  assign tail_ptr_n = alloc_rsp.ready && alloc_req.ready ? tail_ptr + alloc_cnt : tail_ptr;
+
   always_comb begin
     rob_n = rob;
-    head_ptr_n = head_ptr;
-    tail_ptr_n = tail_ptr;
-    rob_cnt_n = rob_cnt_q;
-
-    // 每个提交端口的rob read idx
-    for (int i = 0; i < `COMMIT_WIDTH; i++) begin
-      cmt_idx[i] = head_ptr[$clog2(`ROB_DEPTH) - 1:0] + i;
-    end
-    
 
     /* alloc logic */
-    alloc_cnt = $countones(alloc_req.valid);
-    alloc_rsp.ready = rob_cnt_q <= `ROB_DEPTH - `DECODE_WIDTH;
-    // 写入条件 有效 && slv可写入 && mst可接收
-    if (alloc_rsp.ready & alloc_req.ready) begin
-      tail_ptr_n = tail_ptr + alloc_cnt;
-    end
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       alloc_ptr[i] = tail_ptr + i;
       alloc_idx[i] = alloc_ptr[i][$clog2(`ROB_DEPTH) - 1:0];
       alloc_rsp.position_bit[i] = alloc_ptr[i][$clog2(`ROB_DEPTH)];
       alloc_rsp.rob_idx[i] = alloc_ptr[i][$clog2(`ROB_DEPTH) - 1:0];
 
-      // set rob entry
+      // 写入条件 有效 && slv可写入 && mst可接收
       if (alloc_req.valid[i] && alloc_rsp.ready && alloc_req.ready) begin
         rob_n[alloc_idx[i]] = '0;  // TODO 需要重置的字段？？？
         rob_n[alloc_idx[i]].complete = alloc_req.excp[i].valid;  // 如果有异常，视为完成执行
@@ -117,8 +106,6 @@ module ReorderBuffer (
 `endif
       end
     end
-
-    // TODO: rob alloc
 
     /* write back logic */
     // misc write back
@@ -289,8 +276,15 @@ module ReorderBuffer (
       rob_n[mem_wb_req.base.rob_idx].mem_vaddr = mem_wb_req.vaddr;
 `endif
     end
+  end
 
-    /* commit logic */
+  /* commit logic */
+  assign head_ptr_n = head_ptr + commit_cnt;
+  always_comb begin : proc_rob_commmit
+    // 每个提交端口的rob read idx
+    for (int i = 0; i < `COMMIT_WIDTH; i++) begin
+      cmt_idx[i] = head_ptr[$clog2(`ROB_DEPTH) - 1:0] + i;
+    end
     // 第一条指令一定不被屏蔽
     redirect_mask[0] = '1;
     exc_mask[0] = '1;
@@ -316,22 +310,16 @@ module ReorderBuffer (
     commit_valid[1] = commit_valid[0] & rob[cmt_idx[1]].complete & commit_mask[1] & valid_mask[1];
 
     commit_cnt = $countones(commit_valid);
-    head_ptr_n = head_ptr + commit_cnt;
 
     // output logic
     cmt_o.valid = commit_valid;
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
       cmt_o.rob_entry[i] = rob[cmt_idx[i]];
     end
-
-    if (alloc_rsp.ready) begin
-      rob_cnt_n = rob_cnt_q + alloc_cnt - commit_cnt;
-    end else begin
-      rob_cnt_n = rob_cnt_q - commit_cnt;
-    end
-
   end
 
+  /* counter updata  */
+  assign rob_cnt_n = alloc_rsp.ready ? rob_cnt_q + alloc_cnt - commit_cnt : rob_cnt_q - commit_cnt;
 
 
   always_ff @(posedge clk or negedge rst_n) begin
