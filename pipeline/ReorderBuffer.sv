@@ -75,6 +75,12 @@ module ReorderBuffer (
 /*================================= W/R Ctrl ==================================*/
   assign alloc_cnt = $countones(alloc_req.valid);
   assign alloc_rsp.ready = rob_cnt_q <= `ROB_DEPTH - `DECODE_WIDTH;
+  for (genvar i = 0; i < `DECODE_WIDTH; i++) begin
+    assign alloc_ptr[i] = tail_ptr + i;
+    assign alloc_idx[i] = alloc_ptr[i][$clog2(`ROB_DEPTH) - 1:0];
+    assign alloc_rsp.position_bit[i] = alloc_ptr[i][$clog2(`ROB_DEPTH)];
+    assign alloc_rsp.rob_idx[i] = alloc_ptr[i][$clog2(`ROB_DEPTH) - 1:0];
+  end
   assign tail_ptr_n = alloc_rsp.ready && alloc_req.ready ? tail_ptr + alloc_cnt : tail_ptr;
 
   always_comb begin
@@ -82,11 +88,6 @@ module ReorderBuffer (
 
     /* alloc logic */
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      alloc_ptr[i] = tail_ptr + i;
-      alloc_idx[i] = alloc_ptr[i][$clog2(`ROB_DEPTH) - 1:0];
-      alloc_rsp.position_bit[i] = alloc_ptr[i][$clog2(`ROB_DEPTH)];
-      alloc_rsp.rob_idx[i] = alloc_ptr[i][$clog2(`ROB_DEPTH) - 1:0];
-
       // 写入条件 有效 && slv可写入 && mst可接收
       if (alloc_req.valid[i] && alloc_rsp.ready && alloc_req.ready) begin
         rob_n[alloc_idx[i]] = '0;  // TODO 需要重置的字段？？？
