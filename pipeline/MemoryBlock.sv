@@ -107,9 +107,9 @@ module MemoryBlock (
                       (icacop_req.valid & icacop_rsp.ready) | 
                       ~s1_exe.base.valid                    
                      );
-                    
 
-  always_comb begin
+
+  always_comb begin : proc_dcache_req
     dcache_req.valid = s1_exe.base.valid & 
                        ~(s1_exe.mem_oc.mem_op == `MEM_CACOP & s1_exe.code[1:0] == 2'b00) & 
                        ~icacop_rsp.valid;  // icacop_rsp.valid 相当于 icache的busy信号
@@ -126,6 +126,11 @@ module MemoryBlock (
     dcache_req.llbit = s1_exe.llbit;
     dcache_req.code = s1_exe.code;
 
+    addr_trans_req = dcache_addr_trans_req;
+    dcache_addr_trans_rsp = addr_trans_rsp;
+  end             
+
+  always_comb begin : proc_icacop_req
     icacop_req.valid = s1_exe.base.valid & 
                        s1_exe.mem_oc.mem_op == `MEM_CACOP & s1_exe.code[1:0] == 2'b00 & 
                        ~dcache_busy_o;
@@ -133,9 +138,6 @@ module MemoryBlock (
     icacop_req.vaddr = s1_exe.base.src0 + (s1_exe.base.imm << 2);
     icacop_req.rob_idx = s1_exe.base.rob_idx;
     icacop_req.cacop_mode = s1_exe.code[4:3];
-    
-    addr_trans_req = dcache_addr_trans_req;
-    dcache_addr_trans_rsp = addr_trans_rsp;
   end
 
   // DCache视为一个多周期的模块
