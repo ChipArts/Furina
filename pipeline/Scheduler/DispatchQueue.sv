@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : DispatchQueue.sv
 // Create  : 2024-04-18 18:26:24
-// Revise  : 2024-04-24 20:53:57
+// Revise  : 2024-04-28 18:47:21
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -51,15 +51,28 @@ parameter
 	logic [$clog2(QUEUE_DEPTH + 1) - 1:0] cnt_q, cnt_n;
 
 	logic [$clog2(QUEUE_DEPTH + 1) - 1:0] write_cnt, read_cnt;
-	logic [`DECODE_WIDTH - 1:0][$clog2(QUEUE_DEPTH) - 1:0] wr_ptr;
-	logic [`DISPATCH_WIDTH - 1:0][$clog2(QUEUE_DEPTH) - 1:0] rd_ptr;
 
-	always_comb begin
+
+	/* read logic */
+	for (genvar i = 0; i < `DISPATCH_WIDTH; i++) begin : gen_read_valid
+		assign read_valid_o[i] = cnt_q > i;
+	end
+
+	assign read_cnt = $countones(read_ready_i & read_valid_o);
+	assign head_n   = head_q + read_cnt;
+
+	for (genvar i = 0; i < `DISPATCH_WIDTH; i++) begin : gen_read_data
+		assign read_data_o[i] = queue_q[{head_q + i}[$clog2(QUEUE_DEPTH) - 1:0]];
+	end
+
+	/* write logic */
+	assign write_cnt = $countones(write_valid_i);
+	assign write_ready_o = cnt_q <= QUEUE_DEPTH - `DECODE_WIDTH;
+	assign tail_n = write_ready_o ? tail_q + write_cnt : tail_q;
+
+	always_comb begin : proc_dq_write
 		// default assign
 		queue_n = queue_q;
-		head_n = head_q;
-		tail_n = tail_q;
-		cnt_n = cnt_q;
 
 		// wake up
 		// 先进行唤醒，以防写入的内容被覆盖
@@ -76,45 +89,20 @@ parameter
 			end
 		end
 
-
-		for (int i = 0; i < `DISPATCH_WIDTH; i++) begin
-			read_valid_o[i] = cnt_q > i;
-		end
-
-		write_cnt = $countones(write_valid_i);
-		read_cnt  = $countones(read_ready_i & read_valid_o);
-
-		write_ready_o = cnt_q <= QUEUE_DEPTH - `DECODE_WIDTH;
-
-		if (write_ready_o) begin
-			cnt_n = cnt_q + write_cnt - read_cnt;
-		end else begin
-			cnt_n = cnt_q - read_cnt;
-		end
-
-		// 写入
+		// 写入新的指令
 		for (int i = 0; i < `DECODE_WIDTH; i++) begin
-			wr_ptr[i] = {tail_q + i}[$clog2(QUEUE_DEPTH) - 1:0];
 			if (write_valid_i[i] && write_ready_o) begin
-				queue_n[wr_ptr[i]] = write_data_i[i];
+				queue_n[{tail_q + i}[$clog2(QUEUE_DEPTH) - 1:0]] = write_data_i[i];
 			end
-		end
-
-		// 读出
-		for (int i = 0; i < `DISPATCH_WIDTH; i++) begin
-			rd_ptr[i] = {head_q + i}[$clog2(QUEUE_DEPTH) - 1:0];
-			read_data_o[i] = queue_q[rd_ptr[i]];
-		end
-
-		// 更新指针
-		head_n = head_q + read_cnt;
-		if (write_ready_o) begin
-			tail_n = tail_q + write_cnt;
 		end
 
 	end
 
+	/* count updata */
+	assign cnt_n = write_ready_o ? cnt_q + write_cnt - read_cnt : cnt_q - read_cnt;
 
+
+	/* ff */
 	always_ff @(posedge clk or negedge rst_n) begin
 		if(!rst_n || flush_i) begin
 			queue_q <= 0;
