@@ -103,6 +103,7 @@ module Pipeline (
 
   /* Decoder */
   OptionCodeSt [`DECODE_WIDTH - 1:0] decoder_option_code_o;
+  OptionCodeSt [`DECODE_WIDTH - 1:0] option_code;  // 处理特殊的解码
   logic [`DECODE_WIDTH - 1:0][4:0] decoder_src0;
   logic [`DECODE_WIDTH - 1:0][4:0] decoder_src1;
   logic [`DECODE_WIDTH - 1:0][4:0] decoder_dest;
@@ -571,22 +572,24 @@ module Pipeline (
 
   // 处理特殊的解码
   // TODO: 优化这个处理
-  always_comb begin
+  always_comb begin : proc_decoder_special
+    // default assign
+    option_code = decoder_option_code_o;
     // 三个CSR特权指令
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      if (decoder_option_code_o[i].priv_op == `PRIV_CSR_XCHG) begin
+      if (option_code[i].priv_op == `PRIV_CSR_XCHG) begin
         case (ibuf_read_data_o[i].instr[9:5])
-          5'b0 : decoder_option_code_o[i].priv_op = `PRIV_CSR_READ;
-          5'b1 : decoder_option_code_o[i].priv_op = `PRIV_CSR_WRITE;
-          default : decoder_option_code_o[i].priv_op = `PRIV_CSR_XCHG;
+          5'b0 : option_code[i].priv_op = `PRIV_CSR_READ;
+          5'b1 : option_code[i].priv_op = `PRIV_CSR_WRITE;
+          default : option_code[i].priv_op = `PRIV_CSR_XCHG;
         endcase
       end
     end
     // 两个rdtimel指令
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      if (decoder_option_code_o[i].misc_op == `MISC_RDCNTVL) begin
+      if (option_code[i].misc_op == `MISC_RDCNTVL) begin
         if (ibuf_read_data_o[i].instr[9:5] != 0) begin
-          decoder_option_code_o[i].misc_op = `MISC_RDCNTID;
+          option_code[i].misc_op = `MISC_RDCNTID;
         end
       end
     end
@@ -633,7 +636,7 @@ module Pipeline (
       sche_req.arch_src0[i] = decoder_src0[i];
       sche_req.arch_src1[i] = decoder_src1[i];
       sche_req.arch_dest[i] = decoder_dest[i];
-      sche_req.option_code[i] = decoder_option_code_o[i];
+      sche_req.option_code[i] = option_code[i];
       sche_req.excp[i] = ibuf_read_data_o[i].excp;
     end
 

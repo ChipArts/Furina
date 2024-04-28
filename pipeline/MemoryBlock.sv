@@ -156,9 +156,8 @@ module MemoryBlock (
 
 /*================================== stage2 ===================================*/
   // 产生commit信息
+  assign s2_ready = wb_ready_i;
   always_comb begin
-    wb_o = '0;
-    s2_ready = wb_ready_i;
     // 由于busy信号控制，icache和dcache的响应互斥
     if (icacop_rsp.valid) begin
       wb_o.base.valid = icacop_rsp.valid;
