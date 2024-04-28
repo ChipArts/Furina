@@ -577,7 +577,7 @@ module DCache (
           axi_rdata_idx <= (axi_rdata_idx + 1 == `DCACHE_BLOCK_SIZE / 4) ? axi_rdata_idx : axi_rdata_idx + 1;
         end 
       end else begin
-        axi_rdata_idx <= s2_uncache ? s2_vaddr[`DCACHE_IDX_OFFSET - 1:0] : '0;
+        axi_rdata_idx <= s2_uncache ? s2_vaddr[`DCACHE_IDX_OFFSET - 1:2] : '0;
       end
       // axi写
       if (cache_state == REPLACE) begin
