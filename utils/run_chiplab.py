@@ -41,13 +41,13 @@ my_program memset dhrystone coremark linux rtthread
 c_prg/memcmp c_prg/inner_product c_prg/lookup_table
 c_prg/loop_induction c_prg/minmax_sequence c_prg/product_sequence
 """
-prog = "func/func_advance"
+prog = "fireye/D1"
 
 # 进入CHIPLAB_HOME/sims/verilator/run_prog目录
 os.chdir("%s/sims/verilator/run_prog" % chiplab_home)
 
 # 执行chiplab命令
-# os.system(f"./configure.sh --run {prog} --tail-waveform --waveform-tail-size 10000 --tail-simu-trace --trace-tail-size 10000")
+# os.system(f"./configure.sh --run {prog} --threads 4 --tail-waveform --waveform-tail-size 100000 --tail-simu-trace --trace-tail-size 100000")
 os.system(f"./configure.sh --run {prog} --threads 8")
 os.system("make clean")
 os.system("make -j16")
