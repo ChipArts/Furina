@@ -347,7 +347,7 @@ module DCache (
   logic s2_store_valid;
 
   always_ff @(posedge clk or negedge rst_n) begin
-    if (~rst_n || flush_i) begin
+    if (~rst_n) begin
       s2_valid <= '0;
       s2_miss <= '0;
       s2_vaddr <= '0;
@@ -370,7 +370,9 @@ module DCache (
       s2_store_valid <= '0;
       s2_preld <= '0;
     end else begin
-      if (s2_ready) begin
+      if (flush_i) begin  // 确保flush的时候其他的信息不变，否则会出现fsm控制错误
+        s2_valid <= '0;
+      end else if (s2_ready) begin
         s2_valid <= s1_valid;
         s2_miss <= miss;
         s2_vaddr <= s1_vaddr;
