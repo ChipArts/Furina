@@ -541,7 +541,7 @@ module DCache (
     miss2refill = axi4_mst.ar_ready;
 
     repl2refill = ~s2_uncache & 
-                  repl_complete &     // TODO 有优化的空间 可以提前一拍
+                  repl_complete &                   // TODO 有优化的空间 可以提前一拍
                   (~read_req | axi4_mst.ar_ready);  // TODO 这里可能有bug 可能需要将ar_ready用寄存器保存？？？ 就目前来看wr完成前不会产生aw_ready
     repl2idle   = s2_uncache &
                   axi4_mst.w_last & axi4_mst.w_valid & axi4_mst.w_ready;
@@ -561,7 +561,8 @@ module DCache (
     end else begin
       case (cache_state)
         // cache 状态机的启动信号来自stage 1
-        IDEL    : if (idle2wait)         cache_state <= WAIT;
+        IDEL    : if (flush_i)           cache_state <= IDEL;
+                  else if (idle2wait)    cache_state <= WAIT;
         WAIT    : if (flush_i)           cache_state <= IDEL;
                   else if (wait2miss)    cache_state <= MISS;
                   else if (wait2refill)  cache_state <= REFILL;
