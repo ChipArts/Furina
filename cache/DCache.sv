@@ -695,8 +695,11 @@ module DCache (
     tag_ram_we = '0;
     if (cache_state == REFILL) begin
       tag_ram_we[s2_repl_way] = s2_valid &                                            // 指令有效
-                                (axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache) |  // cache miss refill
-                                (cacop_mode0);                                        // cacop mode 0 fill tag
+                                (
+                                  (axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache) |  // cache miss refill
+                                  (cacop_mode0)                                         // cacop mode 0 fill tag
+                                 );
+                                
     end
     tag_ram_waddr = `DCACHE_IDX_OF(s2_vaddr);
     tag_ram_wdata = cacop_mode0 ? '0 : `DCACHE_TAG_OF(s2_paddr);
@@ -707,8 +710,11 @@ module DCache (
     meta_ram_waddr = `DCACHE_IDX_OF(s2_vaddr);
     if (cache_state == REFILL) begin
       meta_ram_we[s2_repl_way] = s2_valid &                                            // 指令有效
-                                 (axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache) |  // cache miss refill
-                                 (cacop_mode1 | cacop_mode2);                          // cacop mode 1、2 invalid cache line
+                                 (
+                                   (axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache) |  // cache miss refill
+                                   (cacop_mode1 | cacop_mode2)                           // cacop mode 1、2 invalid cache line
+                                  );
+                                 
       meta_ram_wdata = cacop_mode1 || cacop_mode2 ? '{valid: 1'b0, dirty: 1'b0} :      // cacop invalid
                        s2_store_valid             ? '{valid: 1'b1, dirty: 1'b1} :      // cache miss store refill
                                                     '{valid: 1'b1, dirty: 1'b0} ;      // cache miss load  refill
@@ -726,9 +732,20 @@ module DCache (
     plru_ram_raddr = s1_ready ? `DCACHE_IDX_OF(dcache_req.vaddr) : `DCACHE_IDX_OF(s1_vaddr);
 
     // 一点转发逻辑
-    // cache refill时转发tag和meta  TODO: 需要转发???
-    tag = tag_ram_rdata;
-    meta = meta_ram_rdata;
+    // cache refill时转发tag和meta
+    for (int i = 0; i < `DCACHE_WAY_NUM; i++) begin
+      if (tag_ram_we[i]) begin
+        tag[i] = tag_ram_wdata;
+      end else begin
+        tag[i] = tag_ram_rdata[i];
+      end
+      
+      if (meta_ram_we[i]) begin
+        meta[i] = meta_ram_wdata;
+      end else begin
+        meta[i] = meta_ram_rdata[i];
+      end
+    end
   end
 
   // Data Memory: 每路 1 个单端口RAM
