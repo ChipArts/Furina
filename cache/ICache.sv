@@ -82,7 +82,7 @@ module ICache (
 
   CacheState cache_state;
   logic [(`ICACHE_BLOCK_SIZE / 4) - 1:0][31:0] axi_rdata_buffer;
-  logic [$clog2(`ICACHE_BLOCK_SIZE / 4) - 1:0] axi_rdata_ofs;
+  logic [$clog2(`ICACHE_BLOCK_SIZE / 4) - 1:0] axi_rdata_idx;
 
   /* stage 0 */
   logic adef;  // fetch address error
@@ -254,7 +254,7 @@ module ICache (
   always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
       cache_state <= IDEL;
-      axi_rdata_ofs <= '0;
+      axi_rdata_idx <= '0;
       axi_rdata_buffer <= '0;
     end else begin
       case (cache_state)
@@ -268,11 +268,12 @@ module ICache (
       // axi读数据缓存
       if (cache_state == REFILL) begin
         if (axi4_mst.r_valid && axi4_mst.r_ready) begin
-          axi_rdata_buffer[axi_rdata_ofs] <= axi4_mst.r_data;
-          axi_rdata_ofs <= axi_rdata_ofs + 1;
+          axi_rdata_buffer[axi_rdata_idx] <= axi4_mst.r_data;
+          axi_rdata_idx <= axi_rdata_idx + 1;
         end
       end else begin
-        axi_rdata_ofs <= '0;
+        // axi_rdata_idx <= '0;
+        axi_rdata_idx <= addr_trans_rsp.uncache ? s1_vaddr[`ICACHE_IDX_OFFSET - 1:2] : '0;
       end
     end
   end
@@ -308,8 +309,8 @@ module ICache (
     axi4_mst.b_ready = '0;
 
     axi4_mst.ar_id = '0;
-    axi4_mst.ar_addr = {paddr[`PROC_PALEN - 1:`ICACHE_IDX_OFFSET], {`ICACHE_IDX_OFFSET{1'b0}}};  // 以cache行为单位
-    axi4_mst.ar_len = `ICACHE_BLOCK_SIZE / 4 - 1;
+    axi4_mst.ar_addr = addr_trans_rsp.uncache ? paddr : `ICACHE_PADDR_ALIGN(paddr);  // 以cache行为单位
+    axi4_mst.ar_len = addr_trans_rsp.uncache ? $clog2(`FETCH_WIDTH) : `ICACHE_BLOCK_SIZE / 4 - 1;
     axi4_mst.ar_size = 3'b010;  // 4 bytes;
     axi4_mst.ar_burst = 2'b01;  // Incrementing-address burst
     axi4_mst.ar_lock = '0;

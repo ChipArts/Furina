@@ -52,6 +52,7 @@
 
 `define FETCH_OFS ($clog2(`FETCH_WIDTH) + 2)
 `define FETCH_ALIGN(ADDR) {ADDR[`PROC_VALEN - 1:`FETCH_OFS],  {`FETCH_OFS{1'b0}}}
+`define ICACHE_PADDR_ALIGN(PADDR) {PADDR[`PROC_PALEN - 1:`ICACHE_IDX_OFFSET], {`ICACHE_IDX_OFFSET{1'b0}}}
 
 // 要保证每次请求的指令在同一Cache行即idx相同
 typedef struct packed {
