@@ -20,16 +20,14 @@
 // ==============================================================================
 
 module SimpleDualPortRAM #(
-parameter
-  int unsigned DATA_DEPTH       = 256,
-  int unsigned DATA_WIDTH       = 32,
-  int unsigned BYTE_WRITE_WIDTH = 32,
-  string       CLOCKING_MODE    = "common_clock",
-  string       WRITE_MODE       = "write_first",
-               MEMORY_PRIMITIVE = "auto",
-localparam
-  int unsigned ADDR_WIDTH       = $clog2(DATA_DEPTH),
-  int unsigned MEMORY_SIZE      = DATA_WIDTH * DATA_DEPTH
+  parameter DATA_DEPTH       = 256,
+  parameter DATA_WIDTH       = 32,
+  parameter BYTE_WRITE_WIDTH = 32,
+  parameter CLOCKING_MODE    = "common_clock",
+  parameter WRITE_MODE       = "write_first",
+  parameter MEMORY_PRIMITIVE = "auto",
+  localparam ADDR_WIDTH       = $clog2(DATA_DEPTH),
+  localparam MEMORY_SIZE      = DATA_WIDTH * DATA_DEPTH
 )(
 	// Port A
   input clk_a,
