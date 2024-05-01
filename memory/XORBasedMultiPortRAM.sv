@@ -34,8 +34,8 @@ parameter
   int unsigned RPORTS_NUM = 6,
   int unsigned WPORTS_NUM = 6,
   int unsigned BYTE_WRITE_WIDTH = 64,
-  string       CLOCKING_MODE = "common_clock",
-  string       WRITE_MODE = "write_first",
+               CLOCKING_MODE = "common_clock",
+               WRITE_MODE = "write_first",
 localparam
   int unsigned ADDR_WIDTH = $clog2(DATA_DEPTH),
   int unsigned BYTES_NUM  = DATA_WIDTH / BYTE_WRITE_WIDTH

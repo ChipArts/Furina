@@ -2,3 +2,4 @@
 **/*.pb
 *.sublime*
 **/*.dir
+myCPU

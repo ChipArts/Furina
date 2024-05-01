@@ -115,7 +115,7 @@ module ICache (
     addr_trans_req.mem_type = icacop_req.valid ? MMU_LOAD : MMU_FETCH;  // TODO 存疑
     addr_trans_req.cacop_direct = icacop_req.valid & (icacop_req.cacop_mode == 2'b00 | icacop_req.cacop_mode == 2'b01);
 
-    icacop_rsp.ready = s0_ready; // CACOP优先
+    icacop_rsp.ready = '1; // CACOP优先
     icache_rsp.ready = s0_ready & ~icacop_req.valid;
   end
 
@@ -139,15 +139,15 @@ module ICache (
       s1_adef  <= '0;
       s1_cacop_mode <= '0;
       s1_rob_idx <= '0;
-      uncache_hit <= '0;
     end else begin
-      // 需要特殊处理pre check的flush，此时的s1_cacop_en不应该被清除
       if (pre_flush_i) begin
+        // 需要特殊处理pre check的flush，此时的s1_cacop_en不应该被清除
         s1_fetch_en <= '0;
-      end else begin
-        if (s1_ready) begin
-          s1_fetch_en <= icache_req.valid;
-        end
+      end else if (icacop_req.valid) begin
+        // 当icacop到来，强制抢占
+        s1_fetch_en <= '0;
+      end else if (s1_ready) begin
+        s1_fetch_en <= icache_req.valid;
       end
 
 
@@ -160,12 +160,6 @@ module ICache (
         s1_npc <= icache_req.npc;
         s1_br_info <= icache_req.br_info;
         s1_adef  <= adef;
-
-        uncache_hit <= '0;
-      end else begin
-        if (cache_state == REFILL) begin
-          uncache_hit <= axi4_mst.r_last && axi4_mst.r_valid && addr_trans_rsp.uncache;
-        end
       end
     end
   end
@@ -176,6 +170,21 @@ module ICache (
   // 5 获得 plru 信息, 选出替换 way
   // 6 生成新的plru信息
   // 7 生成 inst 输出
+
+  always_ff @(posedge clk or negedge rst_n) begin : proc_uncache_hit
+    if(~rst_n) begin
+      uncache_hit <= 0;
+    end else begin
+      if (s1_ready) begin
+        uncache_hit <= 0;
+      end else begin
+        if (cache_state == REFILL) begin
+          uncache_hit <= axi4_mst.r_last && axi4_mst.r_valid && addr_trans_rsp.uncache;
+        end
+      end
+      
+    end
+  end
 
 `ifdef DEBUG
   wire [`ICACHE_TAG_WIDTH - 1:0] tag_dbug = `ICACHE_TAG_OF(paddr);
@@ -336,10 +345,10 @@ module ICache (
     // data ram
     for (int i = 0; i < `ICACHE_WAY_NUM; i++) begin
       data_ram_we[i] = cache_state == REFILL &
+                      |s1_fetch_en &            // fulsh后不refill
                        replaced_way == i &
                        axi4_mst.r_valid &
                        axi4_mst.r_last &
-                      |s1_fetch_en &            // fulsh后不refill
                       ~addr_trans_rsp.uncache;  // uncache请求不refill
     end
     data_ram_waddr = `ICACHE_IDX_OF(s1_vaddr);

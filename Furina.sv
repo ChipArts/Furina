@@ -213,7 +213,7 @@ module Furina (
     .m00_axi_rready   (axi4_mst.r_ready)
   );
 
-`ifdef DEBUG
+`ifdef VERILATOR_SIM
   for (genvar i = 0; i < `COMMIT_WIDTH; i++) begin : gen_commit_diff
     DifftestInstrCommit DifftestInstrCommit(
         .clock              (clk            ),

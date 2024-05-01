@@ -30,7 +30,7 @@ parameter
   int unsigned DATA_WIDTH = 32,
   int unsigned RPORTS_NUM = 4,
   int unsigned WPORTS_NUM = 4,
-  string       FIFO_MEMORY_TYPE = "auto"
+               FIFO_MEMORY_TYPE = "auto"
 )(
   input logic clk,      // Clock
   input logic a_rst_n,  // Asynchronous reset active low
