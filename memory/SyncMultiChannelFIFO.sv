@@ -26,11 +26,11 @@
 
 module SyncMultiChannelFIFO #(
 parameter
-  int unsigned FIFO_DEPTH = 16,
-  int unsigned DATA_WIDTH = 32,
-  int unsigned RPORTS_NUM = 4,
-  int unsigned WPORTS_NUM = 4,
-               FIFO_MEMORY_TYPE = "auto"
+  FIFO_DEPTH = 16,
+  DATA_WIDTH = 32,
+  RPORTS_NUM = 4,
+  WPORTS_NUM = 4,
+  FIFO_MEMORY_TYPE = "auto"
 )(
   input logic clk,      // Clock
   input logic a_rst_n,  // Asynchronous reset active low

@@ -27,13 +27,13 @@
 
 module SyncFIFO #(
 parameter
-  int unsigned FIFO_DEPTH = 128,
-  int unsigned FIFO_DATA_WIDTH = 32,
-  string       READ_MODE = "std",
-               FIFO_MEMORY_TYPE = "auto",
+  FIFO_DEPTH = 128,
+  FIFO_DATA_WIDTH = 32,
+  READ_MODE = "std",
+  FIFO_MEMORY_TYPE = "auto",
 localparam
-  int unsigned FIFO_ADDR_WIDTH = $clog2(FIFO_DEPTH),
-  int unsigned FIFO_CNT_WIDTH = $clog2(FIFO_DEPTH + 1)
+  FIFO_ADDR_WIDTH = $clog2(FIFO_DEPTH),
+  FIFO_CNT_WIDTH = $clog2(FIFO_DEPTH + 1)
 )(
   input logic clk,      // Clock
   input logic a_rst_n,  // Asynchronous reset active low

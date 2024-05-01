@@ -28,15 +28,15 @@
 
 module MultiReadRAM #(
 parameter
-  int unsigned DATA_DEPTH = 128,
-  int unsigned DATA_WIDTH = 64,
-  int unsigned RPORTS_NUM = 6,
-  int unsigned BYTE_WRITE_WIDTH = 64,
-               CLOCKING_MODE = "common_clock",
-               WRITE_MODE = "write_first",
+  DATA_DEPTH = 128,
+  DATA_WIDTH = 64,
+  RPORTS_NUM = 6,
+  BYTE_WRITE_WIDTH = 64,
+  CLOCKING_MODE = "common_clock",
+  WRITE_MODE = "write_first",
 localparam
-  int unsigned ADDR_WIDTH = $clog2(DATA_DEPTH),
-  int unsigned BYTES_NUM  = DATA_WIDTH / BYTE_WRITE_WIDTH
+  ADDR_WIDTH = $clog2(DATA_DEPTH),
+  BYTES_NUM  = DATA_WIDTH / BYTE_WRITE_WIDTH
 )(
   input clk_w,
   input [RPORTS_NUM - 1:0] clk_r,    // Clock

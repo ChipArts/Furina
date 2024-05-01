@@ -25,14 +25,14 @@
 
 module SinglePortRAM #(
 parameter
-  int unsigned DATA_DEPTH = 256,
-  int unsigned DATA_WIDTH = 32,
-  int unsigned BYTE_WRITE_WIDTH = 8,
-               MEMORY_PRIMITIVE = "auto",
-               WRITE_MODE       = "write_first",
+  DATA_DEPTH = 256,
+  DATA_WIDTH = 32,
+  BYTE_WRITE_WIDTH = 8,
+  MEMORY_PRIMITIVE = "auto",
+  WRITE_MODE       = "write_first",
 localparam
-  int unsigned ADDR_WIDTH = $clog2(DATA_DEPTH),
-  int unsigned MEMORY_SIZE = DATA_WIDTH * DATA_DEPTH
+  ADDR_WIDTH = $clog2(DATA_DEPTH),
+  MEMORY_SIZE = DATA_WIDTH * DATA_DEPTH
 )(
 	input clk,
 	input rst_n,
