@@ -24,8 +24,8 @@ parameter
   int unsigned DATA_DEPTH       = 256,
   int unsigned DATA_WIDTH       = 32,
   int unsigned BYTE_WRITE_WIDTH = 32,
-               CLOCKING_MODE    = "common_clock",
-               WRITE_MODE       = "write_first",
+  string       CLOCKING_MODE    = "common_clock",
+  string       WRITE_MODE       = "write_first",
                MEMORY_PRIMITIVE = "auto",
 localparam
   int unsigned ADDR_WIDTH       = $clog2(DATA_DEPTH),
