@@ -743,7 +743,7 @@ module DCache (
         tag[i] = tag_ram_rdata[i];
       end
       
-      if (meta_ram_we[i] && meta_ram_wdata == `DCACHE_IDX_OF(s1_vaddr)) begin
+      if (meta_ram_we[i] && meta_ram_waddr == `DCACHE_IDX_OF(s1_vaddr)) begin
         meta[i] = meta_ram_wdata;
       end else begin
         meta[i] = meta_ram_rdata[i];
