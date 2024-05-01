@@ -29,7 +29,7 @@ module SyncFIFO #(
 parameter
   int unsigned FIFO_DEPTH = 128,
   int unsigned FIFO_DATA_WIDTH = 32,
-               READ_MODE = "std",
+  string       READ_MODE = "std",
                FIFO_MEMORY_TYPE = "auto",
 localparam
   int unsigned FIFO_ADDR_WIDTH = $clog2(FIFO_DEPTH),
