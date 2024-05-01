@@ -41,7 +41,5 @@ def calc(addr):
 
 
 if __name__ == "__main__":
-    addr = 0x0000277C
-    calc(addr)
-    addr = 0x00F44F74
+    addr = 0xa01ae018
     calc(addr)

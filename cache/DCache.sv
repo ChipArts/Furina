@@ -737,13 +737,13 @@ module DCache (
     // 一点转发逻辑
     // cache refill时转发tag和meta
     for (int i = 0; i < `DCACHE_WAY_NUM; i++) begin
-      if (tag_ram_we[i] && tag_ram_rdata == tag_ram_waddr) begin
+      if (tag_ram_we[i] && tag_ram_waddr == `DCACHE_IDX_OF(s1_vaddr)) begin
         tag[i] = tag_ram_wdata;
       end else begin
         tag[i] = tag_ram_rdata[i];
       end
       
-      if (meta_ram_we[i] && meta_ram_rdata == meta_ram_waddr) begin
+      if (meta_ram_we[i] && meta_ram_wdata == `DCACHE_IDX_OF(s1_vaddr)) begin
         meta[i] = meta_ram_wdata;
       end else begin
         meta[i] = meta_ram_rdata[i];
