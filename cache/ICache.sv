@@ -319,7 +319,7 @@ module ICache (
 
     axi4_mst.ar_id = '0;
     axi4_mst.ar_addr = addr_trans_rsp.uncache ? paddr : `ICACHE_PADDR_ALIGN(paddr);  // 以cache行为单位
-    axi4_mst.ar_len = addr_trans_rsp.uncache ? $clog2(`FETCH_WIDTH) : `ICACHE_BLOCK_SIZE / 4 - 1;
+    axi4_mst.ar_len = addr_trans_rsp.uncache ? `FETCH_WIDTH - 1 : `ICACHE_BLOCK_SIZE / 4 - 1;
     axi4_mst.ar_size = 3'b010;  // 4 bytes;
     axi4_mst.ar_burst = 2'b01;  // Incrementing-address burst
     axi4_mst.ar_lock = '0;

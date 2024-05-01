@@ -257,20 +257,23 @@ assign no_forward   = !excp_tlbrefill && !(eret_tlbrefill_excp && ertn_flush) &&
 
 assign pg_out       = excp_tlbrefill & 1'b0                      |
                       (eret_tlbrefill_excp && ertn_flush) & 1'b1 |
-                      crmd_wen       & wr_data[`PG]              |
+                      // crmd_wen       & wr_data[`PG]              |
                       no_forward     & csr_crmd[`PG];
 
 assign da_out       = excp_tlbrefill & 1'b1                      |
                       (eret_tlbrefill_excp && ertn_flush) & 1'b0 |
-                      crmd_wen       & wr_data[`DA]              |
+                      // crmd_wen       & wr_data[`DA]              |
                       no_forward     & csr_crmd[`DA];
 
-assign dmw0_out     = DMW0_wen ? wr_data : csr_dmw0;
-assign dmw1_out     = DMW1_wen ? wr_data : csr_dmw1;
+// assign dmw0_out     = DMW0_wen ? wr_data : csr_dmw0;
+// assign dmw1_out     = DMW1_wen ? wr_data : csr_dmw1;
+
+assign dmw0_out     = csr_dmw0;
+assign dmw1_out     = csr_dmw1;
 
 assign plv_out      = {2{excp_flush}} & 2'b0            |
                       {2{ertn_flush}} & csr_prmd[`PPLV] |
-                      {2{crmd_wen  }} & wr_data[`PLV]   |
+                      // {2{crmd_wen  }} & wr_data[`PLV]   |
                       {2{!excp_flush && !ertn_flush && !crmd_wen}} & csr_crmd[`PLV];
 
 assign tlbrentry_out= csr_tlbrentry;
