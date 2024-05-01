@@ -115,7 +115,7 @@ module ICache (
     addr_trans_req.mem_type = icacop_req.valid ? MMU_LOAD : MMU_FETCH;  // TODO 存疑
     addr_trans_req.cacop_direct = icacop_req.valid & (icacop_req.cacop_mode == 2'b00 | icacop_req.cacop_mode == 2'b01);
 
-    icacop_rsp.ready = '1; // CACOP优先
+    icacop_rsp.ready = s0_ready; // CACOP优先
     icache_rsp.ready = s0_ready & ~icacop_req.valid;
   end
 
