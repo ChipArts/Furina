@@ -214,13 +214,13 @@ module MemoryManagementUnit (
         addr_trans_rsp[i].uncache = (da_mode && (csr_datf_i == 2'b0))                    ||
                                     (dmw0_en[i] && (csr_dmw0_i[`DMW_MAT] == 2'b0))       ||
                                     (dmw1_en[i] && (csr_dmw1_i[`DMW_MAT] == 2'b0))       ||
-                                    (addr_trans_en[i] && (tlb_search_rsp[1].mat == 2'b0));
+                                    (addr_trans_en[i] && (tlb_search_rsp[i].mat == 2'b0));
       end else begin
         // for data cache
         addr_trans_rsp[i].uncache = (da_mode && (csr_datm_i == 2'b0))                    ||
                                     (dmw0_en[i] && (csr_dmw0_i[`DMW_MAT] == 2'b0))       ||
                                     (dmw1_en[i] && (csr_dmw1_i[`DMW_MAT] == 2'b0))       ||
-                                    (addr_trans_en[i] && (tlb_search_rsp[1].mat == 2'b0));
+                                    (addr_trans_en[i] && (tlb_search_rsp[i].mat == 2'b0));
       end
       
       // addr_trans_rsp[i].tlb_valid = tlb_search_rsp[i].valid;
