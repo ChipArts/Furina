@@ -505,7 +505,7 @@ module DCache (
 
     /* cache 状态机控制 */
     // MISS 阶段不是要写就是要读
-    uncache_store = s2_mem_op == `MEM_STORE & s2_uncache & s2_store_valid;
+    uncache_store   = s2_mem_op == `MEM_STORE & s2_uncache & s2_store_valid;
     cacop_mode0     = s2_mem_op == `MEM_CACOP & s2_code[4:3] == 2'b00;  // wr tag
     cacop_mode1     = s2_mem_op == `MEM_CACOP & s2_code[4:3] == 2'b01;  // wr valid
     cacop_mode2     = s2_mem_op == `MEM_CACOP & s2_code[4:3] == 2'b10;  // wr valid
@@ -516,7 +516,7 @@ module DCache (
     write_req = uncache_store | 
                 (
                   (s2_repl_meta.valid & s2_repl_meta.dirty) &
-                  (~s2_uncache | cacop_mode2_hit) &
+                  (~s2_uncache        | cacop_mode2_hit   ) &
                   (~cacop_mode0)
                 );
     // uncache wr --> rd 0

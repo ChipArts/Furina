@@ -209,11 +209,20 @@ module MemoryManagementUnit (
                                 ((tlb_search_rsp[i].page_size == 6'd12) ? {tlb_search_rsp[i].ppn, addr_trans_req_buffer[i].vaddr[11:0]} : 
                                                                           {tlb_search_rsp[i].ppn[`PROC_PALEN - 1:22], addr_trans_req_buffer[i].vaddr[21:0]}) :
                                  addr_trans_req_buffer[i].vaddr;
-
-      addr_trans_rsp[i].uncache = (da_mode && (csr_datm_i == 2'b0))                    ||
-                                  (dmw0_en[i] && (csr_dmw0_i[`DMW_MAT] == 2'b0))       ||
-                                  (dmw1_en[i] && (csr_dmw1_i[`DMW_MAT] == 2'b0))       ||
-                                  (addr_trans_en[i] && (tlb_search_rsp[1].mat == 2'b0));
+      if (i == 0) begin
+        // for instr cache
+        addr_trans_rsp[i].uncache = (da_mode && (csr_datf_i == 2'b0))                    ||
+                                    (dmw0_en[i] && (csr_dmw0_i[`DMW_MAT] == 2'b0))       ||
+                                    (dmw1_en[i] && (csr_dmw1_i[`DMW_MAT] == 2'b0))       ||
+                                    (addr_trans_en[i] && (tlb_search_rsp[1].mat == 2'b0));
+      end else begin
+        // for data cache
+        addr_trans_rsp[i].uncache = (da_mode && (csr_datm_i == 2'b0))                    ||
+                                    (dmw0_en[i] && (csr_dmw0_i[`DMW_MAT] == 2'b0))       ||
+                                    (dmw1_en[i] && (csr_dmw1_i[`DMW_MAT] == 2'b0))       ||
+                                    (addr_trans_en[i] && (tlb_search_rsp[1].mat == 2'b0));
+      end
+      
       // addr_trans_rsp[i].tlb_valid = tlb_search_rsp[i].valid;
       // addr_trans_rsp[i].tlb_dirty = tlb_search_rsp[i].dirty;
       // addr_trans_rsp[i].tlb_mat   = tlb_search_rsp[i].mat;
