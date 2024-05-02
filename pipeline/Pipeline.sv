@@ -1195,7 +1195,8 @@ module Pipeline (
 
     // 填写原子指令标记
     csr_llbit_in     = mblk_wb_o.mem_op == `MEM_LOAD ? '1 : '0;
-    csr_llbit_set_in = mblk_wb_o.base.valid & 
+    csr_llbit_set_in = mblk_wb_o.base.valid &
+                       ~mblk_wb_o.base.excp.valid &  // 异常时不写入 ！！！
                        mblk_wb_o.atomic &
                        (mblk_wb_o.mem_op == `MEM_LOAD |
                        (mblk_wb_o.mem_op == `MEM_STORE & mblk_wb_o.llbit)) &
