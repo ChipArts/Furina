@@ -435,13 +435,13 @@ module ICache (
           .WRITE_MODE("write_first")
         ) U_ICacheDataRAM (
           .clk_a    (clk),
-          .en_a_i   ('1),
+          .en_a_i   (~flush_i),
           .we_a_i   (data_ram_we[i]),
           .addr_a_i (data_ram_waddr),
           .data_a_i (data_ram_wdata),
           .clk_b    (clk),
           .rstb_n   (rst_n),
-          .en_b_i   ('1),
+          .en_b_i   (~flush_i),
           .addr_b_i (data_ram_raddr),
           .data_b_o (data_ram_rdata[i])
         );
@@ -454,13 +454,13 @@ module ICache (
           .WRITE_MODE("write_first")
         ) U_ICacheTagRAM (
           .clk_a    (clk),
-          .en_a_i   ('1),
+          .en_a_i   (~flush_i),
           .we_a_i   (tag_ram_we[i]),
           .addr_a_i (tag_ram_waddr),
           .data_a_i (tag_ram_wdata),
           .clk_b    (clk),
           .rstb_n   (rst_n),
-          .en_b_i   ('1),
+          .en_b_i   (~flush_i),
           .addr_b_i (tag_ram_raddr),
           .data_b_o (tag_ram_rdata[i])
         );
@@ -473,13 +473,13 @@ module ICache (
           .WRITE_MODE("write_first")
         ) U_ICacheValidRAM (
           .clk_a    (clk),
-          .en_a_i   ('1),
+          .en_a_i   (~flush_i),
           .we_a_i   (valid_ram_we[i]),
           .addr_a_i (valid_ram_waddr),
           .data_a_i (valid_ram_wdata),
           .clk_b    (clk),
           .rstb_n   (rst_n),
-          .en_b_i   ('1),
+          .en_b_i   (~flush_i),
           .addr_b_i (valid_ram_raddr),
           .data_b_o (valid_ram_rdata[i])
         );

@@ -761,13 +761,13 @@ module DCache (
       .WRITE_MODE("write_first")
     ) U_DCacheDataRAM (
       .clk_a    (clk),
-      .en_a_i   ('1),
+      .en_a_i   (~flush_i),
       .we_a_i   (data_ram_we[i]),
       .addr_a_i (data_ram_waddr),
       .data_a_i (data_ram_wdata),
       .clk_b    (clk),
       .rstb_n   (rst_n),
-      .en_b_i   ('1),
+      .en_b_i   (~flush_i),
       .addr_b_i (data_ram_raddr),
       .data_b_o (data_ram_rdata[i])
     );
@@ -783,13 +783,13 @@ module DCache (
       .WRITE_MODE("write_first")
     ) U_DCacheTagRAM (
       .clk_a    (clk),
-      .en_a_i   ('1),
+      .en_a_i   (~flush_i),
       .we_a_i   (tag_ram_we[i]),
       .addr_a_i (tag_ram_waddr),
       .data_a_i (tag_ram_wdata),
       .clk_b    (clk),
       .rstb_n   (rst_n),
-      .en_b_i   ('1),
+      .en_b_i   (~flush_i),
       .addr_b_i (tag_ram_raddr),
       .data_b_o (tag_ram_rdata[i])
     );
@@ -803,13 +803,13 @@ module DCache (
       .WRITE_MODE("write_first")
     ) U_DCacheMetaRAM (
       .clk_a    (clk),
-      .en_a_i   ('1),
+      .en_a_i   (~flush_i),
       .we_a_i   (meta_ram_we[i]),
       .addr_a_i (meta_ram_waddr),
       .data_a_i (meta_ram_wdata),
       .clk_b    (clk),
       .rstb_n   (rst_n),
-      .en_b_i   ('1),
+      .en_b_i   (~flush_i),
       .addr_b_i (meta_ram_raddr),
       .data_b_o (meta_ram_rdata[i])
     );
@@ -825,13 +825,13 @@ module DCache (
     .MEMORY_PRIMITIVE("auto")
   ) U_DCachePlruRAM (
     .clk_a    (clk),
-    .en_a_i   ('1),
+    .en_a_i   (~flush_i),
     .we_a_i   (plru_ram_we),
     .addr_a_i (plru_ram_waddr),
     .data_a_i (plru_ram_wdata),
     .clk_b    (clk),
     .rstb_n   (rst_n),
-    .en_b_i   ('1),
+    .en_b_i   (~flush_i),
     .addr_b_i (plru_ram_raddr),
     .data_b_o (plru_ram_rdata)
   );
