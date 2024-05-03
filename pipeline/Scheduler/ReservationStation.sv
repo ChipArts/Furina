@@ -84,7 +84,7 @@ parameter
 
   // 生成wr_ready信号
   for (genvar i = 0; i < BANK_NUM; i++) begin : gen_wr_ready_o
-    assign wr_ready_o[i] = $countones(free[i]) > 0;
+    assign wr_ready_o[i] = countones(free[i]) > 0;
   end
 
 

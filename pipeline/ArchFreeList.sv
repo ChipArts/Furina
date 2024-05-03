@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : ArchFreeList.sv
 // Create  : 2024-04-14 20:47:43
-// Revise  : 2024-04-19 17:19:33
+// Revise  : 2024-05-03 14:28:12
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -50,8 +50,8 @@ parameter
 
 
   always_comb begin
-    alloc_req_cnt = $countones(alloc_valid_i);
-    free_req_cnt = $countones(free_valid_i);
+    alloc_req_cnt = countones(alloc_valid_i);
+    free_req_cnt = countones(free_valid_i);
 
     head_n = head + alloc_req_cnt;
     tail_n = tail + free_req_cnt;

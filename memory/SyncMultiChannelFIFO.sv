@@ -66,7 +66,7 @@ parameter
 
   // FIFO 部分
   always_comb begin
-    count_full = $countones(fifo_full);
+    count_full = countones(fifo_full);
     // write_ready = count_full + WPORTS_NUM <= BANK;
     write_ready_o = count_full <= (BANK[$clog2(BANK + 1) - 1 : 0] - WPORTS_NUM[$clog2(BANK + 1) - 1 : 0]);
     

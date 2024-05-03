@@ -48,6 +48,17 @@
 `endif
 
 
+function logic[31:0] countones(logic[31:0] data);
+  logic[31:0] count;
+  count = 0;
+  for (int i = 0; i < 32; i++) begin
+    count += data[i];
+  end
+  return count;
+  
+endfunction : countones
+
+
 
 `endif // _COMMON_SVH_
 

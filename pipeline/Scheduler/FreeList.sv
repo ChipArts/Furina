@@ -58,8 +58,8 @@ parameter
 
 
   always_comb begin
-    alloc_req_cnt = $countones(alloc_valid_i);
-    free_req_cnt = $countones(free_valid_i);
+    alloc_req_cnt = countones(alloc_valid_i);
+    free_req_cnt = countones(free_valid_i);
 
     alloc_ready_o = cnt_q >= `DECODE_WIDTH;
     free_ready_o = '1;

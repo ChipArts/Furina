@@ -436,24 +436,24 @@ module Scheduler (
     dq_read_ready_i = '0;  // default assign
     if (dq_read_valid_o[0]) begin
         case (dq_rdata[0].oc.instr_type)
-          `MISC_INSTR : dq_read_ready_i[0] = misc_cnt[0] < $countones(misc_rs_wr_ready);
-          `BR_INSTR   : dq_read_ready_i[0] = misc_cnt[0] < $countones(misc_rs_wr_ready);
-          `PRIV_INSTR : dq_read_ready_i[0] = misc_cnt[0] < $countones(misc_rs_wr_ready);
-          `ALU_INSTR  : dq_read_ready_i[0] = alu_cnt[0] < $countones(alu_rs_wr_ready);
-          `MDU_INSTR  : dq_read_ready_i[0] = mdu_cnt[0] < $countones(mdu_rs_wr_ready);
-          `MEM_INSTR  : dq_read_ready_i[0] = mem_cnt[0] < $countones(mem_rs_wr_ready);
+          `MISC_INSTR : dq_read_ready_i[0] = misc_cnt[0] < countones(misc_rs_wr_ready);
+          `BR_INSTR   : dq_read_ready_i[0] = misc_cnt[0] < countones(misc_rs_wr_ready);
+          `PRIV_INSTR : dq_read_ready_i[0] = misc_cnt[0] < countones(misc_rs_wr_ready);
+          `ALU_INSTR  : dq_read_ready_i[0] = alu_cnt[0] < countones(alu_rs_wr_ready);
+          `MDU_INSTR  : dq_read_ready_i[0] = mdu_cnt[0] < countones(mdu_rs_wr_ready);
+          `MEM_INSTR  : dq_read_ready_i[0] = mem_cnt[0] < countones(mem_rs_wr_ready);
           default : dq_read_ready_i[0] = '0;
         endcase
     end
     for (int i = 1; i < `DISPATCH_WIDTH; i++) begin
       if (dq_read_valid_o[i]) begin
         case (dq_rdata[i].oc.instr_type)
-          `MISC_INSTR : dq_read_ready_i[i] = misc_cnt[i] < $countones(misc_rs_wr_ready) & dq_read_ready_i[i - 1];
-          `BR_INSTR   : dq_read_ready_i[i] = misc_cnt[i] < $countones(misc_rs_wr_ready) & dq_read_ready_i[i - 1];
-          `PRIV_INSTR : dq_read_ready_i[i] = misc_cnt[i] < $countones(misc_rs_wr_ready) & dq_read_ready_i[i - 1];
-          `ALU_INSTR  : dq_read_ready_i[i] = alu_cnt[i] < $countones(alu_rs_wr_ready) & dq_read_ready_i[i - 1];
-          `MDU_INSTR  : dq_read_ready_i[i] = mdu_cnt[i] < $countones(mdu_rs_wr_ready) & dq_read_ready_i[i - 1];
-          `MEM_INSTR  : dq_read_ready_i[i] = mem_cnt[i] < $countones(mem_rs_wr_ready) & dq_read_ready_i[i - 1];
+          `MISC_INSTR : dq_read_ready_i[i] = misc_cnt[i] < countones(misc_rs_wr_ready) & dq_read_ready_i[i - 1];
+          `BR_INSTR   : dq_read_ready_i[i] = misc_cnt[i] < countones(misc_rs_wr_ready) & dq_read_ready_i[i - 1];
+          `PRIV_INSTR : dq_read_ready_i[i] = misc_cnt[i] < countones(misc_rs_wr_ready) & dq_read_ready_i[i - 1];
+          `ALU_INSTR  : dq_read_ready_i[i] = alu_cnt[i] < countones(alu_rs_wr_ready) & dq_read_ready_i[i - 1];
+          `MDU_INSTR  : dq_read_ready_i[i] = mdu_cnt[i] < countones(mdu_rs_wr_ready) & dq_read_ready_i[i - 1];
+          `MEM_INSTR  : dq_read_ready_i[i] = mem_cnt[i] < countones(mem_rs_wr_ready) & dq_read_ready_i[i - 1];
           default : dq_read_ready_i[i] = '0;
         endcase
       end

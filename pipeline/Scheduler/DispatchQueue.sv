@@ -4,7 +4,7 @@
 // Author  : your name <your email>@email.com
 // File    : DispatchQueue.sv
 // Create  : 2024-04-18 18:26:24
-// Revise  : 2024-04-28 18:47:21
+// Revise  : 2024-05-03 14:28:13
 // Editor  : {EDITER}
 // Version : {VERSION}
 // Description :
@@ -58,7 +58,7 @@ parameter
 		assign read_valid_o[i] = cnt_q > i;
 	end
 
-	assign read_cnt = $countones(read_ready_i & read_valid_o);
+	assign read_cnt = countones(read_ready_i & read_valid_o);
 	assign head_n   = head_q + read_cnt;
 
 	for (genvar i = 0; i < `DISPATCH_WIDTH; i++) begin : gen_read_data
@@ -66,7 +66,7 @@ parameter
 	end
 
 	/* write logic */
-	assign write_cnt = $countones(write_valid_i);
+	assign write_cnt = countones(write_valid_i);
 	assign write_ready_o = cnt_q <= QUEUE_DEPTH - `DECODE_WIDTH;
 	assign tail_n = write_ready_o ? tail_q + write_cnt : tail_q;
 

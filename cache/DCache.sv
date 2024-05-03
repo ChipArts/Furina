@@ -180,7 +180,7 @@ module DCache (
       `ALIGN_W : ale = dcache_req.vaddr[1:0] != 2'b00;
       `ALIGN_BU: ale = '0;
       `ALIGN_HU: ale = dcache_req.vaddr[0] != 1'b0;
-      default : /* default */;
+      default : ale = '0;
     endcase
 
     // 特殊判断store指令，确保SC指令在llbit==1时才执行

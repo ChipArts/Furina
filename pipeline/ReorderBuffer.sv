@@ -73,7 +73,7 @@ module ReorderBuffer (
   logic [`COMMIT_WIDTH - 1:0] commit_valid;   // 本次可退休得指令
 
 /*================================= W/R Ctrl ==================================*/
-  assign alloc_cnt = $countones(alloc_req.valid);
+  assign alloc_cnt = countones(alloc_req.valid);
   assign alloc_rsp.ready = rob_cnt_q <= `ROB_DEPTH - `DECODE_WIDTH;
   for (genvar i = 0; i < `DECODE_WIDTH; i++) begin
     assign alloc_ptr[i] = tail_ptr + i;
@@ -313,7 +313,7 @@ module ReorderBuffer (
   assign commit_valid[0] =                   rob_q[cmt_idx[0]].complete & commit_mask[0] & valid_mask[0];
   assign commit_valid[1] = commit_valid[0] & rob_q[cmt_idx[1]].complete & commit_mask[1] & valid_mask[1];
 
-  assign commit_cnt = $countones(commit_valid);
+  assign commit_cnt = countones(commit_valid);
 
   // output logic
   assign cmt_o.valid = commit_valid;
