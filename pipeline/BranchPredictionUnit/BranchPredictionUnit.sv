@@ -116,7 +116,7 @@ module BranchPredictionUnit (
 
 /*==================================== LPHT ====================================*/
   wire [1:0] lphr [1:0];
-  wire [`LPHT_ADDR_WIDTH - 1:1] lphr_windex = req.pc[`LPHT_ADDR_WIDTH + 2:3];
+  wire [`LPHT_ADDR_WIDTH - 1:0] lphr_windex = req.pc[`LPHT_ADDR_WIDTH + 2:3];
 
   PatternHistoryTable #(
     .ADDR_WIDTH(`LPHT_ADDR_WIDTH - 1)
