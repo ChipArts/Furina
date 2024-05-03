@@ -5,6 +5,9 @@ import os
 # 获取chip_home环境变量
 chip_home = "..\\"
 
+# 清空chip_home\\myCPU
+os.system("del /q %s\\myCPU\\*" % chip_home)
+
 # 获取当前目录及子目录下所有的[".v", ".h", ".vh", ".sv", ".svh", ".vhdl"]文件
 files = []
 for root, dirs, fs in os.walk(".."):
@@ -24,8 +27,7 @@ if not os.path.exists("%s\\myCPU" % chip_home):
 	os.system("mkdir %s\\myCPU" % chip_home)
 
 
-# 清空chip_home\\myCPU
-os.system("del /q/s %s\\myCPU\\*" % chip_home)
+
 
 
 # 拷贝所有文件到chip_home\\myCPU目录下

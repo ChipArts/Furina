@@ -116,14 +116,14 @@ module BranchPredictionUnit (
 
 /*==================================== LPHT ====================================*/
   wire [1:0] lphr [1:0];
-  wire [`LPHT_ADDR_WIDTH - 1:0] lphr_windex = req.pc[`LPHT_ADDR_WIDTH + 2:3];
+  wire [`LPHT_ADDR_WIDTH - 2:0] lphr_windex = req.pc[`LPHT_ADDR_WIDTH + 1:3];
 
   PatternHistoryTable #(
     .ADDR_WIDTH(`LPHT_ADDR_WIDTH - 1)
   ) lpht_bank0 (
     .clk      (clk),
     .rst_n    (rst_n),
-    .we_i     (req.lpht_update & ~lphr_windex[0]),
+    .we_i     (req.lpht_update & ~req.pc[2]),
     .taken_i  (req.taken),
     .phr_i    (req.lphr),
     .rindex_i (npc[`LPHT_ADDR_WIDTH + 1:3]),
@@ -136,7 +136,7 @@ module BranchPredictionUnit (
   ) lpht_bank1 (
     .clk      (clk),
     .rst_n    (rst_n),
-    .we_i     (req.lpht_update & lphr_windex[0]),
+    .we_i     (req.lpht_update & req.pc[2]),
     .taken_i  (req.taken),
     .phr_i    (req.lphr),
     .rindex_i (npc[`LPHT_ADDR_WIDTH + 1:3]),
