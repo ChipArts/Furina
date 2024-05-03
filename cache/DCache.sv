@@ -460,8 +460,11 @@ module DCache (
     dcache_rsp.store_data = store_data;
 `endif
     
-
     dcache_rsp.excp = s2_excp;
+    if (s2_mem_op == `MEM_STORE && s2_atomic && !s2_llbit) begin
+      dcache_rsp.excp.valid = '0;
+    end
+    
     // 特殊处理preld的excp
     if (s2_preld) begin
       dcache_rsp.excp.valid = '0;
