@@ -151,7 +151,8 @@ module MemoryManagementUnit (
                                    dirty     : {tlbelo1_i[`TLB_D]  , tlbelo0_i[`TLB_D]},
                                    mat       : {tlbelo1_i[`TLB_MAT], tlbelo0_i[`TLB_MAT]},
                                    plv       : {tlbelo1_i[`TLB_PLV], tlbelo0_i[`TLB_PLV]},
-                                   ppn       : {tlbelo1_i[`TLB_PPN], tlbelo0_i[`TLB_PPN]}};
+                                   ppn       : {tlbelo1_i[`TLB_PPN], tlbelo0_i[`TLB_PPN]}
+                                  };
     // read req
     tlb_read_req.valid = tlbrd_en_i;
     tlb_read_req.idx = tlbidx_i[`INDEX];
@@ -262,7 +263,7 @@ module MemoryManagementUnit (
     // 用于ICache和DCache的地址转换
     TranslationLookasideBuffer U_TranslationLookasideBuffer (
       .clk            (clk),
-      .a_rst_n        (rst_n),
+      .rst_n          (rst_n),
       .tlb_search_req (tlb_search_req[i]),
       .tlb_search_rsp (tlb_search_rsp[i]),
       .tlb_read_req   ('0),
@@ -277,7 +278,7 @@ module MemoryManagementUnit (
   // 实现tlbsrch和tlbrd
   TranslationLookasideBuffer U_TranslationLookasideBuffer (
     .clk            (clk),
-    .a_rst_n        (rst_n),
+    .rst_n          (rst_n),
     .tlb_search_req (tlb_search_req[2]),
     .tlb_search_rsp (tlb_search_rsp[2]),
     .tlb_read_req   (tlb_read_req),

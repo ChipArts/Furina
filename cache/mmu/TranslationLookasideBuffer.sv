@@ -27,7 +27,7 @@
 
 module TranslationLookasideBuffer (
   input logic clk,    // Clock
-  input logic a_rst_n,  // Asynchronous reset active low
+  input logic rst_n,  // Asynchronous reset active low
   // tlb search
   input TlbSearchReqSt tlb_search_req,
   output TlbSearchRspSt tlb_search_rsp,
@@ -42,7 +42,6 @@ module TranslationLookasideBuffer (
   output TlbInvRspSt tlb_inv_rsp
 );
   
-  `RESET_LOGIC(clk, a_rst_n, rst_n);
 
   TlbEntrySt [`TLB_ENTRY_NUM - 1:0] tlb_entries;
 
@@ -61,18 +60,22 @@ module TranslationLookasideBuffer (
     // 使用CAM进行查询
     for (int i = 0; i < `TLB_ENTRY_NUM; i++) begin
       // LA32R只支持 4KB 和 4MB 两种页大小，对应 TLB 表项中的 PS 值分别是 12 和 21
-      match[i] = tlb_entries[i].exist &  // 有效位有效
+      match[i] = (tlb_entries[i].exist) &  // 有效位有效
                  (tlb_entries[i].asid == tlb_search_req.asid | tlb_entries[i].glo) &  // asid校验
                  (tlb_entries[i].page_size == 6'd12 ? // page size
-                 (tlb_search_req.vpn[`PROC_VALEN - 1:13] == 
-                  tlb_entries[i].vppn[`PROC_VALEN - 1:13]) :
-                 (tlb_search_req.vpn[`PROC_VALEN - 1:22] == 
-                  tlb_entries[i].vppn[`PROC_VALEN - 1:22]));  // VPPN 匹配
+                   (tlb_search_req.vpn[`PROC_VALEN - 1:13] == 
+                    tlb_entries[i].vppn[`PROC_VALEN - 1:13]) :
+                   (tlb_search_req.vpn[`PROC_VALEN - 1:22] == 
+                    tlb_entries[i].vppn[`PROC_VALEN - 1:22])
+                  );  // VPPN 匹配
+    end
+    for (int i = 0; i < `TLB_ENTRY_NUM; i++) begin
       if (match[i]) begin
-        matched_entry = tlb_entries[i];
         matched_idx = i;
+        break;
       end
     end
+    matched_entry = tlb_entries[matched_idx];
     found = |match;
     parity = matched_entry.page_size == 6'd12 ? tlb_search_req.vpn[12] : tlb_search_req.vpn[21];
     // comb输出

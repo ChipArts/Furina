@@ -25,7 +25,7 @@ if not os.path.exists("%s\\myCPU" % chip_home):
 
 
 # 清空chip_home\\myCPU
-os.system("del /q %s\\myCPU\\*" % chip_home)
+os.system("del /q/s %s\\myCPU\\*" % chip_home)
 
 
 # 拷贝所有文件到chip_home\\myCPU目录下
