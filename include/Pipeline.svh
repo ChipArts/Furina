@@ -31,13 +31,12 @@
 `include "BranchPredictionUnit.svh"
 
 typedef struct packed {
-  logic valid;
+  ExcpSt excp;
+  BrInfoSt br_info;
   logic [31:0] instr;
   PreOptionCodeSt pre_oc;
   logic [`PROC_VALEN - 1:0] pc;
-  logic [31:0] npc;  // 最后一条有效指令的下一个pc
-  BrInfoSt br_info;
-  ExcpSt excp;
+  logic [`PROC_VALEN - 1:0] npc;
 } IbufDataSt;
 
 

@@ -78,7 +78,7 @@ module Furina (
     .M00_CONNECT_READ (2'b11),
     .M00_CONNECT_WRITE (2'b10),  // ICache 不需要写回
     .M00_SECURE (1'b0)
-  ) inst_axi_interconnect_wrap_2x1 (
+  ) U_axi_interconnect_wrap_2x1 (
     .clk              (clk),
     .rst              (~a_rst_n),
     .s00_axi_awid     (icache_axi4_mst.aw_id),

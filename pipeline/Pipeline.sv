@@ -231,7 +231,7 @@ module Pipeline (
 /*=========================== Branch Prediction Unit ==========================*/
   logic idle_lock;
   always_ff @(posedge clk or negedge rst_n) begin
-    if(~rst_n) begin
+    if(!rst_n) begin
       idle_lock <= 0;
     end else begin
       if (idle_flush && !csr_has_int) begin
@@ -244,24 +244,28 @@ module Pipeline (
 
   BpuReqSt bpu_req;
   logic br_select;
-  
-  always_comb begin
+
+  always_comb begin : proc_gen_br_select
+    // 选择出提交信息中的分支指令
     br_select = '0;
     for (int i = 1; i < `COMMIT_WIDTH; i++) begin
       if (rob_cmt_o.valid[i] && rob_cmt_o.rob_entry[i].instr_type == `BR_INSTR) begin
         br_select = i;
+        break;
       end
     end
-
-    bpu_req.next = icache_rsp.ready & ~idle_lock;
+  end
+  
+  always_comb begin : gen_bpu_req
+    bpu_req.next     = icache_rsp.ready & ~idle_lock;
     bpu_req.redirect = global_flush | pre_check_redirect_o;
-    bpu_req.target = tlbrefill_flush      ? csr_tlbrentry_out :
-                     excp_flush           ? csr_eentry_out :
-                     ertn_flush           ? csr_era_out :  // sys 和 brk恢复时应该跳到era+4（软件控制）
-                     refetch_flush        ? rob_cmt_o.rob_entry[0].pc + 4    :
-                     redirect_flush       ? rob_cmt_o.rob_entry[0].br_target :
-                     pre_check_redirect_o ? pre_check_target_o :
-                                            32'h1c00_0000;
+    bpu_req.target   = tlbrefill_flush      ? csr_tlbrentry_out :
+                       excp_flush           ? csr_eentry_out :
+                       ertn_flush           ? csr_era_out :  // sys 和 brk恢复时应该跳到era+4（软件控制）
+                       refetch_flush        ? rob_cmt_o.rob_entry[0].pc + 4    :
+                       redirect_flush       ? rob_cmt_o.rob_entry[0].br_target :
+                       pre_check_redirect_o ? pre_check_target_o :
+                                              32'h1c00_0000;
     // for bpu updata
     bpu_req.pc = global_flush         ? rob_cmt_o.rob_entry[0].pc : 
                  pre_check_redirect_o ? pre_check_pc_o :
@@ -270,17 +274,18 @@ module Pipeline (
     bpu_req.taken = global_flush         ? rob_cmt_o.rob_entry[0].br_taken :
                     pre_check_redirect_o ? 1'b0 :
                                            rob_cmt_o.rob_entry[br_select].br_taken;
-
-    bpu_req.btb_update = global_flush | pre_check_redirect_o | |rob_cmt_o.valid;
+    // btb 更新
+    bpu_req.btb_update = global_flush | pre_check_redirect_o | (|rob_cmt_o.valid);
     bpu_req.br_type    = global_flush         ? rob_cmt_o.rob_entry[0].br_type :
                          pre_check_redirect_o ? 2'b00 :
                                                 rob_cmt_o.rob_entry[br_select].br_type;
-
+    // lpht 更新
     bpu_req.lpht_update = global_flush | pre_check_redirect_o | |rob_cmt_o.valid;
     bpu_req.lphr   = global_flush         ? rob_cmt_o.rob_entry[0].br_info.lphr :
                      pre_check_redirect_o ? 2'b00 :
                                             rob_cmt_o.rob_entry[br_select].br_info.lphr;
-
+    // ras 更新
+    // TODO: ras_redirect 参数宏定义
     if (rob_cmt_o.rob_entry[br_select].br_type == `CALL && 
         rob_cmt_o.rob_entry[br_select].br_info != `CALL &&
         rob_cmt_o.valid[br_select]) begin
@@ -313,30 +318,27 @@ module Pipeline (
   );
 
 /*========================== Instruction Fetch Unit ===========================*/
-  logic icache_flush_i;
   ICacheReqSt icache_req;
-  MmuAddrTransRspSt icache_addr_trans_rsp;
   IcacopReqSt icacop_req;
+  MmuAddrTransRspSt icache_addr_trans_rsp;
 
-  always_comb begin
-    icache_flush_i = global_flush;
-
+  always_comb begin : gen_icache_req
     icache_req.valid   = bpu_rsp.valid;
     icache_req.vaddr   = bpu_rsp.pc;
     icache_req.npc     = bpu_rsp.npc;
     icache_req.br_info = bpu_rsp.br_info;
     icache_req.ready   = ibuf_write_ready_o;
-
-    icache_addr_trans_rsp = mmu_addr_trans_rsp[0];
-
-    icacop_req = mblk_icacop_req;
   end
 
-  ICache inst_ICache
+  assign icacop_req = mblk_icacop_req;
+  assign icache_addr_trans_rsp = mmu_addr_trans_rsp[0];
+  
+
+  ICache U_ICache
   (
     .clk            (clk),
     .rst_n          (rst_n),
-    .flush_i        (icache_flush_i),
+    .flush_i        (global_flush),
     .pre_flush_i    (pre_check_redirect_o),
     .icache_req     (icache_req),
     .icache_rsp     (icache_rsp),
@@ -348,34 +350,39 @@ module Pipeline (
   );
 
 /*================================ Pre Decoder ================================*/
-  ICacheRspSt icache_rsp_buffer;
+  ICacheRspSt icache_rsp_buf;
   always_ff @(posedge clk or negedge rst_n) begin
     if(!rst_n || global_flush) begin
-      icache_rsp_buffer <= 0;
+      icache_rsp_buf <= 0;
     end else begin
       if (ibuf_write_ready_o) begin
         if (pre_check_redirect_o) begin
-          icache_rsp_buffer.valid <= '0;
+          icache_rsp_buf.valid <= '0;
         end else begin
-          icache_rsp_buffer <= icache_rsp;
+          icache_rsp_buf <= icache_rsp;
         end
       end
     end
   end
 
   for (genvar i = 0; i < `FETCH_WIDTH; i++) begin : gen_pre_decoder
-    PreDecoder inst_PreDecoder (.instr_i(icache_rsp_buffer.instr[i]), .pre_option_code_o(pre_option_code_o[i]));
+    PreDecoder U_PreDecoder (.instr_i(icache_rsp_buf.instr[i]), .pre_option_code_o(pre_option_code_o[i]));
   end
 
-  // TODO 是否需要修正NPC？？？ 似乎可以通过flush的优先级解决（ertn）
-  PreChecker inst_PreChecker
+  logic [`FETCH_WIDTH - 1:0] pre_check_is_branch_i;
+  for (genvar i = 0; i < `FETCH_WIDTH; i++) begin : gen_is_branch
+    assign pre_check_is_branch_i[i] = pre_option_code_o[i].is_branch;
+  end
+
+  // 检查分支预测是否预测非分支指令跳转
+  PreChecker U_PreChecker
   (
     .clk          (clk),
     .rst_n        (rst_n),
-    .pc_i         (icache_rsp_buffer.vaddr),
-    .valid_i      (icache_rsp_buffer.valid),
-    .is_branch_i  ({pre_option_code_o[1].is_branch, pre_option_code_o[0].is_branch}),  // TODO 参数化
-    .br_info_i    (icache_rsp_buffer.br_info),
+    .valid_i      (icache_rsp_buf.valid),
+    .pc_i         (icache_rsp_buf.vaddr),
+    .br_info_i    (icache_rsp_buf.br_info),
+    .is_branch_i  (pre_check_is_branch_i),
     // output
     .redirect_o   (pre_check_redirect_o),
     .pc_o         (pre_check_pc_o),
@@ -387,38 +394,33 @@ module Pipeline (
 
 
 /*============================ Instruction Buffer =============================*/
-  logic ibuf_flush_i;
   logic [`FETCH_WIDTH - 1:0] ibuf_write_valid_i;
   IbufDataSt [`FETCH_WIDTH - 1:0] ibuf_write_data_i;
-  logic [`DECODE_WIDTH - 1:0] ibuf_read_ready_i;
   // 在此处进行队列压缩，剔除无效的指令，第[i]个write_data应该写入第ibuf_idx[i]个icache的数据
   logic [`FETCH_WIDTH - 1:0][$clog2(`FETCH_WIDTH) - 1:0] ibuf_idx;
-  always_comb begin
-    ibuf_flush_i = global_flush;
-
+  always_comb begin : proc_ibuf_idx
     ibuf_idx[0] = '0;
     for (int i = 1; i < `FETCH_WIDTH; i++) begin
-      ibuf_idx[i] = ibuf_idx[i - 1] + icache_rsp_buffer.valid[i - 1];
+      ibuf_idx[i] = ibuf_idx[i - 1] + icache_rsp_buf.valid[i - 1];
     end
+  end
 
+  always_comb begin : proc_ibuf_write
     ibuf_write_valid_i = '0;
     ibuf_write_data_i = '0;
     for (int i = 0; i < `FETCH_WIDTH; i++) begin
-      // 指令有效时才写入
-      if (pre_check_valid_o[i]) begin  // 屏蔽掉分支预测有误的指令
+      // 指令有效时才写入 屏蔽掉分支预测有误的指令
+      if (pre_check_valid_o[i]) begin
         ibuf_write_valid_i[ibuf_idx[i]] = 1'b1;
-
-        ibuf_write_data_i[ibuf_idx[i]].valid = 1'b1;  // TODO 优化这个地方
-        ibuf_write_data_i[ibuf_idx[i]].pc = icache_rsp_buffer.vaddr[i];
-        ibuf_write_data_i[ibuf_idx[i]].npc = icache_rsp_buffer.npc[i];
-        ibuf_write_data_i[ibuf_idx[i]].br_info = icache_rsp_buffer.br_info;
-        ibuf_write_data_i[ibuf_idx[i]].instr = icache_rsp_buffer.instr[i];
-        ibuf_write_data_i[ibuf_idx[i]].excp = icache_rsp_buffer.excp;
-        ibuf_write_data_i[ibuf_idx[i]].pre_oc = pre_option_code_o[i];
       end
+      // 数据准备不需要判断有效性
+      ibuf_write_data_i[ibuf_idx[i]].pc = icache_rsp_buf.vaddr[i];
+      ibuf_write_data_i[ibuf_idx[i]].npc = icache_rsp_buf.npc[i];
+      ibuf_write_data_i[ibuf_idx[i]].br_info = icache_rsp_buf.br_info;
+      ibuf_write_data_i[ibuf_idx[i]].instr = icache_rsp_buf.instr[i];
+      ibuf_write_data_i[ibuf_idx[i]].excp = icache_rsp_buf.excp;
+      ibuf_write_data_i[ibuf_idx[i]].pre_oc = pre_option_code_o[i];
     end
-
-    ibuf_read_ready_i = {`DECODE_WIDTH{sche_rsp.ready}};
   end
 
   SyncMultiChannelFIFO #(
@@ -430,12 +432,12 @@ module Pipeline (
   ) U_InstructionBuffer (
     .clk           (clk),
     .a_rst_n       (rst_n),
-    .flush_i       (ibuf_flush_i),
+    .flush_i       (global_flush),
     .write_valid_i (ibuf_write_valid_i),
     .write_ready_o (ibuf_write_ready_o),
     .write_data_i  (ibuf_write_data_i),
     .read_valid_o  (ibuf_read_valid_o),
-    .read_ready_i  (ibuf_read_ready_i),
+    .read_ready_i  ({`DECODE_WIDTH{sche_rsp.ready}}),
     .read_data_o   (ibuf_read_data_o)
   );
 
@@ -523,6 +525,7 @@ module Pipeline (
 
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
       sche_req.valid[i] = ibuf_read_valid_o[i];
+
       sche_req.pc[i] = ibuf_read_data_o[i].pc;
       sche_req.npc[i] = ibuf_read_data_o[i].npc;
       sche_req.br_info[i] = ibuf_read_data_o[i].br_info;
