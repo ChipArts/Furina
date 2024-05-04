@@ -616,7 +616,7 @@ module Pipeline (
     .PHY_REG_NUM(64)
   ) U0_PhysicalRegisterFile (
     .clk     (clk),
-    .a_rst_n (rst_n),
+    .rst_n   (rst_n),
     .re_i    (rf_re_i[4:0]),
     .we_i    (rf_we_i),
     .raddr_i (rf_raddr_i[4:0]),
@@ -632,7 +632,7 @@ module Pipeline (
     .PHY_REG_NUM(64)
   ) U1_PhysicalRegisterFile (
     .clk     (clk),
-    .a_rst_n (rst_n),
+    .rst_n   (rst_n),
     .re_i    (rf_re_i[9:5]),
     .we_i    (rf_we_i),
     .raddr_i (rf_raddr_i[9:5]),

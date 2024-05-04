@@ -26,14 +26,12 @@ parameter
   type DATA_TYPE = logic [32:0]
 )(
   input clk,    // Clock
-  input a_rst_n,  // Asynchronous reset active low
+  input rst_n,  // Asynchronous reset active low
   input we_i,
   input flush_i,
   input DATA_TYPE data_i,
   output DATA_TYPE data_o
 );
-
- `RESET_LOGIC(clk, a_rst_n, rst_n)
 
   DATA_TYPE pipeline_reg;
   always_ff @(posedge clk or negedge rst_n) begin

@@ -54,9 +54,6 @@
 `define DCACHE_BLOCK_SIZE (4 * 8)  // DCache块大小(Byte)
 `define DCACHE_WAY_NUM 2  // DCache相联度(简化实现 不要更改)
 
-// Fetch Address Queue
-`define FAQ_DEPTH 16
-
 // Instruction Buffer
 `define IBUF_DEPTH 16
 
