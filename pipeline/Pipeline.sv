@@ -47,6 +47,13 @@ module Pipeline (
 );
 
 /*=============================== Signal Define ===============================*/
+  /*
+   *  我们约定：
+   *  在这个地方仅定义所有模块的输出信号
+   *  模块的输入信号可以不定义，直接传入其他模块的输入信号
+   *  如果输入信号比较复杂，模块输入信号在模块实例化位置就近定义
+   */
+
   /* pipeline flush */
   logic global_flush;
   // commit 阶段产生
@@ -62,27 +69,14 @@ module Pipeline (
   logic idle_flush;      // IDLE指令
 
   /* Branch Prediction Unit */
-  BpuReqSt bpu_req;
   BpuRspSt bpu_rsp;
 
-  /* Fetch Address Queue */
-  // FAQ_PushReqSt faq_push_req_st;
-  // FAQ_PopReqSt faq_pop_req_st;
-  // FAQ_PushRspSt faq_push_rsp_st;
-  // FAQ_PopRspSt faq_pop_rsp_st;
-  // logic faq_flush_i;
-
   /* ICache */
-  logic icache_flush_i;
-  ICacheReqSt icache_req;
   ICacheRspSt icache_rsp;
-  MmuAddrTransRspSt icache_addr_trans_rsp;
   MmuAddrTransReqSt icache_addr_trans_req;
-  IcacopReqSt icacop_req;
   IcacopRspSt icacop_rsp;
 
   /* Pre Decoder */
-  ICacheRspSt icache_rsp_buffer;
   PreOptionCodeSt [`FETCH_WIDTH - 1:0] pre_option_code_o;
 
   logic pre_check_redirect_o;
@@ -93,12 +87,8 @@ module Pipeline (
   
 
   /* Instruction Buffer */
-  logic ibuf_flush_i;
-  logic [`FETCH_WIDTH - 1:0] ibuf_write_valid_i;
   logic ibuf_write_ready_o;
-  IbufDataSt [`FETCH_WIDTH - 1:0] ibuf_write_data_i;
   logic [`DECODE_WIDTH - 1:0] ibuf_read_valid_o;
-  logic [`DECODE_WIDTH - 1:0] ibuf_read_ready_i;
   IbufDataSt [`DECODE_WIDTH - 1:0] ibuf_read_data_o;
 
   /* Decoder */
@@ -109,105 +99,50 @@ module Pipeline (
   logic [`DECODE_WIDTH - 1:0][4:0] decoder_dest;
 
   /* Scheduler */
-  logic sche_flush_i;
-  ScheduleReqSt sche_req;
   ScheduleRspSt sche_rsp;
   RobAllocReqSt sche_rob_alloc_req;
-  RobAllocRspSt sche_rob_alloc_rsp;
-
-  logic sche_csr_has_int_i;
-  logic [1:0] sche_csr_plv_i;
-
-  logic [$clog2(`PHY_REG_NUM) - 1:0] sche_fl_arch_heah;
-  logic [$clog2(`PHY_REG_NUM) - 1:0] sche_fl_arch_tail;
-  logic [$clog2(`PHY_REG_NUM + 1) - 1:0] sche_fl_arch_cnt;
-  logic [`COMMIT_WIDTH - 1:0] sche_free_valid_i;
-  logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_free_preg_i;
-  logic [`PHY_REG_NUM - 1:0] sche_rat_arch_valid_i;
-
-  logic [`WB_WIDTH - 1:0] sche_wb_i;
-  logic [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_wb_pdest_i;
 
   MiscIssueSt sche_misc_issue_o;
-  logic sche_misc_ready_i;
   AluIssueSt [1:0] sche_alu_issue_o;
-  logic [1:0] sche_alu_ready_i;
   MduIssueSt sche_mdu_issue_o;
-  logic sche_mdu_ready_i;
   MemIssueSt sche_mem_issue_o;
-  logic sche_mem_ready_i;
 
   /* RegFile */
   // 每周期最多发射misc*1、alu*2、mdu*1、mem*1
-  logic [9:0] rf_re_i;
-  logic [4:0] rf_we_i;
-  logic [4:0][$clog2(`PHY_REG_NUM) - 1:0] rf_waddr_i;
-  logic [9:0][$clog2(`PHY_REG_NUM) - 1:0] rf_raddr_i;
-  logic [4:0][31:0] rf_wdata_i;
   logic [9:0][31:0] rf_rdata_o;
 
   /* Integer Block */
   // IntegerBlock --> iblk
-  logic iblk_flush_i;
-  MiscExeSt iblk_misc_exe_i;
   logic iblk_misc_ready_o;
-  AluExeSt [1:0] iblk_alu_exe_i;
   logic [1:0] iblk_alu_ready_o;
-  MduExeSt iblk_mdu_exe_i;
   logic iblk_mdu_ready_o;
   // tlb srch
   logic iblk_tlbsrch_valid_o;
-  logic iblk_tlbsrch_found_i;
-  logic [$clog2(`TLB_ENTRY_NUM) - 1:0] iblk_tlbsrch_idx_i;
   // tlb read
   logic iblk_tlbrd_valid_o;
-  logic [31:0] iblk_tlbehi_i;
-  logic [31:0] iblk_tlbelo0_i;
-  logic [31:0] iblk_tlbelo1_i;
-  logic [31:0] iblk_tlbidx_i;
-  logic [ 9:0] iblk_tlbasid_i;
   // tlb inv
-  logic [ 5:0] iblk_invtlb_op_i;
   // csr read
-  logic [63:0] iblk_timer_64_i;
-  logic [31:0] iblk_timer_id_i;
-  logic        iblk_csr_rstat_i;
-  logic [31:0] iblk_csr_rdata_i;
   // write back
   MiscWbSt iblk_misc_wb_o;
-  logic iblk_misc_wb_ready_i;
   AluWbSt [1:0] iblk_alu_wb_o;
-  logic [1:0] iblk_alu_wb_ready_i;
   MduWbSt iblk_mdu_wb_o;
-  logic iblk_mdu_wb_ready_i;
 
   /* Memory Block */
   // MemoryBlock --> mblk
-  logic mblk_flush_i;
-  MemExeSt mblk_exe_i;
   logic mblk_exe_ready_o;
   MmuAddrTransReqSt mblk_addr_trans_req;
-  MmuAddrTransRspSt mblk_addr_trans_rsp;
   IcacopReqSt mblk_icacop_req;
-  IcacopRspSt mblk_icacop_rsp;
   MemWbSt mblk_wb_o;
-  logic mblk_wb_ready_i;
 
   /* Reorder Buffer (Write Back) */
-  logic rob_flush_i;
-  RobAllocReqSt rob_alloc_req;
   RobAllocRspSt rob_alloc_rsp;
-  MiscWbSt rob_misc_wb_req;
-  AluWbSt [1:0] rob_alu_wb_req;
-  MduWbSt rob_mdu_wb_req;
-  MemWbSt rob_mem_wb_req;
   RobWbRspSt rob_misc_wb_rsp;
   RobWbRspSt [1:0] rob_alu_wb_rsp;
   RobWbRspSt rob_mdu_wb_rsp;
   RobWbRspSt rob_mem_wb_rsp;
   RobCmtSt rob_cmt_o;
 
-  // 写回信号
+  // 写回信号(global)
   logic [`WB_WIDTH - 1:0] write_back_valid;
   logic [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] write_back_pdest;
 
@@ -216,85 +151,40 @@ module Pipeline (
   logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] free_preg;
 
   logic [`PHY_REG_NUM - 1:0] arch_rat_valid_o;
-  logic [`COMMIT_WIDTH - 1:0] arch_rat_dest_valid_i;
-  logic [`COMMIT_WIDTH - 1:0][4:0] arch_rat_dest_i;
-  logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_preg_i;
 
-  
   logic [$clog2(`PHY_REG_NUM) - 1:0] arch_fl_head_o;
   logic [$clog2(`PHY_REG_NUM) - 1:0] arch_fl_tail_o;
   logic [$clog2(`PHY_REG_NUM + 1) - 1:0] arch_fl_cnt_o;
-  logic [`COMMIT_WIDTH - 1:0] arch_fl_alloc_valid_i;
-  logic [`COMMIT_WIDTH - 1:0] arch_fl_free_valid_i;
-  logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_fl_free_preg_i;
 
   /* Memory Management Unit */
-  logic [9:0]  mmu_csr_asid_i;
-  logic [31:0] mmu_csr_dmw0_i;
-  logic [31:0] mmu_csr_dmw1_i;
-  logic [1:0]  mmu_csr_datf_i;
-  logic [1:0]  mmu_csr_datm_i;
-  logic [1:0]  mmu_csr_plv_i;
-  logic        mmu_csr_da_i;
-  logic        mmu_csr_pg_i;
-  MmuAddrTransReqSt [1:0] mmu_addr_trans_req;
   MmuAddrTransRspSt [1:0] mmu_addr_trans_rsp;
-  logic                                mmu_tlbsrch_en_i;
   logic                                mmu_tlbsrch_found_o;
   logic [$clog2(`TLB_ENTRY_NUM) - 1:0] mmu_tlbsrch_idx_o;
 
-  logic        mmu_tlbfill_en_i;
-  logic        mmu_tlbwr_en_i;
-  logic [ 4:0] mmu_rand_index_i;
-  logic [31:0] mmu_tlbehi_i;
-  logic [31:0] mmu_tlbelo0_i;
-  logic [31:0] mmu_tlbelo1_i;
-  logic [31:0] mmu_tlbidx_i;
-  logic [ 5:0] mmu_ecode_i;
-
-  logic        mmu_tlbrd_en_i;
+  // tlbrd
   logic [31:0] mmu_tlbehi_o;
   logic [31:0] mmu_tlbelo0_o;
   logic [31:0] mmu_tlbelo1_o;
   logic [31:0] mmu_tlbidx_o;
   logic [ 9:0] mmu_tlbasid_o;
 
-  logic        mmu_invtlb_en_i;
-  logic [ 9:0] mmu_invtlb_asid_i;
-  logic [18:0] mmu_invtlb_vpn_i;
-  logic [ 4:0] mmu_invtlb_op_i;
 
   /* Control Status Register */
-  logic [13:0]  csr_rd_addr      ;
   logic [31:0]  csr_rd_data      ;
+  // timer 64
   logic [63:0]  csr_timer_64_out ;
   logic [31:0]  csr_tid_out      ;
-  logic         csr_wr_en    ;
-  logic [13:0]  csr_wr_addr      ;
-  logic [31:0]  csr_wr_data      ;
-  logic [ 7:0]  csr_interrupt    ;
+  // interrupt
   logic         csr_has_int      ;
-  logic         csr_excp_flush   ;
-  logic         csr_ertn_flush   ;
-  logic [31:0]  csr_era_in       ;
-  logic [ 8:0]  csr_esubcode_in  ;
-  logic [ 5:0]  csr_ecode_in     ;
-  logic         csr_va_error_in  ;
-  logic [31:0]  csr_bad_va_in    ;
-  logic         csr_tlbsrch_en    ;
-  logic         csr_tlbsrch_found ;
-  logic [ 4:0]  csr_tlbsrch_index ;
-  logic         csr_excp_tlbrefill;
-  logic         csr_excp_tlb     ;
-  logic [18:0]  csr_excp_tlb_vppn;
-  logic         csr_llbit_in     ;
-  logic         csr_llbit_set_in ;
+  // to atomic
   logic         csr_llbit_out    ;
-  logic [18:0]  csr_vppn_out     ;
+  logic [18:0]  csr_vppn_out     ;  // TODO: 仿佛无用
+  // to bpu/fetch
   logic [31:0]  csr_eentry_out   ;
   logic [31:0]  csr_era_out      ;
   logic [31:0]  csr_tlbrentry_out;
-  logic         csr_disable_cache_out;
+  logic         csr_disable_cache_out;  // TODO: 仿佛无用
+  // to mmu
   logic [ 9:0]  csr_asid_out     ;
   logic [ 4:0]  csr_rand_index   ;
   logic [31:0]  csr_tlbehi_out   ;
@@ -308,14 +198,9 @@ module Pipeline (
   logic [ 1:0]  csr_datf_out     ;
   logic [ 1:0]  csr_datm_out     ;
   logic [ 5:0]  csr_ecode_out    ;
-  logic         csr_tlbrd_en     ;
-  logic [31:0]  csr_tlbehi_in    ;
-  logic [31:0]  csr_tlbelo0_in   ;
-  logic [31:0]  csr_tlbelo1_in   ;
-  logic [31:0]  csr_tlbidx_in    ;
-  logic [ 9:0]  csr_asid_in      ;
+  //general use
   logic [ 1:0]  csr_plv_out      ;
-  
+  // csr regs for diff
   logic [31:0]  csr_crmd_diff;
   logic [31:0]  csr_prmd_diff;
   logic [31:0]  csr_ecfg_diff;
@@ -357,6 +242,7 @@ module Pipeline (
     end
   end
 
+  BpuReqSt bpu_req;
   logic br_select;
   
   always_comb begin
@@ -377,23 +263,23 @@ module Pipeline (
                      pre_check_redirect_o ? pre_check_target_o :
                                             32'h1c00_0000;
     // for bpu updata
-    bpu_req.pc = global_flush                                   ? rob_cmt_o.rob_entry[0].pc : 
-                 pre_check_redirect_o                           ? pre_check_pc_o :
-                                                                  rob_cmt_o.rob_entry[br_select].pc;
+    bpu_req.pc = global_flush         ? rob_cmt_o.rob_entry[0].pc : 
+                 pre_check_redirect_o ? pre_check_pc_o :
+                                        rob_cmt_o.rob_entry[br_select].pc;
 
-    bpu_req.taken = global_flush                                   ? rob_cmt_o.rob_entry[0].br_taken :
-                    pre_check_redirect_o                           ? 1'b0 :
-                                                                     rob_cmt_o.rob_entry[br_select].br_taken;
+    bpu_req.taken = global_flush         ? rob_cmt_o.rob_entry[0].br_taken :
+                    pre_check_redirect_o ? 1'b0 :
+                                           rob_cmt_o.rob_entry[br_select].br_taken;
 
     bpu_req.btb_update = global_flush | pre_check_redirect_o | |rob_cmt_o.valid;
-    bpu_req.br_type    = global_flush                                   ? rob_cmt_o.rob_entry[0].br_type :
-                         pre_check_redirect_o                           ? 2'b00 :
-                                                                          rob_cmt_o.rob_entry[br_select].br_type;
+    bpu_req.br_type    = global_flush         ? rob_cmt_o.rob_entry[0].br_type :
+                         pre_check_redirect_o ? 2'b00 :
+                                                rob_cmt_o.rob_entry[br_select].br_type;
 
     bpu_req.lpht_update = global_flush | pre_check_redirect_o | |rob_cmt_o.valid;
-    bpu_req.lphr   = global_flush                                   ? rob_cmt_o.rob_entry[0].br_info.lphr :
-                     pre_check_redirect_o                           ? 2'b00 :
-                                                                      rob_cmt_o.rob_entry[br_select].br_info.lphr;
+    bpu_req.lphr   = global_flush         ? rob_cmt_o.rob_entry[0].br_info.lphr :
+                     pre_check_redirect_o ? 2'b00 :
+                                            rob_cmt_o.rob_entry[br_select].br_info.lphr;
 
     if (rob_cmt_o.rob_entry[br_select].br_type == `CALL && 
         rob_cmt_o.rob_entry[br_select].br_info != `CALL &&
@@ -426,28 +312,12 @@ module Pipeline (
     .rsp(bpu_rsp)
   );
 
-/*============================ Fetch Address Queue ============================*/
-  // always_comb begin
-  //   faq_flush_i = glo_flush;
-
-  //   faq_push_req_st.valid = bpu_rsp_st.valid;
-  //   faq_push_req_st.vaddr = bpu_rsp_st.pc;
-
-  //   faq_pop_req_st.valid = icache_fetch_rsp_st.ready;
-  //   faq_pop_req_st.ready = icache_fetch_rsp_st.ready;
-  // end
-
-  // FetchAddressQueue U_FetchAddressQueue (
-  //   .clk         (clk),
-  //   .a_rst_n     (rst_n),
-  //   .flush_i     (faq_flush_i),
-  //   .push_req_st (faq_push_req_st),
-  //   .pop_req_st  (faq_pop_req_st),
-  //   .push_rsp_st (faq_push_rsp_st),
-  //   .pop_rsp_st  (faq_pop_rsp_st)
-  // );
-
 /*========================== Instruction Fetch Unit ===========================*/
+  logic icache_flush_i;
+  ICacheReqSt icache_req;
+  MmuAddrTransRspSt icache_addr_trans_rsp;
+  IcacopReqSt icacop_req;
+
   always_comb begin
     icache_flush_i = global_flush;
 
@@ -478,6 +348,7 @@ module Pipeline (
   );
 
 /*================================ Pre Decoder ================================*/
+  ICacheRspSt icache_rsp_buffer;
   always_ff @(posedge clk or negedge rst_n) begin
     if(!rst_n || global_flush) begin
       icache_rsp_buffer <= 0;
@@ -516,6 +387,10 @@ module Pipeline (
 
 
 /*============================ Instruction Buffer =============================*/
+  logic ibuf_flush_i;
+  logic [`FETCH_WIDTH - 1:0] ibuf_write_valid_i;
+  IbufDataSt [`FETCH_WIDTH - 1:0] ibuf_write_data_i;
+  logic [`DECODE_WIDTH - 1:0] ibuf_read_ready_i;
   // 在此处进行队列压缩，剔除无效的指令，第[i]个write_data应该写入第ibuf_idx[i]个icache的数据
   logic [`FETCH_WIDTH - 1:0][$clog2(`FETCH_WIDTH) - 1:0] ibuf_idx;
   always_comb begin
@@ -623,6 +498,25 @@ module Pipeline (
   end
 
 /*================================= Scheduler ================================*/
+  logic sche_flush_i;
+  ScheduleReqSt sche_req;
+  RobAllocRspSt sche_rob_alloc_rsp;
+  logic sche_csr_has_int_i;
+  logic [1:0] sche_csr_plv_i;
+  logic [$clog2(`PHY_REG_NUM) - 1:0] sche_fl_arch_heah;
+  logic [$clog2(`PHY_REG_NUM) - 1:0] sche_fl_arch_tail;
+  logic [$clog2(`PHY_REG_NUM + 1) - 1:0] sche_fl_arch_cnt;
+  logic [`COMMIT_WIDTH - 1:0] sche_free_valid_i;
+  logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_free_preg_i;
+  logic [`WB_WIDTH - 1:0] sche_wb_i;
+  logic [`WB_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] sche_wb_pdest_i;
+  logic [`PHY_REG_NUM - 1:0] sche_rat_arch_valid_i;
+
+  logic sche_misc_ready_i;
+  logic [1:0] sche_alu_ready_i;
+  logic sche_mdu_ready_i;
+  logic sche_mem_ready_i;
+
   /* Dispatch/Wake up/Select */
   always_comb begin
     sche_flush_i = global_flush;
@@ -677,8 +571,8 @@ module Pipeline (
     .schedule_rsp     (sche_rsp),
     .rob_alloc_req    (sche_rob_alloc_req),
     .rob_alloc_rsp    (sche_rob_alloc_rsp),
-    .csr_has_int_i    (sche_csr_has_int_i),
     .csr_plv_i        (sche_csr_plv_i),
+    .csr_has_int_i    (sche_csr_has_int_i),
     .fl_arch_heah     (sche_fl_arch_heah),
     .fl_arch_tail     (sche_fl_arch_tail),
     .fl_arch_cnt      (sche_fl_arch_cnt),
@@ -700,6 +594,11 @@ module Pipeline (
 
 
 /*================================= RegFile ===================================*/
+  logic [9:0] rf_re_i;
+  logic [4:0] rf_we_i;
+  logic [4:0][$clog2(`PHY_REG_NUM) - 1:0] rf_waddr_i;
+  logic [9:0][$clog2(`PHY_REG_NUM) - 1:0] rf_raddr_i;
+  logic [4:0][31:0] rf_wdata_i;
   // 读取phy regfile
   // 默认顺序为misc、alu、mdu、mem / {mem, mdu, alu[1], alu[0], misc}
   always_comb begin : proc_read_rf
@@ -777,6 +676,31 @@ module Pipeline (
   // 读mmu信息
 
 /*=============================== Integer Block ===============================*/
+  logic iblk_flush_i;
+  MiscExeSt iblk_misc_exe_i;
+  AluExeSt [1:0] iblk_alu_exe_i;
+  MduExeSt iblk_mdu_exe_i;
+
+  logic iblk_tlbsrch_found_i;
+  logic [$clog2(`TLB_ENTRY_NUM) - 1:0] iblk_tlbsrch_idx_i;
+  logic [31:0] iblk_tlbehi_i;
+  logic [31:0] iblk_tlbelo0_i;
+  logic [31:0] iblk_tlbelo1_i;
+  logic [31:0] iblk_tlbidx_i;
+  logic [ 9:0] iblk_tlbasid_i;
+
+  logic [ 5:0] iblk_invtlb_op_i;
+  logic [63:0] iblk_timer_64_i;
+  logic [31:0] iblk_timer_id_i;
+  logic        iblk_csr_rstat_i;
+  logic [31:0] iblk_csr_rdata_i;
+
+  logic iblk_misc_wb_ready_i;
+  logic [1:0] iblk_alu_wb_ready_i;
+  logic iblk_mdu_wb_ready_i;
+
+
+
   always_comb begin
     iblk_flush_i = global_flush;
     // 杂项指令在成为最旧指令时才执行
@@ -875,6 +799,12 @@ module Pipeline (
 
 
 /*=============================== Memory Block ================================*/
+  logic mblk_flush_i;
+  MemExeSt mblk_exe_i;
+  MmuAddrTransRspSt mblk_addr_trans_rsp;
+  IcacopRspSt mblk_icacop_rsp;
+  logic mblk_wb_ready_i;
+
   always_comb begin
     mblk_flush_i = global_flush;
 
@@ -908,6 +838,14 @@ module Pipeline (
 
 
 /*======================== Reorder Buffer(Write Back) =========================*/
+
+  logic rob_flush_i;
+  RobAllocReqSt rob_alloc_req;
+  MiscWbSt rob_misc_wb_req;
+  AluWbSt [1:0] rob_alu_wb_req;
+  MduWbSt rob_mdu_wb_req;
+  MemWbSt rob_mem_wb_req;
+
   always_comb begin
     rob_flush_i = global_flush;
     rob_alloc_req = sche_rob_alloc_req;
@@ -984,6 +922,16 @@ module Pipeline (
 
     global_flush = excp_flush | redirect_flush | ertn_flush | refetch_flush;
   end
+
+  logic [`COMMIT_WIDTH - 1:0] arch_rat_dest_valid_i;
+  logic [`COMMIT_WIDTH - 1:0][4:0] arch_rat_dest_i;
+  logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_rat_preg_i;
+
+  logic [`COMMIT_WIDTH - 1:0] arch_fl_alloc_valid_i;
+  logic [`COMMIT_WIDTH - 1:0] arch_fl_free_valid_i;
+  logic [`COMMIT_WIDTH - 1:0][$clog2(`PHY_REG_NUM) - 1:0] arch_fl_free_preg_i;
+
+
 
   always_comb begin
     for (int i = 0; i < `COMMIT_WIDTH; i++) begin
@@ -1065,6 +1013,35 @@ module Pipeline (
 `endif
 
 /*========================== Memory Management Unit ===========================*/
+  logic [9:0]  mmu_csr_asid_i;
+  logic [31:0] mmu_csr_dmw0_i;
+  logic [31:0] mmu_csr_dmw1_i;
+  logic [1:0]  mmu_csr_datf_i;
+  logic [1:0]  mmu_csr_datm_i;
+  logic [1:0]  mmu_csr_plv_i;
+  logic        mmu_csr_da_i;
+  logic        mmu_csr_pg_i;
+
+  logic        mmu_tlbsrch_en_i;
+  logic        mmu_tlbfill_en_i;
+  logic        mmu_tlbwr_en_i;
+  logic [ 4:0] mmu_rand_index_i;
+  logic [31:0] mmu_tlbehi_i;
+  logic [31:0] mmu_tlbelo0_i;
+  logic [31:0] mmu_tlbelo1_i;
+  logic [31:0] mmu_tlbidx_i;
+  logic [ 5:0] mmu_ecode_i;
+
+  logic        mmu_tlbrd_en_i;
+  logic        mmu_invtlb_en_i;
+  logic [ 9:0] mmu_invtlb_asid_i;
+  logic [18:0] mmu_invtlb_vpn_i;
+  logic [ 4:0] mmu_invtlb_op_i;
+
+
+
+  MmuAddrTransReqSt [1:0] mmu_addr_trans_req;
+
 
   always_comb begin
     // mmu 需要的csr信息
@@ -1154,6 +1131,39 @@ module Pipeline (
   );
 
 /*======================= CSR(Control/Status Register) ========================*/
+    //csr rd
+    logic  [13:0]                   csr_rd_addr      ;
+    //csr wr
+    logic                           csr_wr_en    ;
+    logic  [13:0]                   csr_wr_addr      ;
+    logic  [31:0]                   csr_wr_data      ;
+    //interrupt
+    logic  [ 7:0]                   csr_interrupt    ;
+    //excp
+    logic                           csr_excp_flush   ;
+    logic                           csr_ertn_flush   ;
+    logic  [31:0]                   csr_era_in       ;
+    logic  [ 8:0]                   csr_esubcode_in  ;
+    logic  [ 5:0]                   csr_ecode_in     ;
+    logic                           csr_va_error_in  ;
+    logic  [31:0]                   csr_bad_va_in    ;
+    logic                           csr_tlbsrch_en    ;
+    logic                           csr_tlbsrch_found ;
+    logic  [ 4:0]                   csr_tlbsrch_index ;
+    logic                           csr_excp_tlbrefill;
+    logic                           csr_excp_tlb     ;
+    logic  [18:0]                   csr_excp_tlb_vppn;
+    //llbit
+    logic                           csr_llbit_in     ;
+    logic                           csr_llbit_set_in ;
+    //from addr trans 
+    logic                           csr_tlbrd_en     ;
+    logic  [31:0]                   csr_tlbehi_in    ;
+    logic  [31:0]                   csr_tlbelo0_in   ;
+    logic  [31:0]                   csr_tlbelo1_in   ;
+    logic  [31:0]                   csr_tlbidx_in    ;
+    logic  [ 9:0]                   csr_asid_in      ;
+
   always_comb begin
     // csr读写
     // csr_rd_addr = sche_misc_issue_o.base_info.src[23:10]; 在read rf处
@@ -1307,31 +1317,6 @@ module Pipeline (
     .csr_pgdl_diff      (csr_pgdl_diff),
     .csr_pgdh_diff      (csr_pgdh_diff)
   );
-
-`ifdef DEBUG
-  // 如果超过1000个周期没有指令提交则退出
-  logic [31:0] commit_cnt;
-
-  always_ff @(posedge clk or negedge rst_n) begin
-    if(~rst_n) begin
-      commit_cnt <= 0;
-    end else begin
-      if (rob_cmt_o.valid) begin
-        commit_cnt <= 0;
-      end else begin
-        commit_cnt <= commit_cnt + 1;
-      end
-    end
-  end
-
-  always_comb begin
-    if (commit_cnt >= 1000) begin
-      $display("Pipeline stuck! over 1000 clk cycles without commit!");
-      $finish;
-    end
-  end
-
-`endif
   
 
 endmodule : Pipeline

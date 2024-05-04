@@ -28,18 +28,18 @@
 module PreChecker (
 	input clk,    // Clock
 	input rst_n,  // Asynchronous reset active low
-	input [1:0][31:0] pc_i,
-	input [1:0] valid_i,
-	input logic [1:0] is_branch_i,  // 标记是否是分支指令
+	input [`FETCH_WIDTH - 1:0][31:0] pc_i,
+	input [`FETCH_WIDTH - 1:0] valid_i,
+	input logic [`FETCH_WIDTH - 1:0] is_branch_i,  // 标记是否是分支指令
 	input BrInfoSt br_info_i,
 	output logic redirect_o,  // 分支预测器重定向
 	output logic [31:0] pc_o,
 	output logic [31:0] target_o,
 	output logic [$clog2(`RAS_STACK_DEPTH) - 1:0] ras_ptr_o,
-	output logic [1:0]  valid_o
+	output logic [`FETCH_WIDTH - 1:0]  valid_o
 );
 
-	logic [1:0] miss;
+	logic [`FETCH_WIDTH - 1:0] miss;
 	always_comb begin
 		for (int i = 0; i < `FETCH_WIDTH; i++) begin
 			miss[i] = br_info_i.taken && (br_info_i.br_idx == pc_i[i][2]) && !is_branch_i[i] && valid_i[i];
