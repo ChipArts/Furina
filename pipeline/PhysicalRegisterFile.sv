@@ -27,7 +27,7 @@ module PhysicalRegisterFile #(
   parameter PHY_REG_NUM = 64
 )(
 	input clk,      // Clock
-	input a_rst_n,   // Asynchronous reset active low
+	input rst_n,   // Asynchronous reset active low
   input [READ_PORT_NUM - 1:0]  re_i,
   input [WRITE_PORT_NUM - 1:0] we_i,
   input [READ_PORT_NUM - 1:0][$clog2(PHY_REG_NUM) - 1:0] raddr_i,
@@ -35,8 +35,6 @@ module PhysicalRegisterFile #(
   input [WRITE_PORT_NUM - 1:0][DATA_WIDTH - 1:0] data_i,
   output logic [READ_PORT_NUM - 1:0][DATA_WIDTH - 1:0] data_o
 );
-
-  `RESET_LOGIC(clk, a_rst_n, rst_n)
 
   logic [PHY_REG_NUM - 1:0][DATA_WIDTH - 1:0] reg_file;
   always @(posedge clk or negedge rst_n) begin
