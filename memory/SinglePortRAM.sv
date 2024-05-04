@@ -47,7 +47,7 @@ initial begin
   assert (DATA_WIDTH % BYTE_WRITE_WIDTH == 0) else $fatal("DATA_WIDTH must be an integer multiple of BYTE_WRITE_WIDTH");
 end
 
-`ifdef VERILATOR_SIM
+`ifdef CHIPLAB_SIM
   logic [DATA_DEPTH - 1:0][DATA_WIDTH - 1:0] ram;
 
   logic [DATA_WIDTH - 1:0] rdata_q, rdata_n;

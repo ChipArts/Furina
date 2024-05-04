@@ -66,7 +66,7 @@ initial begin
 end
 `endif
 
-`ifdef VERILATOR_SIM
+`ifdef CHIPLAB_SIM
   logic [DATA_DEPTH - 1:0][DATA_WIDTH - 1:0] ram;
 
   logic [DATA_WIDTH - 1:0] rdata_a_q, rdata_b_q;

@@ -67,7 +67,6 @@ module ControlStatusRegister #(
     output [31:0]                   eentry_out   ,
     output [31:0]                   era_out      ,
     output [31:0]                   tlbrentry_out,
-    output                          disable_cache_out,
     //to addr trans
     output [ 9:0]                   asid_out     ,
     output [ 4:0]                   rand_index   ,
@@ -149,8 +148,6 @@ localparam LLBCTL= 14'h60;
 localparam TLBRENTRY = 14'h88;
 localparam DMW0  = 14'h180;
 localparam DMW1  = 14'h181;
-localparam BRK = 14'h100;
-localparam DISABLE_CACHE = 14'h101;
 
 wire crmd_wen   = csr_wr_en & (wr_addr == CRMD);
 wire prmd_wen   = csr_wr_en & (wr_addr == PRMD);
@@ -181,8 +178,6 @@ wire llbctl_wen = csr_wr_en & (wr_addr == LLBCTL);
 wire tlbrentry_wen = csr_wr_en & (wr_addr == TLBRENTRY);
 wire DMW0_wen   = csr_wr_en & (wr_addr == DMW0);
 wire DMW1_wen   = csr_wr_en & (wr_addr == DMW1);
-wire BRK_wen    = csr_wr_en & (wr_addr == BRK);
-wire disable_cache_wen = csr_wr_en & (wr_addr == DISABLE_CACHE);
 
 reg [31:0] csr_crmd;
 reg [31:0] csr_prmd;
@@ -212,8 +207,6 @@ reg [31:0] csr_dmw0;
 reg [31:0] csr_dmw1;
 reg [31:0] csr_pgdl;
 reg [31:0] csr_pgdh;
-reg [31:0] csr_brk;
-reg [31:0] csr_disable_cache;
 
 wire [31:0] csr_pgd;
 
@@ -251,7 +244,6 @@ assign tlbelo0_out  = csr_tlbelo0;
 assign tlbelo1_out  = csr_tlbelo1;
 assign tlbidx_out   = csr_tlbidx;
 assign rand_index   = timer_64[4:0];
-assign disable_cache_out = csr_disable_cache[0];
 
 //forward to if stage
 assign no_forward   = !excp_tlbrefill && !(eret_tlbrefill_excp && ertn_flush) && !crmd_wen;
@@ -746,26 +738,6 @@ end
 always @(posedge clk) begin
     if (pgdh_wen) begin
         csr_pgdh[`BASE] <= wr_data[`BASE];
-    end
-end
-
-//use for break in chipscope in software
-always @(posedge clk) begin
-    if (reset) begin
-        csr_brk <= 32'b0;
-    end
-    if (BRK_wen) begin
-        csr_brk <= wr_data;
-    end
-end
-
-//use for disable cache or enable cache
-always @(posedge clk) begin
-    if (reset) begin
-        csr_disable_cache <= 32'b0;
-    end
-    if (disable_cache_wen) begin
-        csr_disable_cache <= wr_data;
     end
 end
 

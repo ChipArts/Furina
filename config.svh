@@ -23,7 +23,7 @@
 `define __CONFIG_SVH__
 
 /** simulation or synthesis （确保有且仅有一个环境选项被定义）**/
-`define VERILATOR_SIM      // verilator 仿真
+`define CHIPLAB_SIM          // chiplab verilator 仿真
 // `define XILLINX_FPGA      // xillinx FPGA 仿真综合环境
 // `define MSIC180_SYN       // 中芯国际180nm工艺库综合
 

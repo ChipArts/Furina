@@ -93,7 +93,7 @@ module core_top(
 	    .AXI_USER_WIDTH(1)
   	) axi4();
 
-	Furina inst_Furina (.clk(aclk), .a_rst_n(aresetn), .interrupt(intrpt), .axi4_mst(axi4));
+	Furina U_Furina (.clk(aclk), .a_rst_n(aresetn), .interrupt(intrpt), .axi4_mst(axi4));
 
     assign arid    = axi4.ar_id;
     assign araddr  = axi4.ar_addr;
