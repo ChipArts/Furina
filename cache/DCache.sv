@@ -399,9 +399,9 @@ module DCache (
   // 2. 如果hit 处理store写入
   // 3. 如果miss，处理cache状态机
 
-  always_comb begin
-    s2_ready = (~s2_valid | dcache_req.ready) & cache_state == IDEL;
+  assign s2_ready = (~s2_valid | dcache_req.ready) & cache_state == IDEL;
 
+  always_comb begin : proc_wstrb
     // for uncache write
     // 当 WSTRB[n] 为 1 时，WDATA[8n+7:8n]有效。
     w_strb = '0;
@@ -417,7 +417,9 @@ module DCache (
       end
       default : w_strb = '0;
     endcase
-
+  end
+    
+  always_comb begin : proc_store_data
     store_data = '0;
     case (s2_align_op)
       `ALIGN_B : 
@@ -434,34 +436,38 @@ module DCache (
       end
       default : store_data = '0;
     endcase
-
-    busy_o = s1_valid | s2_valid;
-
-    cache_line   = s2_uncache ? axi_rdata_buffer : 
-                   s2_miss    ? data_ram_rdata[s2_repl_way] : 
-                                data_ram_rdata[s2_matched_way];
-    matched_word = cache_line[s2_vaddr[`DCACHE_IDX_OFFSET - 1:2]];
+  end
 
 
-    // 1. 生成响应
-    dcache_rsp.valid = s2_valid & cache_state == IDEL;
-    dcache_rsp.mem_op = s2_mem_op;  // 用于rob判断是否可以写回
-    dcache_rsp.atomic = s2_atomic;
-    dcache_rsp.llbit = s2_llbit;
-    dcache_rsp.pdest_valid = s2_pdest_valid;
-    dcache_rsp.pdest = s2_pdest;
-    dcache_rsp.rob_idx = s2_rob_idx;
+
+  assign busy_o = s1_valid | s2_valid;
+
+  assign cache_line   = s2_uncache ? axi_rdata_buffer : 
+                        s2_miss    ? data_ram_rdata[s2_repl_way] : 
+                                     data_ram_rdata[s2_matched_way];
+  assign matched_word = cache_line[s2_vaddr[`DCACHE_IDX_OFFSET - 1:2]];
+
+
+  // 1. 生成响应
+  assign dcache_rsp.valid = s2_valid & cache_state == IDEL;
+  assign dcache_rsp.mem_op = s2_mem_op;  // 用于rob判断是否可以写回
+  assign dcache_rsp.atomic = s2_atomic;
+  assign dcache_rsp.llbit = s2_llbit;
+  assign dcache_rsp.pdest_valid = s2_pdest_valid;
+  assign dcache_rsp.pdest = s2_pdest;
+  assign dcache_rsp.rob_idx = s2_rob_idx;
 `ifdef DEBUG
-    dcache_rsp.vaddr = s2_vaddr;
-    dcache_rsp.paddr = s2_paddr;
-    dcache_rsp.store_data = store_data;
+  assign dcache_rsp.vaddr = s2_vaddr;
+  assign dcache_rsp.paddr = s2_paddr;
+  assign dcache_rsp.store_data = store_data;
 `endif
     
+  always_comb begin : proc_dcache_rsp
     dcache_rsp.excp = s2_excp;
+    // sc.w在不执行时不触发异常
     if (s2_mem_op == `MEM_STORE && s2_atomic && !s2_llbit) begin
       dcache_rsp.excp.valid = '0;
     end
-    
     // 特殊处理preld的excp
     if (s2_preld) begin
       dcache_rsp.excp.valid = '0;
@@ -502,27 +508,29 @@ module DCache (
       end
       default : dcache_rsp.rdata = '0;
     endcase
+  end
+    
 
     /* cache 状态机控制 */
     // MISS 阶段不是要写就是要读
-    uncache_store   = s2_mem_op == `MEM_STORE & s2_uncache & s2_store_valid;
-    cacop_mode0     = s2_mem_op == `MEM_CACOP & s2_code[4:3] == 2'b00;  // wr tag
-    cacop_mode1     = s2_mem_op == `MEM_CACOP & s2_code[4:3] == 2'b01;  // wr valid
-    cacop_mode2     = s2_mem_op == `MEM_CACOP & s2_code[4:3] == 2'b10;  // wr valid
-    cacop_mode2_hit = cacop_mode2 & ~s2_miss;
+    assign uncache_store   = s2_mem_op == `MEM_STORE & s2_uncache & s2_store_valid;
+    assign cacop_mode0     = s2_mem_op == `MEM_CACOP & s2_code[4:3] == 2'b00;  // wr tag
+    assign cacop_mode1     = s2_mem_op == `MEM_CACOP & s2_code[4:3] == 2'b01;  // wr valid
+    assign cacop_mode2     = s2_mem_op == `MEM_CACOP & s2_code[4:3] == 2'b10;  // wr valid
+    assign cacop_mode2_hit = cacop_mode2 & ~s2_miss;
     // uncache wr --> wb 1
     // uncache rd, cacop(code==0) --> wb 0
     // cacop(code==1, 2), cache st, cache ld --> wb (dirty && valid)
-    write_req = uncache_store | 
-                (
-                  (s2_repl_meta.valid & s2_repl_meta.dirty) &
-                  (~s2_uncache        | cacop_mode2_hit   ) &
-                  (~cacop_mode0)
-                );
+    assign write_req = uncache_store | 
+                       (
+                         (s2_repl_meta.valid & s2_repl_meta.dirty) &
+                         (~s2_uncache        | cacop_mode2_hit   ) &
+                         (~cacop_mode0)
+                       );
     // uncache wr --> rd 0
     // cacop      --> rd 0
     // other      --> rd 1 (ibar、dbar不会启动状态机)
-    read_req = ~(uncache_store | s2_mem_op == `MEM_CACOP);
+    assign read_req = ~(uncache_store | s2_mem_op == `MEM_CACOP);
 
     // store 和 cacop 指令需要等待ready信号
     // wait2miss;    <=> store、load产生miss，cacop(1,2) dirty
@@ -532,24 +540,23 @@ module DCache (
     // repl2refill;  <=> cache 完成写回 且 ar_ready
     // repl2idle  ;  <=> uncache、cacop store 完成写回
     // refill2idle;  <=> cache 重填（load、store、cacop）
-    wait2miss   = s2_mem_op == `MEM_STORE ? dcache_req.ready :  // refill时要写入更改信息 索性等待ready
-                  s2_mem_op == `MEM_CACOP ? dcache_req.ready & s2_repl_meta.valid & s2_repl_meta.dirty & ~cacop_mode0 :
-                  s2_mem_op == `MEM_LOAD  ;
-    wait2refill = s2_mem_op == `MEM_CACOP & dcache_req.ready;  // fsm先判断wait2miss以确保此时无需写回
+    assign wait2miss   = s2_mem_op == `MEM_STORE ? dcache_req.ready :  // refill时要写入更改信息 索性等待ready
+                         s2_mem_op == `MEM_CACOP ? dcache_req.ready & s2_repl_meta.valid & s2_repl_meta.dirty & ~cacop_mode0 :
+                         s2_mem_op == `MEM_LOAD  ;
+    assign wait2refill = s2_mem_op == `MEM_CACOP & dcache_req.ready;  // fsm先判断wait2miss以确保此时无需写回
 
-    miss2repl   = axi4_mst.aw_ready;
-    miss2refill = axi4_mst.ar_ready;
+    assign miss2repl   = axi4_mst.aw_ready;
+    assign miss2refill = axi4_mst.ar_ready;
 
-    repl2refill = ~s2_uncache & 
-                  repl_complete &                   // TODO 有优化的空间 可以提前一拍
-                  (~read_req | axi4_mst.ar_ready);  // TODO 这里可能有bug 可能需要将ar_ready用寄存器保存？？？ 就目前来看wr完成前不会产生aw_ready
-    repl2idle   = s2_uncache &
-                  axi4_mst.w_last & axi4_mst.w_valid & axi4_mst.w_ready;
+    assign repl2refill = ~s2_uncache & 
+                         repl_complete &                   // TODO 有优化的空间 可以提前一拍
+                         (~read_req | axi4_mst.ar_ready);  // TODO 这里可能有bug 可能需要将ar_ready用寄存器保存？？？ 就目前来看wr完成前不会产生aw_ready
+    assign repl2idle   = s2_uncache &
+                         axi4_mst.w_last & axi4_mst.w_valid & axi4_mst.w_ready;
 
-    refill2idle = s2_mem_op == `MEM_CACOP |
-                  (axi4_mst.r_valid & axi4_mst.r_last & axi4_mst.r_ready);
+    assign refill2idle = s2_mem_op == `MEM_CACOP |
+                         (axi4_mst.r_valid & axi4_mst.r_last & axi4_mst.r_ready);
 
-  end
 
   /* cache fsm */
   always_ff @(posedge clk or negedge rst_n) begin
@@ -600,7 +607,7 @@ module DCache (
 
 
 
-  always_comb begin
+  always_comb begin : proc_axi
     axi4_mst.aw_id = '0;
     axi4_mst.aw_addr = s2_uncache ? s2_paddr : `DCACHE_PADDR_ALIGN(s2_repl_paddr);  // 以cache行为单位
     axi4_mst.aw_len =  s2_uncache ? '0 : `DCACHE_BLOCK_SIZE / 4 - 1;
@@ -658,7 +665,7 @@ module DCache (
 /*=============================== Cache Memory ================================*/
 
   /* mem ctrl */
-  always_comb begin
+  always_comb begin : proc_data_ram
     // data ram
     data_ram_we = '0;
     data_ram_waddr = `DCACHE_IDX_OF(s2_vaddr);
@@ -693,7 +700,9 @@ module DCache (
     end
 
     data_ram_raddr = s2_ready ? `DCACHE_IDX_OF(s1_vaddr) : `DCACHE_IDX_OF(s2_vaddr);
+  end
 
+  always_comb begin : proc_tag_ram
     // tag ram
     tag_ram_we = '0;
     if (cache_state == REFILL) begin
@@ -707,7 +716,9 @@ module DCache (
     tag_ram_waddr = `DCACHE_IDX_OF(s2_vaddr);
     tag_ram_wdata = cacop_mode0 ? '0 : `DCACHE_TAG_OF(s2_paddr);
     tag_ram_raddr = s1_ready ? `DCACHE_IDX_OF(dcache_req.vaddr) :  `DCACHE_IDX_OF(s1_vaddr);
+  end
 
+  always_comb begin : proc_meta_ram
     // meta ram
     meta_ram_we = '0;
     meta_ram_waddr = `DCACHE_IDX_OF(s2_vaddr);
@@ -727,13 +738,17 @@ module DCache (
       meta_ram_wdata = '{valid: 1'b1, dirty: 1'b1};
     end
     meta_ram_raddr = s1_ready ? `DCACHE_IDX_OF(dcache_req.vaddr) : `DCACHE_IDX_OF(s1_vaddr);
+  end
 
+  always_comb begin : proc_plru_ram
     // plru ram
     plru_ram_we = s1_valid;
     plru_ram_waddr = `DCACHE_IDX_OF(s1_vaddr);
     plru_ram_wdata = plru_ram_rdata == matched_way ? ~plru_ram_rdata : plru_ram_rdata;
     plru_ram_raddr = s1_ready ? `DCACHE_IDX_OF(dcache_req.vaddr) : `DCACHE_IDX_OF(s1_vaddr);
+  end
 
+  always_comb begin : proc_forward
     // 一点转发逻辑
     // cache refill时转发tag和meta
     for (int i = 0; i < `DCACHE_WAY_NUM; i++) begin
