@@ -143,7 +143,7 @@ module MemoryBlock (
   DCache inst_DCache
   (
     .clk              (clk),
-    .a_rst_n          (rst_n),
+    .rst_n            (rst_n),
     .flush_i          (flush_i),
     .dcache_req       (dcache_req),
     .dcache_rsp       (dcache_rsp),

@@ -38,8 +38,7 @@ module Scheduler (
   output RobAllocReqSt rob_alloc_req,
   input RobAllocRspSt rob_alloc_rsp,
 
-  // excp
-  input logic csr_has_int_i,
+  // for excp
   input logic [1:0] csr_plv_i,
   // freelist
   input logic [$clog2(`PHY_REG_NUM) - 1:0] fl_arch_heah,
@@ -193,11 +192,7 @@ module Scheduler (
 
     excp = '0;
     for (int i = 0; i < `DECODE_WIDTH; i++) begin
-      if (csr_has_int_i) begin
-        excp[i].valid = '1;
-        excp[i].ecode = `ECODE_INT;
-        excp[i].sub_ecode = `ESUBCODE_ADEF;
-      end else if (s1_sche_req.excp[i].valid) begin
+      if (s1_sche_req.excp[i].valid) begin
         excp[i] = s1_sche_req.excp[i];
       end else if(invalid_instr[i]) begin
         excp[i].valid = '1;

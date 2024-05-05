@@ -327,6 +327,7 @@ module Pipeline (
     icache_req.npc     = bpu_rsp.npc;
     icache_req.br_info = bpu_rsp.br_info;
     icache_req.ready   = ibuf_write_ready_o;
+    icache_req.has_int = csr_has_int;
   end
 
   assign icacop_req = mblk_icacop_req;
@@ -542,7 +543,6 @@ module Pipeline (
     .rob_alloc_rsp    (sche_rob_alloc_rsp),
     // for excp
     .csr_plv_i        (csr_plv_out),
-    .csr_has_int_i    (csr_has_int),
     // flush restore
     .fl_arch_heah     (arch_fl_head_o),
     .fl_arch_tail     (arch_fl_tail_o),

@@ -31,7 +31,7 @@
 
 module DCache (
   input logic clk,    // Clock
-  input logic a_rst_n,  // Asynchronous reset active low
+  input logic rst_n,  // Asynchronous reset active low
   input flush_i,
   //to from cpu
   input DCacheReqSt dcache_req,
@@ -43,8 +43,6 @@ module DCache (
   // axi bus
   AXI4.Master axi4_mst
 );
-
-  `RESET_LOGIC(clk, a_rst_n, rst_n);
 
   //  axi4_mst.AXI_ADDR_WIDTH = `PROC_PALEN
   //  axi4_mst.AXI_DATA_WIDTH = 32

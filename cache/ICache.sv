@@ -85,7 +85,8 @@ module ICache (
   logic [$clog2(`ICACHE_BLOCK_SIZE / 4) - 1:0] axi_rdata_idx;
 
   /* stage 0 */
-  logic adef;  // fetch address error
+  logic excp_adef;  // fetch address error
+  logic excp_int;   // interrupt(fetch)
   /* stage 1 */
   logic miss;
   logic [`PROC_PALEN - 1:0] paddr;
@@ -107,7 +108,8 @@ module ICache (
   // 使用虚拟地址查询 data
   always_comb begin
     s0_ready = s1_ready & addr_trans_rsp.ready;
-    adef = icache_req.vaddr[1:0] != 0;
+    excp_adef = icache_req.vaddr[1:0] != '0;
+    excp_int  = icache_req.has_int;
 
     addr_trans_req.valid = (|icache_req.valid | icacop_req.valid) & s1_ready;
     addr_trans_req.ready = '1;
@@ -123,7 +125,8 @@ module ICache (
   logic [`PROC_VALEN - 1:0] s1_vaddr;
   logic [`PROC_VALEN - 1:0] s1_npc;
   BrInfoSt s1_br_info;
-  logic s1_adef;
+  logic s1_excp_adef;
+  logic s1_excp_int;
 
   logic [`FETCH_WIDTH - 1:0] s1_fetch_en;
   logic s1_cacop_en;
@@ -136,7 +139,8 @@ module ICache (
       s1_vaddr <= '0;
       s1_npc <= '0;
       s1_br_info <= '0;
-      s1_adef  <= '0;
+      s1_excp_adef  <= '0;
+      s1_excp_int  <= '0;
       s1_cacop_mode <= '0;
       s1_rob_idx <= '0;
     end else begin
@@ -159,7 +163,8 @@ module ICache (
         s1_vaddr <= icacop_req.valid ? icacop_req.vaddr : icache_req.vaddr;
         s1_npc <= icache_req.npc;
         s1_br_info <= icache_req.br_info;
-        s1_adef  <= adef;
+        s1_excp_adef  <= excp_adef;
+        s1_excp_int <= excp_int;
       end
     end
   end
@@ -224,7 +229,7 @@ module ICache (
   // fetch 输出
   for (genvar i = 0; i < `FETCH_WIDTH; i++) begin
     assign icache_rsp.valid[i] = s1_fetch_en[i] & (addr_trans_rsp.uncache ? uncache_hit : ~miss);
-    assign icache_rsp.vaddr[i] = s1_adef ? s1_vaddr : `FETCH_ALIGN(s1_vaddr) + (i << 2);  // pc异常时保留异常的pc
+    assign icache_rsp.vaddr[i] = s1_excp_adef ? s1_vaddr : `FETCH_ALIGN(s1_vaddr) + (i << 2);  // pc异常时保留异常的pc
     assign icache_rsp.instr[i] = cache_line[cache_line_base + i];
   end
   assign cache_line = addr_trans_rsp.uncache ? axi_rdata_buffer : data_ram_rdata[matched_way];
@@ -237,8 +242,9 @@ module ICache (
   assign icache_rsp.npc[`FETCH_WIDTH - 1] = s1_npc;
 
   // fetch异常检查
-  assign icache_rsp.excp.valid = s1_adef | addr_trans_rsp.tlbr | addr_trans_rsp.pif | addr_trans_rsp.ppi;
-  assign icache_rsp.excp.ecode =  s1_adef             ? `ECODE_ADE  :
+  assign icache_rsp.excp.valid = s1_excp_int | s1_excp_adef | addr_trans_rsp.tlbr | addr_trans_rsp.pif | addr_trans_rsp.ppi;
+  assign icache_rsp.excp.ecode =  s1_excp_int         ? `ECODE_INT  :
+                                  s1_excp_adef        ? `ECODE_ADE  :
                                   addr_trans_rsp.tlbr ? `ECODE_TLBR : 
                                   addr_trans_rsp.pif  ? `ECODE_PIF  :
                                   addr_trans_rsp.ppi  ? `ECODE_PPI  : '0;
