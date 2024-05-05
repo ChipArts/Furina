@@ -333,12 +333,16 @@ module Scheduler (
   logic [`DISPATCH_WIDTH - 1:0][$clog2(`DISPATCH_WIDTH) - 1:0] alu_cnt;
   logic [`DISPATCH_WIDTH - 1:0][$clog2(`DISPATCH_WIDTH) - 1:0] mdu_cnt;
   logic [`DISPATCH_WIDTH - 1:0][$clog2(`DISPATCH_WIDTH) - 1:0] misc_cnt;
-  logic [`DISPATCH_WIDTH - 1:0][$clog2(`DISPATCH_WIDTH) - 1:0] mem_cnt;  
+  logic [`DISPATCH_WIDTH - 1:0][$clog2(`DISPATCH_WIDTH) - 1:0] mem_cnt;
+
+  logic [`DISPATCH_WIDTH - 1:0][2 - 1:0] alu_wr_idx;  // 第[i]条alu指令写到第alu_wr_idx[i]个alu rs写端口
+
+
   logic [1:0] alu_rs_wr_ready;
   logic mdu_rs_wr_ready;
   logic mem_rs_wr_ready;
   logic misc_rs_wr_ready;
-  logic [3:0] dispatched;
+  // logic [3:0] dispatched;
 
   logic [1:0] alu_rs_wr_valid;
   logic mdu_rs_wr_valid;
@@ -425,7 +429,7 @@ module Scheduler (
     end
   end
 
-  always_comb begin
+  always_comb begin : proc_dq_ready
     // 判断是否可以分发
     dq_read_ready_i = '0;  // default assign
     if (dq_read_valid_o[0]) begin
@@ -452,8 +456,10 @@ module Scheduler (
         endcase
       end
     end
+  end
 
-    // 写入发射队列
+  always_comb begin : proc_dispatch
+    // default assign
     misc_rs_wr_valid = '0;
     alu_rs_wr_valid = '0;
     mdu_rs_wr_valid = '0;

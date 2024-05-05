@@ -249,76 +249,75 @@ module DCache (
   // 6. 更新plru RAM
   // 7. 生成写入数据
 
-  always_comb begin
-    s1_ready = ~s1_valid | s2_ready;
+  assign s1_ready = ~s1_valid | s2_ready;
 
-    // 1. 获得MMU读取响应
-    paddr = addr_trans_rsp.paddr;
-    // 2. 访问Data RAM
-    // 3. 判断Cache的命中情况
-    for (int i = 0; i < `DCACHE_WAY_NUM; i++) begin
-      matched_way_oh[i] = (tag[i] == `DCACHE_TAG_OF(paddr)) & meta[i].valid;
-    end
+  // 1. 获得MMU读取响应
+  assign paddr = addr_trans_rsp.paddr;
+  // 2. 访问Data RAM
+  // 3. 判断Cache的命中情况
+  for (genvar i = 0; i < `DCACHE_WAY_NUM; i++) begin
+    assign matched_way_oh[i] = (tag[i] == `DCACHE_TAG_OF(paddr)) & meta[i].valid;
+  end
 
-    miss = 1'b1;  // 这里的miss仅检查cache查询结果的命中情况
-    for (int i = 0; i < `DCACHE_WAY_NUM; i++) begin
-      miss &= ~matched_way_oh[i];
-    end
-    // 4. 如果hit，生成cache way选择信号
+  assign miss = ~(|matched_way_oh);
+
+
+  // 4. 如果hit，生成cache way选择信号
+  always_comb begin : proc_matched_way
     matched_way = '0;
     for (int i = 0; i < `DCACHE_WAY_NUM; i++) begin
       if (matched_way_oh[i]) begin
         matched_way = i;
       end
     end
-    // 5. 如果miss，选择替换的cache way
-    repl_way = s1_mem_op == `MEM_CACOP && s1_code[4:3] <  2'b10 ? s1_vaddr[$clog2(`DCACHE_WAY_NUM) - 1:0] :
-               s1_mem_op == `MEM_CACOP && s1_code[4:3] == 2'b10 ? matched_way : plru_ram_rdata;
-    repl_paddr = {tag[repl_way], s1_vaddr[`DCACHE_TAG_OFFSET - 1:0]};
-    // 6. 更新plru RAM
-    // 7. 生成写入数据
-
-    /* excp处理 */
-    // preld 不触发例外
-    // cacop，preld不触发ale
-    excp_ale = (s1_mem_op == `MEM_LOAD | s1_mem_op == `MEM_STORE) & s1_ale;
-    // cacop(code == 0, 1 由addr_trans_req.cacop_direct保证) 不触发TLB异常，以下cacop判断针对cacop(code==2)
-    excp_tlbr = (s1_mem_op == `MEM_LOAD | s1_mem_op == `MEM_STORE | s1_mem_op == `MEM_CACOP) & addr_trans_rsp.tlbr;
-    // store 不触发pil
-    excp_pil = (s1_mem_op == `MEM_LOAD | s1_mem_op == `MEM_CACOP) & addr_trans_rsp.pil;
-    // 仅store触发pis 在addr_trans_req.mem_op已经判断
-    excp_pis = addr_trans_rsp.pis;
-    // 仅store、load触发ppi
-    excp_ppi = (s1_mem_op == `MEM_LOAD | s1_mem_op == `MEM_STORE) & addr_trans_rsp.ppi;
-    // 仅store触发pme 在addr_trans_req.mem_op已经判断
-    excp_pme = addr_trans_rsp.pme;
-    excp.valid = excp_ale | excp_tlbr | excp_pil | excp_pis | excp_ppi | excp_pme;
-    excp.ecode = excp_ale ? `ECODE_ALE :
-                 excp_tlbr ? `ECODE_TLBR :
-                 excp_pil ? `ECODE_PIL :
-                 excp_pis ? `ECODE_PIS :
-                 excp_ppi ? `ECODE_PPI :
-                 excp_pme ? `ECODE_PME :
-                 '0;
-    excp.sub_ecode = `ESUBCODE_ADEF;
-
-    /* cache 状态机控制 */
-    // 启动cache fsm的条件：
-    // s1指令有效
-    // s2可以处理请求（s2不暂停）
-    // 没有例外
-    // store、load、preld指令miss（cache缺失的处理流程）TODO 可以优化preld 在uncache时不会启动fsm
-    // uncache操作，uncache不一定miss（cache缺失处理，但是跳过refill）
-    // cacop(code==0) (复用cache refill)
-    // cacop(code==1) (复用cache writeback refill)
-    // cacop(code==2) (当且仅当hit时 复用cache writeback refill)
-    idle2wait = s1_valid & ~excp.valid & s2_ready &
-                (
-                  s1_mem_op == `MEM_LOAD  ? miss | addr_trans_rsp.uncache:
-                  s1_mem_op == `MEM_STORE ? s1_store_valid & (miss | addr_trans_rsp.uncache):
-                  s1_mem_op == `MEM_CACOP & ~(s1_code[4:3] == 2'b10 & miss)
-                );
   end
+  // 5. 如果miss，选择替换的cache way
+  assign repl_way = s1_mem_op == `MEM_CACOP && s1_code[4:3] <  2'b10 ? s1_vaddr[$clog2(`DCACHE_WAY_NUM) - 1:0] :
+                    s1_mem_op == `MEM_CACOP && s1_code[4:3] == 2'b10 ? matched_way : plru_ram_rdata;
+  assign repl_paddr = {tag[repl_way], s1_vaddr[`DCACHE_TAG_OFFSET - 1:0]};
+  // 6. 更新plru RAM
+  // 7. 生成写入数据
+
+  /* excp处理 */
+  // preld 不触发例外
+  // cacop，preld不触发ale
+  assign excp_ale = (s1_mem_op == `MEM_LOAD | s1_mem_op == `MEM_STORE) & s1_ale;
+  // cacop(code == 0, 1 由addr_trans_req.cacop_direct保证) 不触发TLB异常，以下cacop判断针对cacop(code==2)
+  assign excp_tlbr = (s1_mem_op == `MEM_LOAD | s1_mem_op == `MEM_STORE | s1_mem_op == `MEM_CACOP) & addr_trans_rsp.tlbr;
+  // store 不触发pil
+  assign excp_pil = (s1_mem_op == `MEM_LOAD | s1_mem_op == `MEM_CACOP) & addr_trans_rsp.pil;
+  // 仅store触发pis 在addr_trans_req.mem_op已经判断
+  assign excp_pis = addr_trans_rsp.pis;
+  // 仅store、load触发ppi
+  assign excp_ppi = (s1_mem_op == `MEM_LOAD | s1_mem_op == `MEM_STORE) & addr_trans_rsp.ppi;
+  // 仅store触发pme 在addr_trans_req.mem_op已经判断
+  assign excp_pme = addr_trans_rsp.pme;
+  assign excp.valid = excp_ale | excp_tlbr | excp_pil | excp_pis | excp_ppi | excp_pme;
+  assign excp.ecode = excp_ale  ? `ECODE_ALE :
+                      excp_tlbr ? `ECODE_TLBR :
+                      excp_pil  ? `ECODE_PIL :
+                      excp_pis  ? `ECODE_PIS :
+                      excp_ppi  ? `ECODE_PPI :
+                      excp_pme  ? `ECODE_PME :
+                                  '0;
+  assign excp.sub_ecode = `ESUBCODE_ADEF;
+
+  /* cache 状态机控制 */
+  // 启动cache fsm的条件：
+  // s1指令有效
+  // s2可以处理请求（s2不暂停）
+  // 没有例外
+  // store、load、preld指令miss（cache缺失的处理流程）TODO 可以优化preld 在uncache时不会启动fsm
+  // uncache操作，uncache不一定miss（cache缺失处理，但是跳过refill）
+  // cacop(code==0) (复用cache refill)
+  // cacop(code==1) (复用cache writeback refill)
+  // cacop(code==2) (当且仅当hit时 复用cache writeback refill)
+  assign idle2wait = s1_valid & ~excp.valid & s2_ready &
+                     (
+                       s1_mem_op == `MEM_LOAD  ? miss | addr_trans_rsp.uncache:
+                       s1_mem_op == `MEM_STORE ? s1_store_valid & (miss | addr_trans_rsp.uncache):
+                       s1_mem_op == `MEM_CACOP & ~(s1_code[4:3] == 2'b10 & miss)
+                     );
   
 
 /*================================ Cache Stage2 ================================*/
