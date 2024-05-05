@@ -124,10 +124,11 @@ module MemoryBlock (
     dcache_req.pdest_valid = s1_exe.base.pdest_valid;
     dcache_req.llbit = s1_exe.llbit;
     dcache_req.code = s1_exe.code;
+  end
 
-    addr_trans_req = dcache_addr_trans_req;
-    dcache_addr_trans_rsp = addr_trans_rsp;
-  end             
+  // addr trans
+  assign addr_trans_req = dcache_addr_trans_req;
+  assign dcache_addr_trans_rsp = addr_trans_rsp;
 
   always_comb begin : proc_icacop_req
     icacop_req.valid = s1_exe.base.valid & 

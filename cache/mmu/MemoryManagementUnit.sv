@@ -125,7 +125,7 @@ module MemoryManagementUnit (
     end
   end
 
-  always_comb begin
+  always_comb begin : proc_srch_req
     // search req
     tlb_search_req[0].valid = addr_trans_req[0].valid;
     tlb_search_req[0].asid  = csr_asid_i;
@@ -138,7 +138,9 @@ module MemoryManagementUnit (
     tlb_search_req[2].valid = tlbsrch_en_i;
     tlb_search_req[2].asid  = csr_asid_i;
     tlb_search_req[2].vpn   = {tlbehi_i[`VPPN], 1'b0};
+  end
 
+  always_comb begin : proc_write_req
     // write req
     tlb_write_req.valid = tlbfill_en_i || tlbwr_en_i;
     tlb_write_req.idx = ({5{tlbfill_en_i}} & rand_idx_i) | ({5{tlbwr_en_i}} & tlbidx_i[`INDEX]);
@@ -153,15 +155,23 @@ module MemoryManagementUnit (
                                    plv       : {tlbelo1_i[`TLB_PLV], tlbelo0_i[`TLB_PLV]},
                                    ppn       : {tlbelo1_i[`TLB_PPN], tlbelo0_i[`TLB_PPN]}
                                   };
+  end
+
+  always_comb begin : proc_read_req
     // read req
     tlb_read_req.valid = tlbrd_en_i;
     tlb_read_req.idx = tlbidx_i[`INDEX];
+  end
+
+  always_comb begin : proc_inv_req
     // inv req
     tlb_inv_req.valid = invtlb_en_i;
     tlb_inv_req.asid = invtlb_asid_i;
     tlb_inv_req.vppn = invtlb_vpn_i;
     tlb_inv_req.op = invtlb_op_i;
+  end
 
+  always_comb begin : proc_read_rsp
     // read rsp
     r_vppn = tlb_read_rsp.tlb_entry_st.vppn;
     r_asid = tlb_read_rsp.tlb_entry_st.asid;
@@ -186,7 +196,9 @@ module MemoryManagementUnit (
     tlbelo1_o  = {4'b0, r_ppn1, 1'b0, r_g, r_mat1, r_plv1, r_d1, r_v1};
     tlbidx_o   = {!r_e, 1'b0, r_ps, 24'b0}; // note do not write index
     tlbasid_o  = r_asid;
+  end
 
+  always_comb begin : proc_srch_rsp
     // search rsp
     pg_mode = !csr_da_i &&  csr_pg_i;
     da_mode =  csr_da_i && !csr_pg_i;
