@@ -106,20 +106,19 @@ module ICache (
   // 使用虚拟地址查询 plru
   // 使用虚拟地址查询 tlb
   // 使用虚拟地址查询 data
-  always_comb begin
-    s0_ready = s1_ready & addr_trans_rsp.ready;
-    excp_adef = icache_req.vaddr[1:0] != '0;
-    excp_int  = icache_req.has_int;
 
-    addr_trans_req.valid = (|icache_req.valid | icacop_req.valid) & s1_ready;
-    addr_trans_req.ready = '1;
-    addr_trans_req.vaddr = icacop_req.valid ? icacop_req.vaddr : icache_req.vaddr;
-    addr_trans_req.mem_type = icacop_req.valid ? MMU_LOAD : MMU_FETCH;  // TODO 存疑
-    addr_trans_req.cacop_direct = icacop_req.valid & (icacop_req.cacop_mode == 2'b00 | icacop_req.cacop_mode == 2'b01);
+  assign s0_ready = s1_ready & addr_trans_rsp.ready;
+  assign excp_adef = icache_req.vaddr[1:0] != '0;
+  assign excp_int  = icache_req.has_int;
 
-    icacop_rsp.ready = s0_ready; // CACOP优先
-    icache_rsp.ready = s0_ready & ~icacop_req.valid;
-  end
+  assign addr_trans_req.valid        = (|icache_req.valid | icacop_req.valid) & s1_ready;
+  assign addr_trans_req.ready        = '1;
+  assign addr_trans_req.vaddr        = icacop_req.valid ? icacop_req.vaddr : icache_req.vaddr;
+  assign addr_trans_req.mem_type     = icacop_req.valid ? MMU_LOAD : MMU_FETCH;  // icacop是load类型
+  assign addr_trans_req.cacop_direct = icacop_req.valid & (icacop_req.cacop_mode == 2'b00 | icacop_req.cacop_mode == 2'b01);
+
+  assign icacop_rsp.ready = s0_ready; // CACOP优先
+  assign icache_rsp.ready = s0_ready & ~icacop_req.valid;
 
 /*=================================== Stage1 ==================================*/
   logic [`PROC_VALEN - 1:0] s1_vaddr;

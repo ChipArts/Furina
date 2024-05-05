@@ -291,9 +291,9 @@ module ReorderBuffer (
 
   // 第一条指令一定不被屏蔽
   assign redirect_mask[0] = '1;
-  assign exc_mask[0] = '1;
-  assign br_mask[0] = '1;
-  assign priv_mask[0] = '1;
+  assign exc_mask[0]      = '1;
+  assign br_mask[0]       = '1;
+  assign priv_mask[0]     = '1;
   // 第二条指令
   // BR恢复需要抽干流水线 && 成为最后一条指令才能提交
   assign redirect_mask[1] = ~rob_q[cmt_idx[0]].br_redirect & ~rob_q[cmt_idx[1]].br_redirect;

@@ -54,37 +54,39 @@ module TranslationLookasideBuffer (
   logic [$clog2(`TLB_ENTRY_NUM) - 1:0] matched_idx;
 
   // 操作优先级: write > inv > read = search
-  always_comb begin
-    matched_entry = '0;
+
+  // 使用CAM进行查询
+  for (genvar i = 0; i < `TLB_ENTRY_NUM; i++) begin
+    // LA32R只支持 4KB 和 4MB 两种页大小，对应 TLB 表项中的 PS 值分别是 12 和 21
+    assign match[i] = (tlb_entries[i].exist) &  // 有效位有效
+                      (tlb_entries[i].asid == tlb_search_req.asid | tlb_entries[i].glo) &  // asid校验
+                      (
+                        tlb_entries[i].page_size == 6'd12 ? // page size
+                          (tlb_search_req.vpn[`PROC_VALEN - 1:13] == 
+                           tlb_entries[i].vppn[`PROC_VALEN - 1:13]) :
+                          (tlb_search_req.vpn[`PROC_VALEN - 1:22] == 
+                           tlb_entries[i].vppn[`PROC_VALEN - 1:22])
+                      );  // VPPN 匹配
+  end
+  
+  always_comb begin : proc_match_idx
     matched_idx = '0;
-    // 使用CAM进行查询
-    for (int i = 0; i < `TLB_ENTRY_NUM; i++) begin
-      // LA32R只支持 4KB 和 4MB 两种页大小，对应 TLB 表项中的 PS 值分别是 12 和 21
-      match[i] = (tlb_entries[i].exist) &  // 有效位有效
-                 (tlb_entries[i].asid == tlb_search_req.asid | tlb_entries[i].glo) &  // asid校验
-                 (tlb_entries[i].page_size == 6'd12 ? // page size
-                   (tlb_search_req.vpn[`PROC_VALEN - 1:13] == 
-                    tlb_entries[i].vppn[`PROC_VALEN - 1:13]) :
-                   (tlb_search_req.vpn[`PROC_VALEN - 1:22] == 
-                    tlb_entries[i].vppn[`PROC_VALEN - 1:22])
-                  );  // VPPN 匹配
-    end
     for (int i = 0; i < `TLB_ENTRY_NUM; i++) begin
       if (match[i]) begin
         matched_idx = i;
         break;
       end
     end
-    matched_entry = tlb_entries[matched_idx];
-    found = |match;
-    parity = matched_entry.page_size == 6'd12 ? tlb_search_req.vpn[12] : tlb_search_req.vpn[21];
-    // comb输出
-    tlb_search_rsp.ready = '1;
-    tlb_read_rsp.ready = '1;
-    tlb_write_rsp.ready = '1;
-    tlb_inv_rsp.ready = '1;
-
   end
+
+  assign matched_entry = tlb_entries[matched_idx];
+  assign found = |match;
+  assign parity = matched_entry.page_size == 6'd12 ? tlb_search_req.vpn[12] : tlb_search_req.vpn[21];
+  // comb输出
+  assign tlb_search_rsp.ready = '1;
+  assign tlb_read_rsp.ready = '1;
+  assign tlb_write_rsp.ready = '1;
+  assign tlb_inv_rsp.ready = '1;
 
   // tlb wr/inv指令有关操作
   always_ff @(posedge clk or negedge rst_n) begin
@@ -154,18 +156,17 @@ module TranslationLookasideBuffer (
   logic [1:0] plv_buf;
   TlbEntrySt tlb_entry_buf;
 
-  always_comb begin
-    tlb_search_rsp.found = found_buf;
-    tlb_search_rsp.idx = idx_buf;
-    tlb_search_rsp.page_size = page_size_buf;
-    tlb_search_rsp.valid = valid_buf;
-    tlb_search_rsp.dirty = dirty_buf;
-    tlb_search_rsp.ppn = ppn_buf;
-    tlb_search_rsp.mat = mat_buf;
-    tlb_search_rsp.plv = plv_buf;
+  
+  assign tlb_search_rsp.found     = found_buf;
+  assign tlb_search_rsp.idx       = idx_buf;
+  assign tlb_search_rsp.page_size = page_size_buf;
+  assign tlb_search_rsp.valid     = valid_buf;
+  assign tlb_search_rsp.dirty     = dirty_buf;
+  assign tlb_search_rsp.ppn       = ppn_buf;
+  assign tlb_search_rsp.mat       = mat_buf;
+  assign tlb_search_rsp.plv       = plv_buf;
 
-    tlb_read_rsp.tlb_entry_st = tlb_entry_buf;
-  end
+  assign tlb_read_rsp.tlb_entry_st = tlb_entry_buf;
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (~rst_n) begin
