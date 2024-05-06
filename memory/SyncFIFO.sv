@@ -36,7 +36,7 @@ localparam
   FIFO_CNT_WIDTH = $clog2(FIFO_DEPTH + 1)
 )(
   input logic clk,      // Clock
-  input logic a_rst_n,  // Asynchronous reset active low
+  input logic rst_n,  // Asynchronous reset active low
   input logic flush_i,
   input logic pop_i,
   input logic push_i,
@@ -46,8 +46,6 @@ localparam
   output logic full_o,
   output logic [FIFO_CNT_WIDTH-1:0] usage_o
 );
-
-  `RESET_LOGIC(clk, a_rst_n, rst_n);
 
 `ifdef DEBUG
   // some parameter check

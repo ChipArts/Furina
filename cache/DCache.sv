@@ -472,6 +472,7 @@ module DCache (
     if (s2_preld) begin
       dcache_rsp.excp.valid = '0;
     end
+    dcache_rsp.rdata = '0;
     case (s2_align_op)
       `ALIGN_B: begin
         case (s2_vaddr[1:0])

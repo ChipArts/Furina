@@ -58,6 +58,15 @@ function logic[31:0] countones(logic[31:0] data);
   
 endfunction : countones
 
+`define COUNT_ONES(DATA_MT, RES_MT) \
+always_comb begin \
+  RES_MT = '0; \
+  for (int i = 0; i < $bits(DATA_MT); i++) begin \
+    RES_MT += DATA_MT[i]; \
+  end \
+end
+
+
 
 
 `endif // _COMMON_SVH_

@@ -330,7 +330,7 @@ module ReorderBuffer (
       head_ptr <= '0;
       tail_ptr <= '0;
       rob_cnt_q <= '0;
-      // rob_q <= '0; rob真的需要复位吗？
+      rob_q <= '0;
     end else begin
       head_ptr <= head_ptr_n;
       tail_ptr <= tail_ptr_n;

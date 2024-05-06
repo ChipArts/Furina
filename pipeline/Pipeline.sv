@@ -431,7 +431,7 @@ module Pipeline (
     .FIFO_MEMORY_TYPE("auto")
   ) U_InstructionBuffer (
     .clk           (clk),
-    .a_rst_n       (rst_n),
+    .rst_n         (rst_n),
     .flush_i       (global_flush),
     .write_valid_i (ibuf_write_valid_i),
     .write_ready_o (ibuf_write_ready_o),

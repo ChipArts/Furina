@@ -33,7 +33,7 @@ parameter
   FIFO_MEMORY_TYPE = "auto"
 )(
   input logic clk,      // Clock
-  input logic a_rst_n,  // Asynchronous reset active low
+  input logic rst_n,    // Asynchronous reset active low
   input logic flush_i,
 
   input logic [WPORTS_NUM - 1:0] write_valid_i,
@@ -45,7 +45,6 @@ parameter
   output logic [RPORTS_NUM - 1:0][DATA_WIDTH - 1:0] read_data_o
 );
 
-  `RESET_LOGIC(clk, a_rst_n, rst_n);
   localparam BANK = RPORTS_NUM > WPORTS_NUM ? RPORTS_NUM : WPORTS_NUM;
 
 `ifdef DEBUG
@@ -114,7 +113,7 @@ parameter
         .FIFO_MEMORY_TYPE(FIFO_MEMORY_TYPE)
       ) U_SyncFIFO (
         .clk           (clk),
-        .a_rst_n       (a_rst_n),
+        .rst_n         (rst_n),
         .flush_i       (flush_i),
         .pop_i         (fifo_pop[i]),
         .push_i        (fifo_push[i]),
