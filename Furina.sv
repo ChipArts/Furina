@@ -22,10 +22,6 @@
 
 `include "config.svh"
 
-`ifdef DEBUG
-  `include "Decoder.svh"
-`endif
-
 module Furina (
   input clk,    // Clock
   input a_rst_n,  // Asynchronous reset active low
