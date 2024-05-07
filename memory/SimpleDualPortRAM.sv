@@ -19,6 +19,8 @@
 // 24-01-13 |            |     0.1     |    Original Version
 // ==============================================================================
 
+`include "config.svh"
+
 module SimpleDualPortRAM #(
 parameter
   DATA_DEPTH       = 256,
@@ -79,6 +81,15 @@ localparam
 `elsif XILLINX_FPGA
   // xpm_memory_sdpram: Simple Dual Port RAM
   // Xilinx Parameterized Macro, version 2019.2
+  // 写冲突转发
+  wire [DATA_WIDTH - 1:0] ram_rdata;  // ram origin read data
+  reg  [DATA_WIDTH - 1:0] ram_wdata;  // ram write data buffer
+  wire conflict = en_a_i & we_a_i & en_b_i & addr_a_i == addr_b_i;
+  reg  conflict_q;
+  always_ff @(posedge clk_a) conflict_q <= conflict;
+  always_ff @(posedge clk_a) ram_wdata  <= data_a_i;
+  assign data_b_o = conflict_q ? ram_wdata : ram_rdata;
+
   xpm_memory_sdpram #(
     .ADDR_WIDTH_A(ADDR_WIDTH),               // DECIMAL
     .ADDR_WIDTH_B(ADDR_WIDTH),               // DECIMAL
@@ -100,7 +111,7 @@ localparam
     .RST_MODE_B("SYNC"),            // String
     .SIM_ASSERT_CHK(0),             // DECIMAL; 0=disable simulation messages, 1=enable simulation messages
     .USE_EMBEDDED_CONSTRAINT(0),    // DECIMAL
-    .USE_MEM_INIT(1),               // DECIMAL
+    .USE_MEM_INIT(0),               // DECIMAL
     .WAKEUP_TIME("disable_sleep"),  // String
     .WRITE_DATA_WIDTH_A(DATA_WIDTH),        // DECIMAL
     .WRITE_MODE_B(WRITE_MODE)      // String
@@ -109,7 +120,7 @@ localparam
       .dbiterrb(dbiterrb),             // 1-bit output: Status signal to indicate double bit error occurrence
                                        // on the data output of port B.
 
-      .doutb(data_b_o),                // READ_DATA_WIDTH_B-bit output: Data output for port B read operations.
+      .doutb(ram_rdata),               // READ_DATA_WIDTH_B-bit output: Data output for port B read operations.
       .sbiterrb(sbiterrb),             // 1-bit output: Status signal to indicate single bit error occurrence
                                        // on the data output of port B.
 
