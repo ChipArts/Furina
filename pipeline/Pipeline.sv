@@ -264,7 +264,7 @@ module Pipeline (
                        refetch_flush        ? rob_cmt_o.rob_entry[0].pc + 4    :
                        redirect_flush       ? rob_cmt_o.rob_entry[0].br_target :
                        pre_check_redirect_o ? pre_check_target_o :
-                                              32'h1c00_0000;
+                                              32'h0000_0000;
     // for bpu updata
     bpu_req.pc = global_flush         ? rob_cmt_o.rob_entry[0].pc : 
                  pre_check_redirect_o ? pre_check_pc_o :

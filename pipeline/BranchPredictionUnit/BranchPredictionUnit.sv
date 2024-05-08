@@ -58,7 +58,7 @@ module BranchPredictionUnit (
 
   always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      pc <= 32'h1c00_0000;
+      pc <= 32'h1c00_0000 - (32'd0000_0004 * `FETCH_WIDTH);
     end else begin
       pc <= npc;
     end
@@ -82,15 +82,13 @@ module BranchPredictionUnit (
 
   always_ff @(posedge clk or negedge rst_n) begin : proc_pc
     if(!rst_n) begin
-      pc <= 32'h1c00_0000;
-    end else if (req.redirect) begin
-      pc <= req.target;
+      pc <= 32'h1c00_0000 - 32'd0000_0004;
     end else begin
       pc <= npc;
     end
   end
 
-  assign npc = req.redirect ? {req.target[31:NPC_OFS] + 1, {NPC_OFS{1'b0}}} : 
+  assign npc = req.redirect ? req.target :
                req.next     ? ppc : 
                               pc;
 
