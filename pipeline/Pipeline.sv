@@ -846,8 +846,6 @@ module Pipeline (
 
 
 /*======================== Reorder Buffer(Write Back) =========================*/
-
-  logic rob_flush_i;
   RobAllocReqSt rob_alloc_req;
   MiscWbSt rob_misc_wb_req;
   AluWbSt [1:0] rob_alu_wb_req;
@@ -855,7 +853,6 @@ module Pipeline (
   MemWbSt rob_mem_wb_req;
 
   always_comb begin
-    rob_flush_i = global_flush;
     rob_alloc_req = sche_rob_alloc_req;
 
 
@@ -883,7 +880,7 @@ module Pipeline (
   (
     .clk         (clk),
     .rst_n       (rst_n),
-    .flush_i     (rob_flush_i),
+    .flush_i     (global_flush),
     .alloc_req   (rob_alloc_req),
     .alloc_rsp   (rob_alloc_rsp),
     // write back
@@ -901,6 +898,15 @@ module Pipeline (
 
 
 /*================================== Commit ===================================*/
+  RobCmtSt rob_cmt_buffer;
+
+  always_ff @(posedge clk or negedge rst_n) begin : proc_rob_cmt_buffer
+    if(~rst_n) begin
+      rob_cmt_buffer <= 0;
+    end else begin
+      rob_cmt_buffer <= rob_cmt_o;
+    end
+  end
   // 处理异常和分支预测失败
 
   // logic global_flush;
@@ -983,16 +989,6 @@ module Pipeline (
 
 
 `ifdef CHIPLAB_SIM
-  RobCmtSt rob_cmt_buffer;
-
-  always_ff @(posedge clk or negedge rst_n) begin : proc_rob_cmt_buffer
-    if(~rst_n) begin
-      rob_cmt_buffer <= 0;
-    end else begin
-      rob_cmt_buffer <= rob_cmt_o;
-    end
-  end
-
 
   logic [31:0][31:0] arch_regfile_q, arch_regfile_n;
 

@@ -60,8 +60,6 @@ typedef struct packed {
   logic valid;  // 请求有效
   logic ready;  // 请求方可接收相应(暂时无用)
   logic [`PROC_VALEN - 1:0] vaddr;  // 请求地址
-  // logic [31:0] npc;  // 最后一条有效指令的下一个pc
-  logic has_int;     // 有中断
 } ICacheReqSt;
 
 typedef struct packed {

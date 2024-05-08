@@ -86,7 +86,6 @@ module ICache (
 
   /* stage 0 */
   logic excp_ade;   // fetch address error
-  logic excp_int;   // interrupt(fetch)
   /* stage 1 */
   logic miss;
   logic [`PROC_PALEN - 1:0] paddr;
@@ -109,7 +108,6 @@ module ICache (
 
   assign s0_ready = s1_ready & addr_trans_rsp.ready;
   assign excp_ade = icache_req.vaddr[1:0] != '0;
-  assign excp_int  = icache_req.has_int;
 
   assign addr_trans_req.valid        = (icache_req.valid | icacop_req.valid) & s1_ready;
   assign addr_trans_req.ready        = '1;
@@ -161,7 +159,6 @@ module ICache (
 
         s1_vaddr      <= icacop_req.valid ? icacop_req.vaddr : icache_req.vaddr;
         s1_excp_ade   <= excp_ade;
-        s1_excp_int   <= excp_int;
       end
     end
   end
@@ -229,9 +226,8 @@ module ICache (
   assign cache_line_base = `FETCH_ALIGN(s1_vaddr)[`ICACHE_IDX_OFFSET - 1:2];
 
   // fetch异常检查
-  assign icache_rsp.excp.valid = s1_excp_int | s1_excp_ade | addr_trans_rsp.tlbr | addr_trans_rsp.pif | addr_trans_rsp.ppi;
-  assign icache_rsp.excp.ecode =  s1_excp_int         ? `ECODE_INT  :
-                                  s1_excp_ade         ? `ECODE_ADE  :
+  assign icache_rsp.excp.valid = s1_excp_ade | addr_trans_rsp.tlbr | addr_trans_rsp.pif | addr_trans_rsp.ppi;
+  assign icache_rsp.excp.ecode =  s1_excp_ade         ? `ECODE_ADE  :
                                   addr_trans_rsp.tlbr ? `ECODE_TLBR : 
                                   addr_trans_rsp.pif  ? `ECODE_PIF  :
                                   addr_trans_rsp.ppi  ? `ECODE_PPI  : '0;
