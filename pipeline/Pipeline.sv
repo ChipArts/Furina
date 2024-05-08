@@ -343,7 +343,6 @@ module Pipeline (
     icache_req.valid   = '1;
     icache_req.vaddr   = bpu_rsp.npc;
     icache_req.ready   = ibuf_write_ready_o;
-    icache_req.has_int = csr_has_int;
   end
 
   assign icacop_req = mblk_icacop_req;
