@@ -882,6 +882,7 @@ module Pipeline (
     .flush_i     (global_flush),
     .alloc_req   (rob_alloc_req),
     .alloc_rsp   (rob_alloc_rsp),
+    .has_int     (csr_has_int),
     // write back
     .misc_wb_req (rob_misc_wb_req),
     .alu_wb_req  (rob_alu_wb_req),
