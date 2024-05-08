@@ -29,75 +29,49 @@
 `include "ControlStatusRegister.svh"
 `include "BranchPredictionUnit.svh"
 
+typedef struct packed {
+  // 基础信息
+  logic complete;
+  logic [`PROC_VALEN - 1:0] pc;
+  BrInfoSt br_info;
+  InstrType instr_type;
+  logic [4:0] arch_reg;
+  logic [$clog2(`PHY_REG_NUM) - 1:0] phy_reg;
+  logic [$clog2(`PHY_REG_NUM) - 1:0] old_phy_reg;
+  logic                              old_phy_reg_valid;
+  // 分支预测处理
+  logic br_taken;
+  logic br_redirect;
+  logic [1:0] br_type;
+  logic [`PROC_VALEN - 1:0] br_target;
+  // 异常、例外处理
+  ExcpSt excp;
+  logic [`PROC_VALEN - 1:0] error_vaddr;
+  // write back阶段的flush缓存
+  logic ertn_flush;      // ERET返回（返回地址为csr_era）
+  logic ibar_flush;      // IBAR指令
+  logic priv_flush;      // 特权指令（csr_rd修改可撤回，不需要flush）
+  logic icacop_flush;    // ICache操作
+  logic idle_flush;      // IDLE指令
 `ifdef DEBUG
-  typedef struct packed {
-    // 基础信息
-    logic complete;
-    logic [`PROC_VALEN - 1:0] pc;
-    BrInfoSt br_info;
-    InstrType instr_type;
-    logic [4:0] arch_reg;
-    logic [$clog2(`PHY_REG_NUM) - 1:0] phy_reg;
-    logic [$clog2(`PHY_REG_NUM) - 1:0] old_phy_reg;
-    logic                              old_phy_reg_valid;
-    // 分支预测处理
-    logic br_taken;
-    logic br_redirect;
-    logic [1:0] br_type;
-    logic [`PROC_VALEN - 1:0] br_target;
-    // 异常、例外处理
-    ExcpSt excp;
-    logic [`PROC_VALEN - 1:0] error_vaddr;
-    // write back阶段的flush缓存
-    logic ertn_flush;      // ERET返回（返回地址为csr_era）
-    logic ibar_flush;      // IBAR指令
-    logic priv_flush;      // 特权指令（csr_rd修改可撤回，不需要flush）
-    logic icacop_flush;    // ICache操作
-    logic idle_flush;      // IDLE指令
-    // DEBUG
-    logic is_tibfill;
-    logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbfill_idx;
-    logic csr_rstat;
-    logic [31:0] csr_rdata;
-    logic is_cnt_instr;
-    logic [63:0] timer_64;
-    logic [31:0] instr;
-    logic rf_wen;
-    logic [31:0] rf_wdata;
-    logic eret;
-    logic store_valid;
-    logic load_valid;
-    logic [31:0] store_data;
-    logic [31:0] mem_paddr;
-    logic [31:0] mem_vaddr;
-  } RobEntrySt;
-`else 
-  typedef struct packed {
-    // 基础信息
-    logic complete;
-    logic [`PROC_VALEN - 1:0] pc;
-    BrInfoSt br_info;
-    InstrType instr_type;
-    logic [4:0] arch_reg;
-    logic [$clog2(`PHY_REG_NUM) - 1:0] phy_reg;
-    logic [$clog2(`PHY_REG_NUM) - 1:0] old_phy_reg;
-    logic                              old_phy_reg_valid;
-    // 分支预测处理
-    logic br_taken;
-    logic br_redirect;
-    logic [1:0] br_type;
-    logic [`PROC_VALEN - 1:0] br_target;
-    // 异常、例外处理
-    ExcpSt excp;
-    logic [`PROC_VALEN - 1:0] error_vaddr;
-    // write back阶段的flush缓存
-    logic ertn_flush;      // ERET返回（返回地址为csr_era）
-    logic ibar_flush;      // IBAR指令
-    logic priv_flush;      // 特权指令（csr_rd修改可撤回，不需要flush）
-    logic icacop_flush;    // ICache操作
-    logic idle_flush;      // IDLE指令
-  } RobEntrySt;
+  // DEBUG
+  logic is_tibfill;
+  logic [$clog2(`TLB_ENTRY_NUM) - 1:0] tlbfill_idx;
+  logic csr_rstat;
+  logic [31:0] csr_rdata;
+  logic is_cnt_instr;
+  logic [63:0] timer_64;
+  logic [31:0] instr;
+  logic rf_wen;
+  logic [31:0] rf_wdata;
+  logic eret;
+  logic store_valid;
+  logic load_valid;
+  logic [31:0] store_data;
+  logic [31:0] mem_paddr;
+  logic [31:0] mem_vaddr;
 `endif
+} RobEntrySt;
 
 typedef struct packed {
   logic [`DECODE_WIDTH - 1:0] valid;

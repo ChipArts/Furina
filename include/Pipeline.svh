@@ -135,12 +135,13 @@ typedef struct packed {
   // for priv misc
   logic ertn_en;
   logic idle_en;
-
+`ifdef DEBUG
   // diff
   logic cnt_instr_diff;
   logic crs_rstat_diff;
   logic [31:0] csr_rdata_diff;
   logic [63:0] timer_64_diff;
+`endif
 } MiscWbSt;
 
 typedef struct packed {
