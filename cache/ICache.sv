@@ -188,7 +188,7 @@ module ICache (
     end
   end
 
-  assign s1_ready = cache_state == IDEL &                                        // 必要条件 确保flash后axi完成读操作（不进行refill）
+  assign s1_ready = cache_state == IDEL &                                                         // 必要条件 确保flash后axi完成读操作（不进行refill）
                     (
                       !s1_fetch_en && !s1_cacop_en           ? '1 :                               // 无操作
                        s1_fetch_en && addr_trans_rsp.uncache ? uncache_hit & icache_req.ready :   // fetch uncache ready

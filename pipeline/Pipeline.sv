@@ -254,17 +254,35 @@ module Pipeline (
       end
     end
   end
+
+  logic bpu_redirect_buf;
+  logic [31:0] bpu_target_buf;
+
+  always_ff @(posedge clk or negedge rst_n) begin : proc_redirect_buffer
+    if(~rst_n) begin
+      bpu_redirect_buf <= '0;
+      bpu_target_buf   <= '0;
+    end else begin
+      if (~bpu_req.next) begin  // icache不能接收flush信号时缓存之
+        bpu_redirect_buf <= global_flush | pre_check_redirect_o;
+        bpu_target_buf   <= bpu_req.target;
+      end else begin
+        bpu_redirect_buf <= '0;
+        bpu_target_buf   <= '0;
+      end
+    end
+  end
   
   always_comb begin : gen_bpu_req
     bpu_req.next     = icache_rsp.ready & ~idle_lock;
-    bpu_req.redirect = global_flush | pre_check_redirect_o;
+    bpu_req.redirect = global_flush | pre_check_redirect_o | bpu_redirect_buf;
     bpu_req.target   = tlbrefill_flush      ? csr_tlbrentry_out :
                        excp_flush           ? csr_eentry_out :
                        ertn_flush           ? csr_era_out :  // sys 和 brk恢复时应该跳到era+4（软件控制）
                        refetch_flush        ? rob_cmt_o.rob_entry[0].pc + 4    :
                        redirect_flush       ? rob_cmt_o.rob_entry[0].br_target :
                        pre_check_redirect_o ? pre_check_target_o :
-                                              32'h0000_0000;
+                                              bpu_target_buf;
     // for bpu updata
     bpu_req.pc = global_flush         ? rob_cmt_o.rob_entry[0].pc : 
                  pre_check_redirect_o ? pre_check_pc_o :
