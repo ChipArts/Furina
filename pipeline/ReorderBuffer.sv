@@ -107,7 +107,7 @@ module ReorderBuffer (
 
   always_comb begin : gen_int_excp
     int_excp.valid = 1'b1;
-    int_excp.code = `ECODE_INT;
+    int_excp.ecode = `ECODE_INT;
     int_excp.sub_ecode = `ESUBCODE_ADEF;
   end
   
