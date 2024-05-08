@@ -85,7 +85,7 @@ module ICache (
   logic [$clog2(`ICACHE_BLOCK_SIZE / 4) - 1:0] axi_rdata_idx;
 
   /* stage 0 */
-  logic excp_adef;  // fetch address error
+  logic excp_ade;   // fetch address error
   logic excp_int;   // interrupt(fetch)
   /* stage 1 */
   logic miss;
@@ -108,10 +108,10 @@ module ICache (
   // 使用虚拟地址查询 data
 
   assign s0_ready = s1_ready & addr_trans_rsp.ready;
-  assign excp_adef = icache_req.vaddr[1:0] != '0;
+  assign excp_ade = icache_req.vaddr[1:0] != '0;
   assign excp_int  = icache_req.has_int;
 
-  assign addr_trans_req.valid        = (|icache_req.valid | icacop_req.valid) & s1_ready;
+  assign addr_trans_req.valid        = (icache_req.valid | icacop_req.valid) & s1_ready;
   assign addr_trans_req.ready        = '1;
   assign addr_trans_req.vaddr        = icacop_req.valid ? icacop_req.vaddr : icache_req.vaddr;
   assign addr_trans_req.mem_type     = icacop_req.valid ? MMU_LOAD : MMU_FETCH;  // icacop是load类型
@@ -122,48 +122,46 @@ module ICache (
 
 /*=================================== Stage1 ==================================*/
   logic [`PROC_VALEN - 1:0] s1_vaddr;
-  logic [`PROC_VALEN - 1:0] s1_npc;
-  BrInfoSt s1_br_info;
-  logic s1_excp_adef;
+  logic s1_excp_ade;
   logic s1_excp_int;
 
-  logic [`FETCH_WIDTH - 1:0] s1_fetch_en;
+  logic s1_fetch_en;
   logic s1_cacop_en;
   logic [4:3] s1_cacop_mode;
   logic [$clog2(`ROB_DEPTH) - 1:0] s1_rob_idx;
   always_ff @(posedge clk or negedge rst_n) begin
-    if(~rst_n || flush_i) begin
+    if(~rst_n) begin
       s1_fetch_en <= '0;
       s1_cacop_en <= '0;
       s1_vaddr <= '0;
-      s1_npc <= '0;
-      s1_br_info <= '0;
-      s1_excp_adef  <= '0;
+      s1_excp_ade  <= '0;
       s1_excp_int  <= '0;
       s1_cacop_mode <= '0;
       s1_rob_idx <= '0;
     end else begin
-      if (pre_flush_i) begin
-        // 需要特殊处理pre check的flush，此时的s1_cacop_en不应该被清除
-        s1_fetch_en <= '0;
+      if (pre_flush_i || flush_i) begin
+        s1_fetch_en <= s1_ready ? icache_req.valid : '0;
       end else if (icacop_req.valid) begin
-        // 当icacop到来，强制抢占
+        // 当icacop到来，强制抢占  TODO 似乎不需要
         s1_fetch_en <= '0;
       end else if (s1_ready) begin
         s1_fetch_en <= icache_req.valid;
       end
 
+      if (flush_i) begin
+        s1_cacop_en <= '0;
+      end else if (s1_ready) begin
+        s1_cacop_en <= icacop_req.valid;
+      end
+
 
       if (s1_ready) begin
-        s1_cacop_en <= icacop_req.valid;
         s1_cacop_mode <= icacop_req.cacop_mode;
-        s1_rob_idx <= icacop_req.rob_idx;
+        s1_rob_idx    <= icacop_req.rob_idx;
 
-        s1_vaddr <= icacop_req.valid ? icacop_req.vaddr : icache_req.vaddr;
-        s1_npc <= icache_req.npc;
-        s1_br_info <= icache_req.br_info;
-        s1_excp_adef  <= excp_adef;
-        s1_excp_int <= excp_int;
+        s1_vaddr      <= icacop_req.valid ? icacop_req.vaddr : icache_req.vaddr;
+        s1_excp_ade   <= excp_ade;
+        s1_excp_int   <= excp_int;
       end
     end
   end
@@ -190,15 +188,11 @@ module ICache (
     end
   end
 
-`ifdef DEBUG
-  wire [`ICACHE_TAG_WIDTH - 1:0] tag_dbug = `ICACHE_TAG_OF(paddr);
-`endif
-
   assign s1_ready = cache_state == IDEL &                                        // 必要条件 确保flash后axi完成读操作（不进行refill）
                     (
                       !s1_fetch_en && !s1_cacop_en           ? '1 :                               // 无操作
-                      |s1_fetch_en && addr_trans_rsp.uncache ? uncache_hit & icache_req.ready :   // fetch uncache ready
-                      |s1_fetch_en                           ? ~miss       & icache_req.ready :   // fetch miss ready
+                       s1_fetch_en && addr_trans_rsp.uncache ? uncache_hit & icache_req.ready :   // fetch uncache ready
+                       s1_fetch_en                           ? ~miss       & icache_req.ready :   // fetch miss ready
                                                                s1_cacop_en & icacop_req.ready     // cacop ready
                     );
   assign paddr = addr_trans_rsp.paddr;
@@ -226,24 +220,18 @@ module ICache (
 
 
   // fetch 输出
+  assign icache_rsp.valid = s1_fetch_en & (addr_trans_rsp.uncache ? uncache_hit : ~miss);
   for (genvar i = 0; i < `FETCH_WIDTH; i++) begin
-    assign icache_rsp.valid[i] = s1_fetch_en[i] & (addr_trans_rsp.uncache ? uncache_hit : ~miss);
-    assign icache_rsp.vaddr[i] = s1_excp_adef ? s1_vaddr : `FETCH_ALIGN(s1_vaddr) + (i << 2);  // pc异常时保留异常的pc
+    assign icache_rsp.vaddr[i] = s1_excp_ade ? s1_vaddr : `FETCH_ALIGN(s1_vaddr) + (i << 2);  // pc异常时保留异常的pc
     assign icache_rsp.instr[i] = cache_line[cache_line_base + i];
   end
   assign cache_line = addr_trans_rsp.uncache ? axi_rdata_buffer : data_ram_rdata[matched_way];
   assign cache_line_base = `FETCH_ALIGN(s1_vaddr)[`ICACHE_IDX_OFFSET - 1:2];
-  assign icache_rsp.br_info = s1_br_info;
-  // 生成NPC
-  for (genvar i = 0; i < `FETCH_WIDTH - 1; i++) begin
-    assign icache_rsp.npc[i] = !s1_fetch_en[i + 1] ? s1_npc : `FETCH_ALIGN(s1_vaddr) + ((i + 1) << 2);
-  end
-  assign icache_rsp.npc[`FETCH_WIDTH - 1] = s1_npc;
 
   // fetch异常检查
-  assign icache_rsp.excp.valid = s1_excp_int | s1_excp_adef | addr_trans_rsp.tlbr | addr_trans_rsp.pif | addr_trans_rsp.ppi;
+  assign icache_rsp.excp.valid = s1_excp_int | s1_excp_ade | addr_trans_rsp.tlbr | addr_trans_rsp.pif | addr_trans_rsp.ppi;
   assign icache_rsp.excp.ecode =  s1_excp_int         ? `ECODE_INT  :
-                                  s1_excp_adef        ? `ECODE_ADE  :
+                                  s1_excp_ade         ? `ECODE_ADE  :
                                   addr_trans_rsp.tlbr ? `ECODE_TLBR : 
                                   addr_trans_rsp.pif  ? `ECODE_PIF  :
                                   addr_trans_rsp.ppi  ? `ECODE_PPI  : '0;

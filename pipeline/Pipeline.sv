@@ -322,10 +322,8 @@ module Pipeline (
   MmuAddrTransRspSt icache_addr_trans_rsp;
 
   always_comb begin : gen_icache_req
-    icache_req.valid   = bpu_rsp.valid;
-    icache_req.vaddr   = bpu_rsp.pc;
-    icache_req.npc     = bpu_rsp.npc;
-    icache_req.br_info = bpu_rsp.br_info;
+    icache_req.valid   = '1;
+    icache_req.vaddr   = bpu_rsp.npc;
     icache_req.ready   = ibuf_write_ready_o;
     icache_req.has_int = csr_has_int;
   end
@@ -349,17 +347,34 @@ module Pipeline (
     .axi4_mst       (icache_axi4_mst)
   );
 
+  // 生成NPC
+  logic [`FETCH_WIDTH - 1:0][31:0] npc;
+  for (genvar i = 0; i < `FETCH_WIDTH - 1; i++) begin
+    assign npc[i] = bpu_rsp.valid[i + 1] ? bpu_rsp.npc : `FETCH_ALIGN(bpu_rsp.pc) + ((i + 1) << 2);
+  end
+  assign npc[`FETCH_WIDTH - 1] = bpu_rsp.npc;
+
 /*================================ Pre Decoder ================================*/
   ICacheRspSt icache_rsp_buf;
+  logic [`FETCH_WIDTH - 1:0][31:0] npc_buf;
+  logic [`FETCH_WIDTH - 1:0] pc_valid_buf;  // from bpu
+  BrInfoSt br_info_buf;
   always_ff @(posedge clk or negedge rst_n) begin
     if(!rst_n || global_flush) begin
-      icache_rsp_buf <= 0;
+      icache_rsp_buf <= '0;
+      npc_buf        <= '0;
+      pc_valid_buf   <= '0;
+      br_info_buf    <= '0;
     end else begin
-      if (ibuf_write_ready_o) begin
+      if (ibuf_write_ready_o) begin  // next stage ready
         if (pre_check_redirect_o) begin
           icache_rsp_buf.valid <= '0;
+          pc_valid_buf         <= '0; 
         end else begin
           icache_rsp_buf <= icache_rsp;
+          npc_buf        <= npc;
+          pc_valid_buf   <= bpu_rsp.valid;
+          br_info_buf    <= bpu_rsp.br_info;
         end
       end
     end
@@ -370,8 +385,13 @@ module Pipeline (
   end
 
   logic [`FETCH_WIDTH - 1:0] pre_check_is_branch_i;
-  for (genvar i = 0; i < `FETCH_WIDTH; i++) begin : gen_is_branch
+  for (genvar i = 0; i < `FETCH_WIDTH; i++) begin : gen_pre_check_is_branch
     assign pre_check_is_branch_i[i] = pre_option_code_o[i].is_branch;
+  end
+
+  logic [`FETCH_WIDTH - 1:0] pre_check_valid_i;
+  for (genvar i = 0; i < `FETCH_WIDTH; i++) begin : gen_pre_check_valid
+    assign pre_check_valid_i[i] = icache_rsp_buf.valid & pc_valid_buf[i];
   end
 
   // 检查分支预测是否预测非分支指令跳转
@@ -379,9 +399,9 @@ module Pipeline (
   (
     .clk          (clk),
     .rst_n        (rst_n),
-    .valid_i      (icache_rsp_buf.valid),
+    .valid_i      (pre_check_valid_i),
     .pc_i         (icache_rsp_buf.vaddr),
-    .br_info_i    (icache_rsp_buf.br_info),
+    .br_info_i    (br_info_buf),
     .is_branch_i  (pre_check_is_branch_i),
     // output
     .redirect_o   (pre_check_redirect_o),
@@ -401,7 +421,7 @@ module Pipeline (
   always_comb begin : proc_ibuf_idx
     ibuf_idx[0] = '0;
     for (int i = 1; i < `FETCH_WIDTH; i++) begin
-      ibuf_idx[i] = ibuf_idx[i - 1] + icache_rsp_buf.valid[i - 1];
+      ibuf_idx[i] = ibuf_idx[i - 1] + pre_check_valid_o[i - 1];
     end
   end
 
@@ -414,12 +434,12 @@ module Pipeline (
         ibuf_write_valid_i[ibuf_idx[i]] = 1'b1;
       end
       // 数据准备不需要判断有效性
-      ibuf_write_data_i[ibuf_idx[i]].pc = icache_rsp_buf.vaddr[i];
-      ibuf_write_data_i[ibuf_idx[i]].npc = icache_rsp_buf.npc[i];
-      ibuf_write_data_i[ibuf_idx[i]].br_info = icache_rsp_buf.br_info;
-      ibuf_write_data_i[ibuf_idx[i]].instr = icache_rsp_buf.instr[i];
-      ibuf_write_data_i[ibuf_idx[i]].excp = icache_rsp_buf.excp;
-      ibuf_write_data_i[ibuf_idx[i]].pre_oc = pre_option_code_o[i];
+      ibuf_write_data_i[ibuf_idx[i]].pc      = icache_rsp_buf.vaddr[i];
+      ibuf_write_data_i[ibuf_idx[i]].npc     = npc_buf[i];
+      ibuf_write_data_i[ibuf_idx[i]].br_info = br_info_buf;  // same info
+      ibuf_write_data_i[ibuf_idx[i]].instr   = icache_rsp_buf.instr[i];
+      ibuf_write_data_i[ibuf_idx[i]].excp    = icache_rsp_buf.excp;
+      ibuf_write_data_i[ibuf_idx[i]].pre_oc  = pre_option_code_o[i];
     end
   end
 
