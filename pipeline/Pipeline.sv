@@ -368,7 +368,7 @@ module Pipeline (
   // 生成NPC
   logic [`FETCH_WIDTH - 1:0][31:0] npc;
   for (genvar i = 0; i < `FETCH_WIDTH - 1; i++) begin
-    assign npc[i] = bpu_rsp.valid[i + 1] ? bpu_rsp.npc : `FETCH_ALIGN(bpu_rsp.pc) + ((i + 1) << 2);
+    assign npc[i] = bpu_rsp.valid[i + 1] ? `FETCH_ALIGN(bpu_rsp.pc) + ((i + 1) << 2) : bpu_rsp.npc;
   end
   assign npc[`FETCH_WIDTH - 1] = bpu_rsp.npc;
 
