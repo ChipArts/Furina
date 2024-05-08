@@ -27,6 +27,7 @@
 `include "config.svh"
 `include "ControlStatusRegister.svh"
 `include "BranchPredictionUnit.svh"
+`include "Decoder.svh"
 
 /* ICache */
 //       Virtual Address
