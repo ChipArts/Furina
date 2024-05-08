@@ -263,10 +263,10 @@ module Pipeline (
       bpu_redirect_buf <= '0;
       bpu_target_buf   <= '0;
     end else begin
-      if (~bpu_req.next) begin  // icache不能接收flush信号时缓存之
-        bpu_redirect_buf <= global_flush | pre_check_redirect_o;
+      if (~bpu_req.next && (global_flush || pre_check_redirect_o)) begin  // icache不能接收flush信号时缓存之
+        bpu_redirect_buf <= '1;
         bpu_target_buf   <= bpu_req.target;
-      end else begin
+      end else if (bpu_req.next) begin
         bpu_redirect_buf <= '0;
         bpu_target_buf   <= '0;
       end
