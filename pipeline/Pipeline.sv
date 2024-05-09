@@ -580,6 +580,7 @@ module Pipeline (
     .rob_alloc_rsp    (sche_rob_alloc_rsp),
     // for excp
     .csr_plv_i        (csr_plv_out),
+    .csr_has_int_i    (csr_has_int),
     // flush restore
     .fl_arch_heah     (arch_fl_head_o),
     .fl_arch_tail     (arch_fl_tail_o),
