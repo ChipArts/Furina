@@ -65,10 +65,6 @@ module ReorderBuffer (
   // 这里的处理器状态改变指的是不可恢复的状态改变
   logic misc_psc;
 
-  /* int excp */
-  logic [$clog2(`ROB_DEPTH) - 1:0] head_idx;
-  ExcpSt int_excp;
-
   /* commit */
   logic [$clog2(`COMMIT_WIDTH):0] commit_cnt;
   logic [`COMMIT_WIDTH - 1:0] redirect_mask;  // 重定向后面的指令不允许提交
@@ -101,16 +97,6 @@ module ReorderBuffer (
   // 除了load（非原子）其他mem指令都要等待成为最旧的指令
   assign mem_wb_rsp.ready = (mem_wb_req.mem_op == `MEM_LOAD & ~mem_wb_req.atomic) |
                             (mem_wb_req.base.rob_idx == cmt_idx[0]);
-
-
-  assign head_idx = head_ptr[$clog2(`ROB_DEPTH) - 1:0];
-
-  always_comb begin : gen_int_excp
-    int_excp.valid = 1'b1;
-    int_excp.ecode = `ECODE_INT;
-    int_excp.sub_ecode = `ESUBCODE_ADEF;
-  end
-  
   
 
   always_comb begin
@@ -297,80 +283,6 @@ module ReorderBuffer (
       rob_n[mem_wb_req.base.rob_idx].mem_paddr = mem_wb_req.paddr;
       rob_n[mem_wb_req.base.rob_idx].mem_vaddr = mem_wb_req.vaddr;
 `endif
-    end
-
-    /* manage interrupt */
-    // 这有可能覆盖write back结果
-    if (has_int) begin
-      if (rob_q[head_idx].complete == 0 && rob_cnt_q > 0) begin  // 第一条有效且未完成
-        rob_n[head_idx].complete = '1;
-        // 分支预测失败处理
-        rob_n[head_idx].br_redirect = '0;
-        rob_n[head_idx].br_target = '0;
-        rob_n[head_idx].br_taken = '0;
-        rob_n[head_idx].br_type = '0;
-        // 异常/例外处理
-        rob_n[head_idx].excp = int_excp;
-        rob_n[head_idx].error_vaddr = rob_q[head_idx].pc;
-        // write back阶段的flush缓存
-        rob_n[head_idx].ertn_flush = '0;
-        rob_n[head_idx].ibar_flush = '0;
-        rob_n[head_idx].priv_flush = '0;
-        rob_n[head_idx].icacop_flush = '0;
-        rob_n[head_idx].idle_flush = '0;
-`ifdef DEBUG
-        // DEBUG
-        rob_n[head_idx].is_tibfill = '0;
-        rob_n[head_idx].tlbfill_idx = '0;
-        rob_n[head_idx].csr_rstat = '0;
-        rob_n[head_idx].csr_rdata = '0;
-        rob_n[head_idx].is_cnt_instr = '0;
-        rob_n[head_idx].timer_64 = '0;
-        // rob_n[alu_wb_req[i].base.rob_idx].instr = alu_wb_req[i].instr; alloc时设置
-        rob_n[head_idx].rf_wen = '0;
-        rob_n[head_idx].rf_wdata = '0;
-        rob_n[head_idx].eret = '0;
-        rob_n[head_idx].store_valid = '0;
-        rob_n[head_idx].load_valid = '0;
-        rob_n[head_idx].store_data = '0;
-        rob_n[head_idx].mem_paddr = '0;
-        rob_n[head_idx].mem_vaddr = '0;
-`endif
-      end else if (rob_cnt_q > 1) begin  // 如果第二条有效则插入到第二条，不可恢复的更改不会出现在这里
-        rob_n[head_idx + 1].complete = '1;
-        // 分支预测失败处理
-        rob_n[head_idx + 1].br_redirect = '0;
-        rob_n[head_idx + 1].br_target = '0;
-        rob_n[head_idx + 1].br_taken = '0;
-        rob_n[head_idx + 1].br_type = '0;
-        // 异常/例外处理
-        rob_n[head_idx + 1].excp = int_excp;
-        rob_n[head_idx + 1].error_vaddr = rob_q[head_idx + 1].pc;
-        // write back阶段的flush缓存
-        rob_n[head_idx + 1].ertn_flush = '0;
-        rob_n[head_idx + 1].ibar_flush = '0;
-        rob_n[head_idx + 1].priv_flush = '0;
-        rob_n[head_idx + 1].icacop_flush = '0;
-        rob_n[head_idx + 1].idle_flush = '0;
-`ifdef DEBUG
-        // DEBUG
-        rob_n[head_idx + 1].is_tibfill = '0;
-        rob_n[head_idx + 1].tlbfill_idx = '0;
-        rob_n[head_idx + 1].csr_rstat = '0;
-        rob_n[head_idx + 1].csr_rdata = '0;
-        rob_n[head_idx + 1].is_cnt_instr = '0;
-        rob_n[head_idx + 1].timer_64 = '0;
-        // rob_n[alu_wb_req[i].base.rob_idx].instr = alu_wb_req[i].instr; alloc时设置
-        rob_n[head_idx + 1].rf_wen = '0;
-        rob_n[head_idx + 1].rf_wdata = '0;
-        rob_n[head_idx + 1].eret = '0;
-        rob_n[head_idx + 1].store_valid = '0;
-        rob_n[head_idx + 1].load_valid = '0;
-        rob_n[head_idx + 1].store_data = '0;
-        rob_n[head_idx + 1].mem_paddr = '0;
-        rob_n[head_idx + 1].mem_vaddr = '0;
-`endif
-      end
     end
   end
 
