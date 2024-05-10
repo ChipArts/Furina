@@ -138,6 +138,7 @@ module ReorderBuffer (
       // write back阶段的flush缓存
       rob_n[misc_wb_req.base.rob_idx].ertn_flush = misc_wb_req.ertn_en;
       rob_n[misc_wb_req.base.rob_idx].ibar_flush = '0;
+      rob_n[misc_wb_req.base.rob_idx].dbar_flush = '0;
       rob_n[misc_wb_req.base.rob_idx].priv_flush = misc_wb_req.instr_type == `PRIV_INSTR & 
                                                    misc_wb_req.priv_op inside {
                                                     // `PRIV_CSR_READ,  // 无需flush
@@ -188,6 +189,7 @@ module ReorderBuffer (
         // write back阶段的flush缓存
         rob_n[alu_wb_req[i].base.rob_idx].ertn_flush = '0;
         rob_n[alu_wb_req[i].base.rob_idx].ibar_flush = '0;
+        rob_n[alu_wb_req[i].base.rob_idx].dbar_flush = '0;
         rob_n[alu_wb_req[i].base.rob_idx].priv_flush = '0;
         rob_n[alu_wb_req[i].base.rob_idx].icacop_flush = '0;
         rob_n[alu_wb_req[i].base.rob_idx].idle_flush = '0;
@@ -226,6 +228,7 @@ module ReorderBuffer (
       // write back阶段的flush缓存
       rob_n[mdu_wb_req.base.rob_idx].ertn_flush = '0;
       rob_n[mdu_wb_req.base.rob_idx].ibar_flush = '0;
+      rob_n[mdu_wb_req.base.rob_idx].dbar_flush = '0;
       rob_n[mdu_wb_req.base.rob_idx].priv_flush = '0;
       rob_n[mdu_wb_req.base.rob_idx].icacop_flush = '0;
       rob_n[mdu_wb_req.base.rob_idx].idle_flush = '0;
@@ -261,6 +264,7 @@ module ReorderBuffer (
       // write back阶段的flush缓存
       rob_n[mem_wb_req.base.rob_idx].ertn_flush = '0;
       rob_n[mem_wb_req.base.rob_idx].ibar_flush = mem_wb_req.mem_op == `MEM_IBAR;
+      rob_n[mem_wb_req.base.rob_idx].dbar_flush = mem_wb_req.mem_op == `MEM_DBAR;
       rob_n[mem_wb_req.base.rob_idx].priv_flush = '0;
       rob_n[mem_wb_req.base.rob_idx].icacop_flush = mem_wb_req.icacop;
       rob_n[mem_wb_req.base.rob_idx].idle_flush = '0;

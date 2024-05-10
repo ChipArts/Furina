@@ -50,6 +50,7 @@ typedef struct packed {
   // write back阶段的flush缓存
   logic ertn_flush;      // ERET返回（返回地址为csr_era）
   logic ibar_flush;      // IBAR指令
+  logic dbar_flush;      // DBAR指令
   logic priv_flush;      // 特权指令（csr_rd修改可撤回，不需要flush）
   logic icacop_flush;    // ICache操作
   logic idle_flush;      // IDLE指令

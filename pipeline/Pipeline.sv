@@ -64,6 +64,7 @@ module Pipeline (
   logic ertn_flush;      // ERET返回（返回地址为csr_era）
   logic refetch_flush;   // 重取指令（ibar、priv、icacop、idel）
   logic ibar_flush;      // IBAR指令
+  logic dbar_flush;      // DBAR指令
   logic priv_flush;      // 特权指令（csr_rd修改可撤回，不需要flush）
   logic icacop_flush;    // ICache操作
   logic idle_flush;      // IDLE指令
@@ -928,11 +929,12 @@ module Pipeline (
     
     ertn_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].ertn_flush;
     ibar_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].ibar_flush;
+    dbar_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].dbar_flush;
     priv_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].priv_flush;
     icacop_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].icacop_flush;
     idle_flush = rob_cmt_o.valid[0] & rob_cmt_o.rob_entry[0].idle_flush;
 
-    refetch_flush = ibar_flush | priv_flush | icacop_flush | idle_flush;
+    refetch_flush = ibar_flush | priv_flush | icacop_flush | idle_flush | dbar_flush;
 
     global_flush = excp_flush | redirect_flush | ertn_flush | refetch_flush;
   end

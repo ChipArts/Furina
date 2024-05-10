@@ -638,7 +638,7 @@ module DCache (
     axi4_mst.b_ready = '1;
 
     axi4_mst.ar_id = '0;
-    axi4_mst.ar_addr = s2_uncache  ? {s2_paddr[`PROC_PALEN - 1:2], 2'b00} : `DCACHE_PADDR_ALIGN(s2_paddr);  // 以cache行为单位;
+    axi4_mst.ar_addr = s2_uncache  ? s2_paddr : `DCACHE_PADDR_ALIGN(s2_paddr);  // 以cache行为单位;
     axi4_mst.ar_len =  s2_uncache  ? '0 : `DCACHE_BLOCK_SIZE / 4 - 1;  // uncache不支持burst
     axi4_mst.ar_size = 3'b010;  // 4 bytes;
     axi4_mst.ar_burst = 2'b01;  // Incrementing-address burst
