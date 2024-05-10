@@ -610,7 +610,7 @@ module DCache (
 
   always_comb begin : proc_axi
     axi4_mst.aw_id = '0;
-    axi4_mst.aw_addr = s2_uncache ? s2_paddr : `DCACHE_PADDR_ALIGN(s2_repl_paddr);  // 以cache行为单位
+    axi4_mst.aw_addr = s2_uncache ? {s2_paddr[`PROC_PALEN - 1:2], 2'b00} : `DCACHE_PADDR_ALIGN(s2_repl_paddr);  // 以cache行为单位
     axi4_mst.aw_len =  s2_uncache ? '0 : `DCACHE_BLOCK_SIZE / 4 - 1;
     axi4_mst.aw_size = 3'b010;  // 4 bytes
     axi4_mst.aw_burst = 2'b01;  // Incrementing-address burst
@@ -638,8 +638,8 @@ module DCache (
     axi4_mst.b_ready = '1;
 
     axi4_mst.ar_id = '0;
-    axi4_mst.ar_addr = s2_uncache  ? s2_paddr : `DCACHE_PADDR_ALIGN(s2_paddr);  // 以cache行为单位;
-    axi4_mst.ar_len =  s2_uncache  ? '0 : `DCACHE_BLOCK_SIZE / 4 - 1;  // UART不支持burst ？？？
+    axi4_mst.ar_addr = s2_uncache  ? {s2_paddr[`PROC_PALEN - 1:2], 2'b00} : `DCACHE_PADDR_ALIGN(s2_paddr);  // 以cache行为单位;
+    axi4_mst.ar_len =  s2_uncache  ? '0 : `DCACHE_BLOCK_SIZE / 4 - 1;  // uncache不支持burst
     axi4_mst.ar_size = 3'b010;  // 4 bytes;
     axi4_mst.ar_burst = 2'b01;  // Incrementing-address burst
     axi4_mst.ar_lock = '0;
@@ -707,16 +707,16 @@ module DCache (
     // tag ram
     tag_ram_we = '0;
     if (cache_state == REFILL) begin
-      tag_ram_we[s2_repl_way] = s2_valid &                                            // 指令有效
+      tag_ram_we[s2_repl_way] = s2_valid &                                              // 指令有效
                                 (
                                   (axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache) |  // cache miss refill
                                   (cacop_mode0)                                         // cacop mode 0 fill tag
-                                 );
+                                );
                                 
     end
     tag_ram_waddr = `DCACHE_IDX_OF(s2_vaddr);
     tag_ram_wdata = cacop_mode0 ? '0 : `DCACHE_TAG_OF(s2_paddr);
-    tag_ram_raddr = s1_ready ? `DCACHE_IDX_OF(dcache_req.vaddr) :  `DCACHE_IDX_OF(s1_vaddr);
+    tag_ram_raddr = s1_ready ? `DCACHE_IDX_OF(dcache_req.vaddr) : `DCACHE_IDX_OF(s1_vaddr);
   end
 
   always_comb begin : proc_meta_ram
@@ -728,7 +728,7 @@ module DCache (
                                  (
                                    (axi4_mst.r_valid & axi4_mst.r_last & ~s2_uncache) |  // cache miss refill
                                    (cacop_mode1 | cacop_mode2)                           // cacop mode 1、2 invalid cache line
-                                  );
+                                 );
                                  
       meta_ram_wdata = cacop_mode1 || cacop_mode2 ? '{valid: 1'b0, dirty: 1'b0} :      // cacop invalid
                        s2_store_valid             ? '{valid: 1'b1, dirty: 1'b1} :      // cache miss store refill
@@ -743,7 +743,7 @@ module DCache (
 
   always_comb begin : proc_plru_ram
     // plru ram
-    plru_ram_we = s1_valid;
+    plru_ram_we = s1_valid & ~miss;
     plru_ram_waddr = `DCACHE_IDX_OF(s1_vaddr);
     plru_ram_wdata = plru_ram_rdata == matched_way ? ~plru_ram_rdata : plru_ram_rdata;
     plru_ram_raddr = s1_ready ? `DCACHE_IDX_OF(dcache_req.vaddr) : `DCACHE_IDX_OF(s1_vaddr);

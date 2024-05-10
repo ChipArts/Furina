@@ -1105,99 +1105,99 @@ module Pipeline (
   );
 
 /*======================= CSR(Control/Status Register) ========================*/
-    //csr rd
-    logic  [13:0]                   csr_rd_addr      ;
-    //csr wr
-    logic                           csr_wr_en        ;
-    logic  [13:0]                   csr_wr_addr      ;
-    logic  [31:0]                   csr_wr_data      ;
-    //interrupt
-    logic  [ 7:0]                   csr_interrupt    ;
-    //excp
-    logic                           csr_excp_flush   ;
-    logic                           csr_ertn_flush   ;
-    logic  [31:0]                   csr_era_in       ;
-    logic  [ 8:0]                   csr_esubcode_in  ;
-    logic  [ 5:0]                   csr_ecode_in     ;
-    logic                           csr_va_error_in  ;
-    logic  [31:0]                   csr_bad_va_in    ;
-    logic                           csr_tlbsrch_en    ;
-    logic                           csr_tlbsrch_found ;
-    logic  [ 4:0]                   csr_tlbsrch_index ;
-    logic                           csr_excp_tlbrefill;
-    logic                           csr_excp_tlb     ;
-    logic  [18:0]                   csr_excp_tlb_vppn;
-    //llbit
-    logic                           csr_llbit_in     ;
-    logic                           csr_llbit_set_in ;
-    //from addr trans 
-    logic                           csr_tlbrd_en     ;
-    logic  [31:0]                   csr_tlbehi_in    ;
-    logic  [31:0]                   csr_tlbelo0_in   ;
-    logic  [31:0]                   csr_tlbelo1_in   ;
-    logic  [31:0]                   csr_tlbidx_in    ;
-    logic  [ 9:0]                   csr_asid_in      ;
+  //csr rd
+  logic  [13:0]                   csr_rd_addr      ;
+  //csr wr
+  logic                           csr_wr_en        ;
+  logic  [13:0]                   csr_wr_addr      ;
+  logic  [31:0]                   csr_wr_data      ;
+  //interrupt
+  logic  [ 7:0]                   csr_interrupt    ;
+  //excp
+  logic                           csr_excp_flush   ;
+  logic                           csr_ertn_flush   ;
+  logic  [31:0]                   csr_era_in       ;
+  logic  [ 8:0]                   csr_esubcode_in  ;
+  logic  [ 5:0]                   csr_ecode_in     ;
+  logic                           csr_va_error_in  ;
+  logic  [31:0]                   csr_bad_va_in    ;
+  logic                           csr_tlbsrch_en    ;
+  logic                           csr_tlbsrch_found ;
+  logic  [ 4:0]                   csr_tlbsrch_index ;
+  logic                           csr_excp_tlbrefill;
+  logic                           csr_excp_tlb     ;
+  logic  [18:0]                   csr_excp_tlb_vppn;
+  //llbit
+  logic                           csr_llbit_in     ;
+  logic                           csr_llbit_set_in ;
+  //from addr trans 
+  logic                           csr_tlbrd_en     ;
+  logic  [31:0]                   csr_tlbehi_in    ;
+  logic  [31:0]                   csr_tlbelo0_in   ;
+  logic  [31:0]                   csr_tlbelo1_in   ;
+  logic  [31:0]                   csr_tlbidx_in    ;
+  logic  [ 9:0]                   csr_asid_in      ;
 
-    // csr读写
-    assign csr_rd_addr = sche_misc_issue_o.base_info.src[23:10]; // 读取CSR指令的csr地址
-    assign csr_wr_en   = iblk_misc_wb_o.base.valid &
-                         iblk_misc_wb_o.csr_we     &
-                         rob_misc_wb_rsp.ready;
-    assign csr_wr_addr = iblk_misc_wb_o.csr_waddr;
-    assign csr_wr_data = iblk_misc_wb_o.csr_wdata;
+  // csr读写
+  assign csr_rd_addr = sche_misc_issue_o.base_info.src[23:10]; // 读取CSR指令的csr地址
+  assign csr_wr_en   = iblk_misc_wb_o.base.valid &
+                       iblk_misc_wb_o.csr_we     &
+                       rob_misc_wb_rsp.ready;
+  assign csr_wr_addr = iblk_misc_wb_o.csr_waddr;
+  assign csr_wr_data = iblk_misc_wb_o.csr_wdata;
 
-    assign csr_interrupt = interrupt;
+  assign csr_interrupt = interrupt;
 
-    // 异常处理
-    assign csr_excp_flush  = excp_flush;
-    assign csr_ertn_flush  = ertn_flush;
-    assign csr_era_in      = rob_cmt_o.rob_entry[0].pc;
-    assign csr_ecode_in    = rob_cmt_o.rob_entry[0].excp.ecode;
-    assign csr_esubcode_in = rob_cmt_o.rob_entry[0].excp.sub_ecode;
-    assign csr_va_error_in = rob_cmt_o.valid[0]                & 
-                             rob_cmt_o.rob_entry[0].excp.valid &
-                             rob_cmt_o.rob_entry[0].excp.ecode inside {
-                               `ECODE_ADE, `ECODE_TLBR, `ECODE_PIF, `ECODE_PPI,
-                               `ECODE_ALE, `ECODE_PME,  `ECODE_PIS, `ECODE_PIL
-                             };
-    assign csr_bad_va_in = rob_cmt_o.rob_entry[0].error_vaddr;
-    // tlb 异常
-    assign csr_excp_tlbrefill = tlbrefill_flush;
-    assign csr_excp_tlb = rob_cmt_o.valid[0]                &
-                          rob_cmt_o.rob_entry[0].excp.valid &
-                          rob_cmt_o.rob_entry[0].excp.ecode inside {
-                            `ECODE_TLBR, `ECODE_PIF, `ECODE_PPI,
-                            `ECODE_PME,  `ECODE_PIS, `ECODE_PIL
-                          };
-    assign csr_excp_tlb_vppn = rob_cmt_o.rob_entry[0].error_vaddr[31:13];
+  // 异常处理
+  assign csr_excp_flush  = excp_flush;
+  assign csr_ertn_flush  = ertn_flush;
+  assign csr_era_in      = rob_cmt_o.rob_entry[0].pc;
+  assign csr_ecode_in    = rob_cmt_o.rob_entry[0].excp.ecode;
+  assign csr_esubcode_in = rob_cmt_o.rob_entry[0].excp.sub_ecode;
+  assign csr_va_error_in = rob_cmt_o.valid[0]                & 
+                           rob_cmt_o.rob_entry[0].excp.valid &
+                           rob_cmt_o.rob_entry[0].excp.ecode inside {
+                             `ECODE_ADE, `ECODE_TLBR, `ECODE_PIF, `ECODE_PPI,
+                             `ECODE_ALE, `ECODE_PME,  `ECODE_PIS, `ECODE_PIL
+                           };
+  assign csr_bad_va_in = rob_cmt_o.rob_entry[0].error_vaddr;
+  // tlb 异常
+  assign csr_excp_tlbrefill = tlbrefill_flush;
+  assign csr_excp_tlb = rob_cmt_o.valid[0]                &
+                        rob_cmt_o.rob_entry[0].excp.valid &
+                        rob_cmt_o.rob_entry[0].excp.ecode inside {
+                          `ECODE_TLBR, `ECODE_PIF, `ECODE_PPI,
+                          `ECODE_PME,  `ECODE_PIS, `ECODE_PIL
+                        };
+  assign csr_excp_tlb_vppn = rob_cmt_o.rob_entry[0].error_vaddr[31:13];
 
-    // 填写tlbsrch结果
-    assign csr_tlbsrch_en = iblk_misc_wb_o.base.valid &
-                            iblk_misc_wb_o.tlbsrch_en &
-                            rob_misc_wb_rsp.ready;
-    assign csr_tlbsrch_found = iblk_misc_wb_o.tlbsrch_found;
-    assign csr_tlbsrch_index = iblk_misc_wb_o.tlbsrch_idx;
-
-    // 填写原子指令标记
-    assign csr_llbit_in     = mblk_wb_o.mem_op == `MEM_LOAD ? '1 : '0;
-    assign csr_llbit_set_in = mblk_wb_o.base.valid &
-                              ~mblk_wb_o.base.excp.valid &  // 异常时不写入 ！！！
-                              mblk_wb_o.atomic &            // 是原子指令
-                              (
-                                (mblk_wb_o.mem_op == `MEM_LOAD) |
-                                (mblk_wb_o.mem_op == `MEM_STORE & mblk_wb_o.llbit)
-                              ) &
-                              rob_mem_wb_rsp.ready;
-
-    // 填写tlbrd结果
-    assign csr_tlbrd_en = iblk_misc_wb_o.base.valid &
-                          iblk_misc_wb_o.tlbrd_en   &
+  // 填写tlbsrch结果
+  assign csr_tlbsrch_en = iblk_misc_wb_o.base.valid &
+                          iblk_misc_wb_o.tlbsrch_en &
                           rob_misc_wb_rsp.ready;
-    assign csr_tlbehi_in  = iblk_misc_wb_o.tlbrd_ehi;
-    assign csr_tlbelo0_in = iblk_misc_wb_o.tlbrd_elo0;
-    assign csr_tlbelo1_in = iblk_misc_wb_o.tlbrd_elo1;
-    assign csr_tlbidx_in  = iblk_misc_wb_o.tlbrd_idx;
-    assign csr_asid_in    = iblk_misc_wb_o.tlbrd_asid;
+  assign csr_tlbsrch_found = iblk_misc_wb_o.tlbsrch_found;
+  assign csr_tlbsrch_index = iblk_misc_wb_o.tlbsrch_idx;
+
+  // 填写原子指令标记
+  assign csr_llbit_in     = mblk_wb_o.mem_op == `MEM_LOAD ? '1 : '0;
+  assign csr_llbit_set_in = mblk_wb_o.base.valid &
+                            ~mblk_wb_o.base.excp.valid &  // 异常时不写入 ！！！
+                            mblk_wb_o.atomic &            // 是原子指令
+                            (
+                              (mblk_wb_o.mem_op == `MEM_LOAD) |
+                              (mblk_wb_o.mem_op == `MEM_STORE & mblk_wb_o.llbit)
+                            ) &
+                            rob_mem_wb_rsp.ready;
+
+  // 填写tlbrd结果
+  assign csr_tlbrd_en = iblk_misc_wb_o.base.valid &
+                        iblk_misc_wb_o.tlbrd_en   &
+                        rob_misc_wb_rsp.ready;
+  assign csr_tlbehi_in  = iblk_misc_wb_o.tlbrd_ehi;
+  assign csr_tlbelo0_in = iblk_misc_wb_o.tlbrd_elo0;
+  assign csr_tlbelo1_in = iblk_misc_wb_o.tlbrd_elo1;
+  assign csr_tlbidx_in  = iblk_misc_wb_o.tlbrd_idx;
+  assign csr_asid_in    = iblk_misc_wb_o.tlbrd_asid;
 
   ControlStatusRegister #(
     .TLBNUM(`TLB_ENTRY_NUM)
