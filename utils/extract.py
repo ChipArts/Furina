@@ -6,7 +6,7 @@ import os
 chip_home = "..\\"
 
 # 清空chip_home\\myCPU
-os.system("del /q %s\\myCPU\\*" % chip_home)
+os.system("del /q %s\\mycpu\\*" % chip_home)
 
 # 获取当前目录及子目录下所有的[".v", ".h", ".vh", ".sv", ".svh", ".vhdl"]文件
 files = []
@@ -23,8 +23,8 @@ for f in files:
 		exit(1)
 
 # 检查chip_home\\myCPU是否存在，不存在则创建
-if not os.path.exists("%s\\myCPU" % chip_home):
-	os.system("mkdir %s\\myCPU" % chip_home)
+if not os.path.exists("%s\\mycpu" % chip_home):
+	os.system("mkdir %s\\mycpu" % chip_home)
 
 
 
@@ -32,4 +32,4 @@ if not os.path.exists("%s\\myCPU" % chip_home):
 
 # 拷贝所有文件到chip_home\\myCPU目录下
 for f in files:
-	os.system("copy %s %s\\myCPU" % (f, chip_home))
+	os.system("copy %s %s\\mycpu" % (f, chip_home))
