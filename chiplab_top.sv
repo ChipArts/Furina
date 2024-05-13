@@ -124,7 +124,7 @@ module core_top(
     assign awvalid = axi4.aw_valid;
     assign axi4.aw_ready = awready;
 
-    assign wid    = '0;
+    assign wid    = axi4.w_id;
     assign wdata  = axi4.w_data;
     assign wstrb  = axi4.w_strb;
     assign wlast  = axi4.w_last;

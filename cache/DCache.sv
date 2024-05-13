@@ -546,12 +546,12 @@ module DCache (
                          s2_mem_op == `MEM_LOAD  ;
     assign wait2refill = s2_mem_op == `MEM_CACOP & dcache_req.ready;  // fsm先判断wait2miss以确保此时无需写回
 
-    assign miss2repl   = axi4_mst.aw_ready;
-    assign miss2refill = axi4_mst.ar_ready;
+    assign miss2repl   = axi4_mst.aw_ready;  // TODO 也许有bug ready在没有请求时会置高吗？？？ 
+    assign miss2refill = axi4_mst.ar_ready;  // TODO 也许有bug ready在没有请求时会置高吗？？？
 
     assign repl2refill = ~s2_uncache & 
-                         repl_complete &                   // TODO 有优化的空间 可以提前一拍
-                         (~read_req | axi4_mst.ar_ready);  // TODO 这里可能有bug 可能需要将ar_ready用寄存器保存？？？ 就目前来看wr完成前不会产生aw_ready
+                         repl_complete &
+                         (~read_req | axi4_mst.ar_ready);  // TODO 这里可能有bug 可能需要将ar_ready用寄存器保存？？？ 就目前来看wr完成前不会产生ar_ready
     assign repl2idle   = s2_uncache &
                          axi4_mst.w_last & axi4_mst.w_valid & axi4_mst.w_ready;
 

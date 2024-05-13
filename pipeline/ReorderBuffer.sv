@@ -71,6 +71,7 @@ module ReorderBuffer (
   logic [`COMMIT_WIDTH - 1:0] exc_mask;       // 异常后面的指令不允许提交
   logic [`COMMIT_WIDTH - 1:0] br_mask;        // 仅允许一条分支指令提交（BPU只有一个写口）
   logic [`COMMIT_WIDTH - 1:0] priv_mask;      // 特权指令后面的指令不允许提交（只有csrrd可以豁免，但这个优化似乎没有太大必要）
+  logic [`COMMIT_WIDTH - 1:0] mbar_mask;      // 栅障指令之后面的指令不允许提交
   logic [`COMMIT_WIDTH - 1:0] valid_mask;     // 是一条有效的ROB表项
   logic [`COMMIT_WIDTH - 1:0] commit_mask;    // 屏蔽后续指令的退休
   logic [`COMMIT_WIDTH - 1:0] commit_valid;   // 本次可退休得指令
@@ -303,6 +304,7 @@ module ReorderBuffer (
   assign exc_mask[0]      = '1;
   assign br_mask[0]       = '1;
   assign priv_mask[0]     = '1;
+  assign mbar_mask[0]     = '1;
   // 第二条指令
   // BR恢复需要抽干流水线 && 成为最后一条指令才能提交
   assign redirect_mask[1] = ~rob_q[cmt_idx[0]].br_redirect & ~rob_q[cmt_idx[1]].br_redirect;
@@ -312,10 +314,12 @@ module ReorderBuffer (
   assign br_mask[1]       = rob_q[cmt_idx[0]].instr_type != `BR_INSTR;
   // 特权指令后面的指令不允许提交（只有csrrd可以豁免，但这个优化似乎没有太大必要）
   assign priv_mask[1]     = rob_q[cmt_idx[0]].instr_type != `PRIV_INSTR & ~rob_q[cmt_idx[0]].icacop_flush;
+  // 栅障指令后面的指令不允许提交
+  assign mbar_mask[1]     = ~rob_q[cmt_idx[0]].ibar_flush & ~rob_q[cmt_idx[0]].dbar_flush;
 
   // TODO flush 的信号设计有大量优化空间
 
-  assign commit_mask = br_mask & redirect_mask & exc_mask & priv_mask;
+  assign commit_mask = br_mask & redirect_mask & exc_mask & priv_mask & mbar_mask;
 
   for (genvar i = 0; i < `COMMIT_WIDTH; i++) assign valid_mask[i] = rob_cnt_q > i;  // 有效ROB表项
 

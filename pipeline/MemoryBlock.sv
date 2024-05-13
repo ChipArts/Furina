@@ -105,7 +105,7 @@ module MemoryBlock (
                       (dcache_req.valid & dcache_rsp.ready) | 
                       (icacop_req.valid & icacop_rsp.ready) | 
                       ~s1_exe.base.valid                    
-                     );
+                    );
 
 
   always_comb begin : proc_dcache_req
