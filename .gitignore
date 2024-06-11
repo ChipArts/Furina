@@ -1,5 +1,4 @@
-**/*.log
-**/*.pb
-*.sublime*
-**/*.dir
-myCPU
+.idea
+.bsp
+project
+target
