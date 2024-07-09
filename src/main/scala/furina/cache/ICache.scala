@@ -7,6 +7,7 @@
 
 package furina.cache
 
+import furina.Config
 import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm._
@@ -14,7 +15,7 @@ import furina.Config._
 import furina.cache.intf._
 import furina.mmu._
 import furina.mmu.intf._
-import spinal.lib.bus.tilelink._
+import spinal.lib.bus.tilelink
 class ICache extends Component {
   val io = new Bundle {
     val fetchReq = slave Stream FetchReq()
@@ -23,7 +24,7 @@ class ICache extends Component {
     val cacopResp = master Stream CacopResp()
     val addrTransReq = master Stream AddrTransReq()
     val addrTransResp = slave Stream AddrTransResp()
-
+    val bus = master(tilelink.Bus(Config.TL_PARAM))
   }
 
   // 定义ready信号
@@ -65,13 +66,13 @@ class ICache extends Component {
     }
 
     MISS whenIsActive {
-      when(io.axi4.ar.ready) {
+      when(io.bus.a.ready) {
         goto(REFILL)
       }
     }
 
     REFILL whenIsActive {
-      when(io.axi4.r.valid && io.axi4.r.last) {
+      when(io.bus.d.valid) {
         goto(IDLE)
       }
     }
@@ -95,7 +96,7 @@ class ICache extends Component {
   io.addrTransResp.ready := ready_s1
 
   // REFILL之后将uncacheHit置高 当然需要是uncache fetch
-  when(fsm.isActive(fsm.REFILL) && io.axi4.r.valid && io.axi4.r.last) {
+  when(fsm.isActive(fsm.REFILL) && io.bus.d.valid) {
     uncacheHit := io.addrTransResp.uncache
   }.elsewhen(ready_s1) {
     uncacheHit := False

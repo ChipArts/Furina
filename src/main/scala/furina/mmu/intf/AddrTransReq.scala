@@ -13,7 +13,7 @@ import spinal.core._
 import spinal.lib._
 
 case class AddrTransReq() extends Bundle with IMasterSlave {
-  val vaddr = UInt(VALEN bits)
+  val vaddr = Bits(VALEN bits)
   val memType = MmuMemType()
   override def asMaster(): Unit = {
     out(vaddr, memType)

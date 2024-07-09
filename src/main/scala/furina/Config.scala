@@ -8,15 +8,17 @@
 package furina
 
 import spinal.core._
-import spinal.lib.bus.amba4.axi._
+import spinal.lib.bus.tilelink
 
 import scala.language.postfixOps
 object Config {
   val CORE_NUM = 1  // can not change now !!!
 
-  val VALEN = 32
-  val PALEN = 32
-  val DATA_WIDTH = 32
+  val USB_BPU = false
+
+  val VALEN = 32  // Virtual Address Length
+  val PALEN = 32  // Physical Address Length
+  val GRLEN = 32  // General Register Length
 
   val FETCH_WIDTH = 2
 
@@ -31,4 +33,11 @@ object Config {
   val ICACHE_BLK_SIZE = 16 Bytes
 
   val ROB_DEPTH = 64
+
+  val TL_PARAM = tilelink.BusParameter.simple(
+    addressWidth = 32,
+    dataWidth    = 64,
+    sizeBytes    = 64,
+    sourceWidth  = 4
+  )
 }

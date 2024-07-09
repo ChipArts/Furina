@@ -13,12 +13,12 @@ import furina.Config._
 import scala.language.postfixOps
 class BranchPredictionUnit extends Component {
   val io = new Bundle {
-    val valid: Bool = out Bool()
-    val ready: Bool = in Bool()
-    val redirect: Bool = in Bool()
-    val target: UInt = in UInt(VALEN bits)
-    val pc: UInt = out UInt(VALEN bits)
-    val npc: UInt = out UInt(VALEN bits)
+    val valid = out Bool()
+    val ready = in Bool()
+    val redirect = in Bool()
+    val target = in Bits(VALEN bits)
+    val pc = out Bits(VALEN bits)
+    val npc = out Bits(VALEN bits)
   }
 
   private val NPC_OFS = log2Up(FETCH_WIDTH) + 2
@@ -27,7 +27,7 @@ class BranchPredictionUnit extends Component {
   when (io.redirect) {
     io.npc := io.target
   }.otherwise {
-    io.npc := ((io.pc(31 downto NPC_OFS) + 1) ## U(0, NPC_OFS bits))
+    io.npc := ((io.pc(31 downto NPC_OFS).asUInt + 1) ## U(0, NPC_OFS bits))
   }
 
   // pc转为reg类型
@@ -37,6 +37,6 @@ class BranchPredictionUnit extends Component {
   }
 
   // valid always true
-  io.valid := true
+  io.valid := True
 
 }
