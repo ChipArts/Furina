@@ -29,8 +29,8 @@ class WallaceTree(bitNum: Int) extends Component {
     layers
   }
 
-  // 每一层华莱士树包含的全加器个数为⌊2M’/3⌋（M’是当前层次要加的数字个数）
-  private val layerStruct = layerBitNum.map(_ * 2 / 3)
+  // 每一层华莱士树包含的全加器个数为⌊M/3⌋（M是当前层次要加的数字个数）
+  private val layerStruct = layerBitNum.map(_ / 3)
 
   private val depth = layerStruct.length      // 华莱士树深度
   private val carryNum = layerStruct.sum - 1  // 进位数量
@@ -40,8 +40,8 @@ class WallaceTree(bitNum: Int) extends Component {
     val input = in Bits(bitNum bits)    // 部分积bit输入
     val cin = in Bits(carryNum bits)    // 来自上级的进位
     val cout = out Bits(carryNum bits)  // 给予下级的进位
-    val sum = out Bits(1 bits)    // 最终加和输出
-    val carry = out Bits(1 bits)  // 最终进位输出
+    val sum = out Bool()    // 最终加和输出
+    val carry = out Bool()  // 最终进位输出
   }
 
   // 使用CSA，根据csaStruct层结构，构建华莱士树

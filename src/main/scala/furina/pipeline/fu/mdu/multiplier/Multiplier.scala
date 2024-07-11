@@ -53,8 +53,8 @@ class Multiplier(width: Int) extends Component {
     // Booth4压缩
     private val booth4 = Array.fill(prodNum)(new Booth4(width * 2))
     for (i <- 0 until prodNum) {
-      booth4(i).io.x := x << i * 2  // x需要左移i*2位
-      booth4(i).io.y := (y ## B(0, 1 bits))(i * 2 + 1 downto i * 2)
+      booth4(i).io.x := x |<< i * 2  // x需要左移i*2位
+      booth4(i).io.y := (y ## B(0, 1 bits))(i * 2 + 2 downto i * 2)
     }
 
     // 用寄存器缓存乘法器的部分积并转置
@@ -67,7 +67,7 @@ class Multiplier(width: Int) extends Component {
     }
     // 缓存 booth 的 neg 输出
     val NEG = Payload(Bits(prodNum bits))
-    NEG := booth4.map(_.io.neg)
+    NEG := booth4.map(_.io.neg.asBits).reduce(_ ## _)
   }
   private val boothNode = new BoothNode()
 
@@ -79,7 +79,7 @@ class Multiplier(width: Int) extends Component {
 
     // 第一棵树特殊处理，input连接NEG，cin连接PROD[carryNum - 1:0]
     // 主要是因为boothNode.PROD(0)仅有最低为可能为1，其他位都是0，可以节省一些资源，不需单独计算neg的加法
-    wallaceTree(0).io.input := boothNode.NEG(0)
+    wallaceTree(0).io.input := boothNode.NEG
     wallaceTree(0).io.cin := boothNode.PROD(0)(cinWidth - 1 downto 0)
 
     // 其余树的input连接PROD，cin连接上一树的cout
@@ -92,8 +92,8 @@ class Multiplier(width: Int) extends Component {
     val SUM = Payload(Bits(width * 2 bits))
     val CARRY = Payload(Bits(width * 2 bits))
 
-    SUM := wallaceTree.map(_.io.sum).reduce(_ ## _)
-    CARRY := wallaceTree.map(_.io.carry).reduce(_ ## _)
+    SUM := wallaceTree.map(_.io.sum.asBits).reduce(_ ## _)
+    CARRY := wallaceTree.map(_.io.carry.asBits).reduce(_ ## _)
   }
 
   private val wallaceNode = new WallaceNode()
@@ -101,8 +101,19 @@ class Multiplier(width: Int) extends Component {
   /* 末级加法器 */
   private val addNode = new builder.Node {
     arbitrateTo(io.resp)
-    io.resp.payload.result := wallaceNode.SUM.asUInt + (wallaceNode.CARRY ## B(0, 1 bits)).asUInt
+    io.resp.payload.result := (wallaceNode.SUM.asUInt + (wallaceNode.CARRY |<< 1).asUInt).asBits
   }
 
   builder.genStagedPipeline()
 }
+
+
+object Multiplier {
+  def main(args: Array[String]): Unit = {
+    SpinalConfig(
+      defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC, resetActiveLevel = LOW),
+      targetDirectory = "output"
+    ).generateVerilog(new Multiplier(32))
+  }
+}
+
