@@ -46,7 +46,7 @@ class Multiplier(width: Int) extends Component {
   private val builder = new NodesBuilder()
 
   /* 扩展乘法器输入，并进行 booth4 计算 */
-  private class BoothNode extends builder.Node {
+  private val boothNode = new builder.Node {
     arbitrateFrom(io.req)
     private val x = bitExtend(io.req.x, io.req.signed, width * 2)
     private val y = bitExtend(io.req.y, io.req.signed, if (width % 2 == 0) width + 2 else width + 1)
@@ -69,10 +69,9 @@ class Multiplier(width: Int) extends Component {
     val NEG = Payload(Bits(prodNum bits))
     NEG := booth4.map(_.io.neg.asBits).reduce(_ ## _)
   }
-  private val boothNode = new BoothNode()
 
   /* Wallace树求部分积的和 */
-  private class WallaceNode extends builder.Node {
+  private val wallaceNode = new builder.Node {
     // Wallace树
     private val wallaceTree = Array.fill(width * 2)(new WallaceTree(prodNum))
     private val cinWidth = wallaceTree.head.io.cin.getWidth
@@ -95,8 +94,6 @@ class Multiplier(width: Int) extends Component {
     SUM := wallaceTree.map(_.io.sum.asBits).reduce(_ ## _)
     CARRY := wallaceTree.map(_.io.carry.asBits).reduce(_ ## _)
   }
-
-  private val wallaceNode = new WallaceNode()
 
   /* 末级加法器 */
   private val addNode = new builder.Node {
