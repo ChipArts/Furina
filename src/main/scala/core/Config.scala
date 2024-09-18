@@ -9,6 +9,8 @@ package core
 
 import spinal.core._
 import spinal.lib.bus.tilelink
+import core.config.InstructionSetArchitecture._
+import core.config.Platform._
 
 import scala.language.postfixOps
 object Config {
@@ -41,5 +43,7 @@ object Config {
     sourceWidth  = 4
   )
 
-  val ISA = "LA32R"
+  val ISA = LA32R
+
+  val PLATFORM = SIM_VERILATOR
 }

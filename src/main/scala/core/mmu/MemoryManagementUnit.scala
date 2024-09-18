@@ -32,5 +32,4 @@ class MemoryManagementUnit(transWidth: Int) extends Component {
   }
 
 
-
 }

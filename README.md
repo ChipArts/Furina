@@ -4,7 +4,7 @@
 
 ## 一、编程规范
 
-- 尽管`UInt`/`SInt`兼容`Bits` 类型的所有操作，但会对程序运行造成负担，本项目所有`BitVector`尽可能使用`Bits`，需要运算时转为`UInt`/`SInt`
+- 尽管`UInt`/`SInt`兼容`Bits` 类型的所有操作，但会对程序运行造成负担，本项目所有`BitVector`尽可能使用`Bits`，当数据被确定为可运算数据时使用`UInt`/`SInt`
 
   > The `UInt`/`SInt` types are vectors of bits interpreted as two’s complement unsigned/signed integers. They can do what `Bits` can do, with the addition of unsigned/signed integer arithmetic and comparisons.
 
