@@ -21,6 +21,6 @@ class Pipeline extends Component {
   }
 
   val bpu = new BranchPredictionUnit()
-  val icache = new ICache()
-  val dcache = new DCache()
+  val icache = new InstCache()
+  val dcache = new DataCache()
 }

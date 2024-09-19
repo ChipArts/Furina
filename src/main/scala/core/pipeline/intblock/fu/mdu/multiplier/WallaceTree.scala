@@ -2,10 +2,10 @@
 // @Time    : 2024/7/7 20:03
 // @Author  : ${AUTHOR}
 // @File    : WallaceTree
-// @Software: IntelliJ IDEA 
+// @Software: IntelliJ IDEA
 // @Comment : Wallace树
 
-package core.pipeline.fu.mdu.multiplier
+package core.pipeline.intblock.fu.mdu.multiplier
 
 import spinal.core._
 import spinal.lib._

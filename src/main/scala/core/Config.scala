@@ -44,6 +44,5 @@ object Config {
   )
 
   val ISA = LA32R
-
   val PLATFORM = SIM_VERILATOR
 }

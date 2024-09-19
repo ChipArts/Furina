@@ -6,6 +6,6 @@
 // @Comment :
 package core.cache
 
-class DCache {
+class DataCache {
 
 }

@@ -15,7 +15,6 @@ class Furina extends Component {
 
 object Furina {
   def main(args: Array[String]): Unit = {
-    println("Hello, furina.Furina!")
     SpinalVerilog(new Furina)
   }
 }

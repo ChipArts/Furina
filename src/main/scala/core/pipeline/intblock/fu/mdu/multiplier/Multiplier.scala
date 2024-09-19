@@ -5,7 +5,7 @@
 // @Software: IntelliJ IDEA
 // @Comment : 基4 booth 华莱士树 乘法器
 
-package core.pipeline.fu.mdu.multiplier
+package core.pipeline.intblock.fu.mdu.multiplier
 
 import spinal.core._
 import spinal.lib._

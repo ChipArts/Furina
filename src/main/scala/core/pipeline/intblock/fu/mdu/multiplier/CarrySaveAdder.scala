@@ -5,7 +5,7 @@
 // @Software: IntelliJ IDEA
 // @Comment : 进位保存加法器
 
-package core.pipeline.fu.mdu.multiplier
+package core.pipeline.intblock.fu.mdu.multiplier
 
 import spinal.core._
 

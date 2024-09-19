@@ -5,7 +5,7 @@
 // @Software: IntelliJ IDEA
 // @Comment : 基4 booth 算法
 
-package core.pipeline.fu.mdu.multiplier
+package core.pipeline.intblock.fu.mdu.multiplier
 
 import spinal.core._
 

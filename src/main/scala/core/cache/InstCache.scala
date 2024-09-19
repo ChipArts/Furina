@@ -16,7 +16,7 @@ import core.cache.intf._
 import core.mmu._
 import core.mmu.intf._
 import spinal.lib.bus.tilelink
-class ICache extends Component {
+class InstCache extends Component {
   val io = new Bundle {
     val fetchReq = slave Stream FetchReq()
     val fetchResp = master Stream FetchResp()
