@@ -14,7 +14,9 @@ import spinal.lib.misc.pipeline._
 import scala.language.postfixOps
 
 class Multiplier(width: Int) extends Component {
+  // width: 被乘数和乘数位宽
   val io = new Bundle {
+    // 多周期部件，需要使用握手信号同步数据
     val req = slave Stream new Bundle {
       val x = Bits(width bits)
       val y = Bits(width bits)
@@ -54,7 +56,7 @@ class Multiplier(width: Int) extends Component {
     private val booth4 = Array.fill(prodNum)(new Booth4(width * 2))
     for (i <- 0 until prodNum) {
       booth4(i).io.x := x |<< i * 2  // x需要左移i*2位
-      booth4(i).io.y := (y ## B(0, 1 bits))(i * 2 + 2 downto i * 2)
+      booth4(i).io.y := (y ## B(0, 1 bits))(i * 2 + 2 downto i * 2) // def y(-1) = 0
     }
 
     // 用寄存器缓存乘法器的部分积并转置
@@ -65,34 +67,34 @@ class Multiplier(width: Int) extends Component {
         PROD(i)(j) := booth4(j).io.res(i)
       }
     }
-    // 缓存 booth 的 neg 输出
+    // 缓存 booth 的 neg 输出（booth计算过程的“取负”操作只进行了“取反”操作，“加一”操作合并到部分积求和部分进行）
     val NEG = Payload(Bits(prodNum bits))
     NEG := booth4.map(_.io.neg.asBits).reduce(_ ## _)
   }
 
   /* Wallace树求部分积的和 */
   private val wallaceNode = new builder.Node {
-    // Wallace树
-    private val wallaceTree = Array.fill(width * 2)(new WallaceTree(prodNum))
-    private val cinWidth = wallaceTree.head.io.cin.getWidth
+    // Wallace森林，由width * 2棵Wallace树组成
+    private val wallaceForest = Array.fill(width * 2)(new WallaceTree(prodNum))
+    private val cinWidth = wallaceForest.head.io.cin.getWidth
 
     // 第一棵树特殊处理，input连接NEG，cin连接PROD[carryNum - 1:0]
     // 主要是因为boothNode.PROD(0)仅有最低为可能为1，其他位都是0，可以节省一些资源，不需单独计算neg的加法
-    wallaceTree(0).io.input := boothNode.NEG
-    wallaceTree(0).io.cin := boothNode.PROD(0)(cinWidth - 1 downto 0)
+    wallaceForest(0).io.input := boothNode.NEG
+    wallaceForest(0).io.cin := boothNode.PROD(0)(cinWidth - 1 downto 0)
 
     // 其余树的input连接PROD，cin连接上一树的cout
     for (i <- 1 until width * 2) {
-      wallaceTree(i).io.input := boothNode.PROD(i)
-      wallaceTree(i).io.cin := wallaceTree(i - 1).io.cout
+      wallaceForest(i).io.input := boothNode.PROD(i)
+      wallaceForest(i).io.cin := wallaceForest(i - 1).io.cout
     }
 
     // 输出
     val SUM = Payload(Bits(width * 2 bits))
     val CARRY = Payload(Bits(width * 2 bits))
 
-    SUM := wallaceTree.map(_.io.sum.asBits).reduce(_ ## _)
-    CARRY := wallaceTree.map(_.io.carry.asBits).reduce(_ ## _)
+    SUM := wallaceForest.map(_.io.sum.asBits).reduce(_ ## _)
+    CARRY := wallaceForest.map(_.io.carry.asBits).reduce(_ ## _)
   }
 
   /* 末级加法器 */
@@ -101,16 +103,8 @@ class Multiplier(width: Int) extends Component {
     io.resp.payload.result := (wallaceNode.SUM.asUInt + (wallaceNode.CARRY |<< 1).asUInt).asBits
   }
 
+  // 生成流水线
   builder.genStagedPipeline()
+
+  // NOTE: 最后一棵华莱士树的所有carry信号因为没有使用会被spinal剔除，产生[Warning] Pruned wire detected
 }
-
-
-object Multiplier {
-  def main(args: Array[String]): Unit = {
-    SpinalConfig(
-      defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC, resetActiveLevel = LOW),
-      targetDirectory = "output"
-    ).generateVerilog(new Multiplier(32))
-  }
-}
-

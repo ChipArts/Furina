@@ -44,11 +44,11 @@ class WallaceTree(bitNum: Int) extends Component {
     val carry = out Bool()  // 最终进位输出
   }
 
-  // 使用CSA，根据csaStruct层结构，构建华莱士树
-  private val wallaceTree = (0 until depth).map(i => (0 until layerStruct(i)).map(_ => new CarrySaveAdder)).toArray
+  // 使用CSA，根据csaStruct层结构，构建CAS树
+  private val casTree = (0 until depth).map(i => (0 until layerStruct(i)).map(_ => new CarrySaveAdder)).toArray
   private val layerInput = (0 until depth).map(i => Bits(layerBitNum(i) bits)).toArray
   private val cin = {  // 重新打包上级进位的数据结构
-    val cin = (0 until depth).map(i => Bits(layerStruct(i) bits)).toArray
+    val cin = (0 until depth - 1).map(i => Bits(layerStruct(i) bits)).toArray
     var idx = 0
     for (i <- 0 until depth - 1) {
       for (j <- 0 until layerStruct(i)) {
@@ -65,7 +65,7 @@ class WallaceTree(bitNum: Int) extends Component {
     if (i > 0) {
       for (j <- 0 until layerStruct(i - 1)) {
         // 上一层结果
-        layerInput(i)(j * 2) := wallaceTree(i - 1)(j).io.sum
+        layerInput(i)(j * 2) := casTree(i - 1)(j).io.sum
         // 上一级进位
         layerInput(i)(j * 2 + 1) := cin(i - 1)(j)
       }
@@ -78,14 +78,14 @@ class WallaceTree(bitNum: Int) extends Component {
       layerInput(0) := io.input
     }
     for (j <- 0 until layerStruct(i)) {
-      wallaceTree(i)(j).io.a := layerInput(i)(j * 3)
-      wallaceTree(i)(j).io.b := layerInput(i)(j * 3 + 1)
-      wallaceTree(i)(j).io.c := layerInput(i)(j * 3 + 2)
+      casTree(i)(j).io.a := layerInput(i)(j * 3)
+      casTree(i)(j).io.b := layerInput(i)(j * 3 + 1)
+      casTree(i)(j).io.c := layerInput(i)(j * 3 + 2)
     }
   }
 
   // 输出
-  io.cout := (0 until depth - 1).flatMap(i => (0 until layerStruct(i)).map(j => wallaceTree(i)(j).io.carry)).asBits
-  io.sum := wallaceTree.last.last.io.sum
-  io.carry := wallaceTree.last.last.io.carry
+  io.cout := (0 until depth - 1).flatMap(i => (0 until layerStruct(i)).map(j => casTree(i)(j).io.carry)).asBits
+  io.sum := casTree.last.last.io.sum
+  io.carry := casTree.last.last.io.carry
 }
