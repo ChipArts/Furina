@@ -80,7 +80,6 @@ module TranslationLookasideBuffer (
   end
   
   // 优先编码器，选择第一个匹配的条目
-  // 这在多个条目匹配时很重要（在正确设计的TLB中不应该发生）
   always_comb begin : proc_match_idx
     matched_idx = '0;
     for (int i = 0; i < `TLB_ENTRY_NUM; i++) begin
