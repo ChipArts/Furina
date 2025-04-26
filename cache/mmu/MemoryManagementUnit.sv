@@ -104,15 +104,15 @@ module MemoryManagementUnit (
   logic [ 9:0] r_asid      ;  // 地址空间ID
   logic        r_g         ;  // 全局标志
   logic [ 5:0] r_ps        ;  // 页大小
-  logic        r_e         ;  // 条目有效标志
+  logic        r_e         ;  // 条目存在标志
   logic        r_v0        ;  // 偶数页有效标志
   logic        r_d0        ;  // 偶数页脏标志
-  logic [ 1:0] r_mat0      ;  // 偶数页内存属性
+  logic [ 1:0] r_mat0      ;  // 偶数页内存访问类型
   logic [ 1:0] r_plv0      ;  // 偶数页特权级
   logic [19:0] r_ppn0      ;  // 偶数页物理页号
   logic        r_v1        ;  // 奇数页有效标志
   logic        r_d1        ;  // 奇数页脏标志
-  logic [ 1:0] r_mat1      ;  // 奇数页内存属性
+  logic [ 1:0] r_mat1      ;  // 奇数页内存访问类型
   logic [ 1:0] r_plv1      ;  // 奇数页特权级
   logic [19:0] r_ppn1      ;  // 奇数页物理页号
 
